@@ -26,11 +26,12 @@ class TDD:
     def __init__(self, 
                     weights: CUDAcpl_Tensor,
                     parallel_shape: List[int],
+                    data_shape: List[int],
                     node: Node,
                     index_order: IndexOrder = []):
         self.weights: CUDAcpl_Tensor = weights
         self.parallel_shape: List[int] = parallel_shape
-        self.data_shape: List[int] = list(weights.shape[len(parallel_shape):-1])  #the data index shape
+        self.data_shape: List[int] = data_shape  #the data index shape
         self.node: Node = node
 
         '''
@@ -57,7 +58,8 @@ class TDD:
     def __construct_and_normalize(parallel_shape: List[int], the_successors: List[TDD]):
         '''
             construct the tdd with the_successors, and normalize it
-            Node: This method requires the index order of the_successors to be the same.
+            Note: This method requires the index order and data shape of the_successors to be the same.
+                    Global information like index order and data shape are not generated.
         '''
         all_equal = True
         for k in range(1,len(the_successors)):
@@ -82,10 +84,12 @@ class TDD:
             
             node=Node.get_terminal_node()
 
-            res=TDD(weights,parallel_shape,node,[])
+            res=TDD(weights,parallel_shape,[],node,[])
             return res
 
         for k in range(len(the_successors)):
+            if the_successors[k].data_shape != the_successors[0].data_shape:
+                raise Exception('This method requires the data shape of the_successors to be the same.')
             if the_successors[k].index_order != the_successors[0].index_order:
                 raise Exception('This method requires the index order of the_successors to be the same.')
 
@@ -93,7 +97,7 @@ class TDD:
             if torch.max(int_key) == 0 and torch.min(int_key) == 0:
                 weights = _U_(torch.zeros_like,weigs[k])
                 node=Node.get_terminal_node()
-                the_successors[k]=TDD(weights,parallel_shape,node,[])
+                the_successors[k]=TDD(weights,parallel_shape,[],node,[])
 
                 weigs[k] = _U_(torch.zeros_like,weigs[k])
         
@@ -105,7 +109,7 @@ class TDD:
         succ_nodes=[succ.node for succ in the_successors]
 
         node=Node.get_unique_node(weigs,succ_nodes)
-        res=TDD(weig_max,parallel_shape,node,[])
+        res=TDD(weig_max,parallel_shape,[],node,[])
         return res
 
 
@@ -113,29 +117,39 @@ class TDD:
     @staticmethod
     def __as_tensor_iterate(tensor : CUDAcpl_Tensor, 
                     parallel_shape: List[int],
-                    index_order: List[int]) -> TDD:
+                    index_order: List[int], depth: int) -> TDD:
+        '''
+            The inner interation for as_tensor.
+            depth: current iteration depth, used to indicate index_order and termination
+
+            Guarantee: parallel_shape and index_order will not be modified.
+        '''
 
         data_shape = list(tensor.shape[len(parallel_shape):-1])  #the data index shape
-        #checks whether the tensor is reduced to the [[...[val]...]] form
-        if sum(data_shape) == len(data_shape):
-            weights = (tensor[...,0:1,:]).clone().detach().broadcast_to(parallel_shape+[2])
-            node = Node.get_terminal_node()
-            res = TDD(weights,parallel_shape,node,[])
-            return res
-        
         if index_order == []:
             index_order = list(range(len(data_shape)))
 
-        x=max(index_order)
-        split_pos = index_order.index(x)
-        index_order[split_pos] = -1
+        #checks whether the tensor is reduced to the [[...[val]...]] form
+        if depth == len(data_shape):
+
+            #maybe some improvement is needed here.
+            if len(data_shape)==0:
+                weights = tensor.clone()
+            else:
+                weights = (tensor[...,0:1,:]).clone().detach().view(parallel_shape+[2])
+            node = Node.get_terminal_node()
+            res = TDD(weights,parallel_shape,[],node,[])
+            return res
+        
+
+        split_pos=index_order[depth]
         split_tensor = list(tensor.split(1,-len(data_shape)+split_pos-1))
             #-1 is because the extra inner dim for real and imag
 
         the_successors: List[TDD] =[]
 
         for k in range(data_shape[split_pos]):
-            res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,index_order.copy())
+            res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,index_order,depth+1)
             the_successors.append(res)
         
         tdd = TDD.__construct_and_normalize(parallel_shape,the_successors)
@@ -147,22 +161,25 @@ class TDD:
                     parallel_shape: List[int] = [],
                     index_order: IndexOrder = []) -> TDD:
 
-        data_shape = list(tensor.shape[len(parallel_shape):-1])  #the data index shape
 
+        data_shape = list(tensor.shape[len(parallel_shape):-1])  #the data index shape
         if index_order == []:
-            temp_index_order = list(range(len(data_shape)))
             result_index_order = list(range(len(data_shape)))
         else:
-            temp_index_order = index_order.copy()
             result_index_order = index_order.copy()
-        
-        temp_parallel_shape = parallel_shape.copy()
+
+
+        if len(data_shape)!=len(index_order):
+            raise Exception('The number of indices must match that provided by tensor.')
 
         '''
             This extra layer is for copying the input list and pre-process.
         '''
-        res = TDD.__as_tensor_iterate(tensor,temp_parallel_shape,temp_index_order)
+        res = TDD.__as_tensor_iterate(tensor,parallel_shape,index_order,0)
+
+        
         res.index_order = result_index_order
+        res.data_shape = data_shape
         return res
 
 
