@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import List, Tuple, Union, cast
+from xmlrpc.client import Boolean
 from .CUDAcpl import CUDAcpl_Tensor,_U_,CUDAcpl2np
 import torch
 
@@ -110,9 +111,11 @@ class Node:
 
 
 
-    def layout(self,dot=Digraph(),succ=[],real_label=True, full_output=False):
+    def layout(self,dot=Digraph(),succ: List=[],real_label: Boolean=True, full_output: Boolean=False):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
+
+            (NO TYPING SYSTEM VERIFICATION)
         '''
 
 

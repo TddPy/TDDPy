@@ -104,10 +104,22 @@ class TDD:
 
                 weigs[k] = _U_(torch.zeros_like,weigs[k])
         
+        #get the maximum abs. of weights
         weig_abs = CUDAcpl.norm(weigs)
-        max_indices = torch.max(weig_abs,dim=0,keepdim=True).indices
-        weig_max = torch.stack((weigs[...,0].gather(-1,max_indices),weigs[...,1].gather(-1,max_indices)),-1)[0] #shape: [?,2]
-        weig_max_1 = torch.stack((weig_max[...,0],-weig_max[...,1]),-1)/(weig_max[...,0]**2+weig_max[...,1]**2)
+        weig_abs_max = torch.max(weig_abs,dim=0,keepdim=True)
+        max_indices = weig_abs_max.indices
+        max_abs_values = weig_abs_max.values[0]
+
+        #get the weights at the corresponding maximum abs. positions
+        weig_max = torch.stack((weigs[...,0].gather(0,max_indices),weigs[...,1].gather(0,max_indices)),dim=-1).squeeze(0) #shape: [?,2]
+
+        #get 1/weight_max for normalization
+        weig_max_1 = torch.stack((weig_max[...,0],-weig_max[...,1]),dim=-1)/(weig_max[...,0]**2+weig_max[...,1]**2).unsqueeze(-1)
+
+        #notice that weig_max == 0 cases are considered here
+        zeros_items = (max_abs_values<Node.EPS).unsqueeze(-1).broadcast_to(weig_max_1.shape)
+        weig_max_1 = torch.where(zeros_items,0.,weig_max_1)
+
         weigs = CUDAcpl.einsum('k...,...->k...',weigs,weig_max_1)   #shape: [weigs_index,?,2],[?,2]->[weigs_index,?,2]
         succ_nodes=[succ.node for succ in the_successors]
 
@@ -154,7 +166,7 @@ class TDD:
         for k in range(data_shape[split_pos]):
             res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,index_order,depth+1)
             the_successors.append(res)
-        
+
         tdd = TDD.__construct_and_normalize(split_pos,parallel_shape,the_successors)
         return tdd
 
@@ -187,9 +199,11 @@ class TDD:
 
 
 
-    def show(self,real_label=True,path: str='output', full_output = False):
+    def show(self,real_label: Boolean=True,path: str='output', full_output: Boolean = False):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
+
+            (NO TYPING SYSTEM VERIFICATION)
         '''
         edge=[]              
         dot=Digraph(name='reduced_tree')
