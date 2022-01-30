@@ -1,12 +1,27 @@
 from __future__ import annotations
+from ast import Index
 from typing import List, Tuple, Union, cast
-from xmlrpc.client import Boolean
+from . import CUDAcpl
 from .CUDAcpl import CUDAcpl_Tensor,_U_,CUDAcpl2np
 import torch
 
 from graphviz import Digraph
 
 TERMINAL_KEY = 0
+
+IndexOrder = List[int]
+
+def order_inverse(index_order: IndexOrder) -> IndexOrder:
+    '''
+        Return the "inverse" of the given index order.
+        (it can be understand as the inverse in the permutation group.)
+    '''
+    res = [0]*len(index_order)
+
+    for i in range(len(index_order)):
+        res[index_order[i]] = i
+    
+    return res
 
 class Node:
     '''
@@ -74,6 +89,11 @@ class Node:
         self.out_weights : CUDAcpl_Tensor = _U_(torch.tensor,[])
         self.successors : List[Node] = []
 
+    @property
+    def index_range(self) -> int:
+        # how many values this index can take
+        return len(self.successors)
+
     @staticmethod
     def get_terminal_node():
         return Node.__unique_table[TERMINAL_KEY]
@@ -110,8 +130,43 @@ class Node:
             return res
 
 
+    def to_CUDAcpl_Tensor(self, weights: CUDAcpl_Tensor, data_shape: Tuple[int]) -> CUDAcpl_Tensor:
+        '''
+            Get the CUDAcpl_Tensor determined from this node and the weights.
 
-    def layout(self,dot=Digraph(),succ: List=[],real_label: Boolean=True, full_output: Boolean=False):
+            (use the trival index order)
+            data_shape(in the corresponding trival index order) is required to broadcast at reduced nodes of indices.
+        '''
+        
+        current_order = self.order
+
+        parallel_shape = tuple(weights.shape[:-1])
+        par_tensor = []
+        for k in range(self.index_range):
+            #detect terminal nodes, or iterate on the next node
+            if self.successors[k].id == TERMINAL_KEY:
+                temp_tensor = self.out_weights[k]
+                next_order = len(data_shape)
+            else:
+                next_order = self.successors[k].order
+                temp_tensor = self.successors[k].to_CUDAcpl_Tensor(self.out_weights[k],data_shape)
+                expanded_out_weights = self.out_weights[k].view(parallel_shape+(1,)*(len(data_shape)-next_order)+(2,))
+                expanded_out_weights = expanded_out_weights.expand_as(temp_tensor)
+                temp_tensor = CUDAcpl.einsum('...,...->...',temp_tensor,expanded_out_weights)
+            #broadcast according to the index distance
+            temp_shape = temp_tensor.shape
+            temp_tensor = temp_tensor.view(
+                parallel_shape+(next_order-current_order-1)*(1,)+temp_shape[len(parallel_shape):])
+            temp_tensor = temp_tensor.expand(
+                parallel_shape+data_shape[current_order+1:next_order]+temp_shape[len(parallel_shape):])
+            par_tensor.append(temp_tensor)
+        
+        return torch.stack(par_tensor,dim=len(parallel_shape))
+        
+
+
+
+    def layout(self, index_order: List[int], dot=Digraph(), succ: List=[], real_label: bool=True, full_output: bool=False):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
 
@@ -125,11 +180,11 @@ class Node:
             if self.id==TERMINAL_KEY:
                 dot.node(str(self.id), str(1), fontname="helvetica",shape="circle",color="red")
             else:
-                dot.node(str(self.id), 'i'+str(self.order), fontname="helvetica",shape="circle",color="red")
+                dot.node(str(self.id), 'i'+str(index_order[self.order]), fontname="helvetica",shape="circle",color="red")
         else:
-            dot.node(str(self.id), 'i'+str(self.order), fontname="helvetica",shape="circle",color="red")
+            dot.node(str(self.id), 'i'+str(index_order[self.order]), fontname="helvetica",shape="circle",color="red")
 
-        for k in range(len(self.successors)):
+        for k in range(self.index_range):
             if self.successors[k]:
 
                 #if there is no parallel index, directly demonstrate the edge values
@@ -142,7 +197,7 @@ class Node:
                     else:
                         label1 = str(list(self.out_weights[k].shape[:-1]))
                 if not self.successors[k] in succ:
-                    dot=self.successors[k].layout(dot,succ,real_label,full_output)
+                    dot=self.successors[k].layout(index_order, dot,succ,real_label,full_output)
                     dot.edge(str(self.id),str(self.successors[k].id),color=col[k%4],label=label1)
                     succ.append(self.successors[k])
                 else:

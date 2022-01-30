@@ -1,14 +1,12 @@
 from __future__ import annotations
-from ast import Index
 from typing import Iterable, Tuple, List, Any, Union, cast
-from xmlrpc.client import Boolean
 import numpy as np
 import torch
 
 from . import CUDAcpl
 from .CUDAcpl import _U_, CUDAcpl_Tensor, CUDAcpl2np
 from . import node
-from .node import  Node
+from .node import  TERMINAL_KEY, Node, IndexOrder, order_inverse
 import copy
 
 
@@ -16,7 +14,7 @@ from graphviz import Digraph
 from IPython.display import Image
 
 
-IndexOrder = List[int]
+
 
 class TDD:
     '''
@@ -41,7 +39,17 @@ class TDD:
         '''
         self.index_order: IndexOrder = index_order
 
-    def __eq__(self, other: TDD) -> Boolean:
+    @property
+    def global_order(self)-> List[int]:
+        '''
+            Return the index order containing both parallel and data indices.
+            Note that the last index reserved for CUDA complex is not included
+        '''
+        parallel_index_order = [i for i in range(len(self.parallel_shape))]
+        increment = len(self.parallel_shape)
+        return parallel_index_order + [order+increment for order in self.index_order]
+
+    def __eq__(self, other: TDD) -> bool:
         '''
             Now this equality check only deals with TDDs with the same index order.
         '''
@@ -167,15 +175,33 @@ class TDD:
             res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,index_order,depth+1)
             the_successors.append(res)
 
-        tdd = TDD.__construct_and_normalize(split_pos,parallel_shape,the_successors)
+        tdd = TDD.__construct_and_normalize(depth,parallel_shape,the_successors)
         return tdd
 
 
     @staticmethod
-    def as_tensor(tensor : CUDAcpl_Tensor, 
-                    parallel_shape: List[int] = [],
-                    index_order: IndexOrder = []) -> TDD:
+    def as_tensor(data : Union[CUDAcpl_Tensor,np.ndarray,Tuple]) -> TDD:
+        '''
+        construct the tdd tensor
 
+        tensor:
+            1. in the form of a matrix only: assume the parallel index and index order to be []
+            2. in the form of a tuple (data, index_shape, index_order)
+            Note that if the input matrix is a torch tensor, 
+                    then it must be already in CUDAcpl_Tensor(CUDA complex) form.
+        '''
+
+        if isinstance(data,Tuple):
+            tensor,parallel_shape,index_order = data
+        else:
+            tensor = data
+            parallel_shape = []
+            index_order: List[int] = []
+            
+        if isinstance(tensor,np.ndarray):
+            tensor = CUDAcpl.np2CUDAcpl(tensor)
+
+        #pre-process above
 
         data_shape = list(tensor.shape[len(parallel_shape):-1])  #the data index shape
         if index_order == []:
@@ -188,7 +214,7 @@ class TDD:
             raise Exception('The number of indices must match that provided by tensor.')
 
         '''
-            This extra layer is for copying the input list and pre-process.
+            This extra layer is also for copying the input list and pre-process.
         '''
         res = TDD.__as_tensor_iterate(tensor,parallel_shape,result_index_order,0)
 
@@ -197,9 +223,35 @@ class TDD:
         res.data_shape = data_shape
         return res
 
+    
+            
+    def CUDAcpl(self) -> CUDAcpl_Tensor:
+        '''
+            Transform this tensor to a CUDA complex and return.
+        '''
+        trival_ordered_data_shape = tuple([self.data_shape[i] for i in order_inverse(self.index_order)])
+        node_data = self.node.to_CUDAcpl_Tensor(self.weights,trival_ordered_data_shape)
+        
+        #permute to the right index order
+        node_data = node_data.permute(tuple(self.global_order+[node_data.dim()-1]))
+
+        expanded_weights = self.weights.view(tuple(self.parallel_shape)+(1,)*len(self.data_shape)+(2,))
+        expanded_weights = expanded_weights.expand_as(node_data)
+
+        return CUDAcpl.einsum('...,...->...',node_data,expanded_weights)
+        
+
+    def numpy(self) -> np.ndarray:
+        '''
+            Transform this tensor to a numpy ndarry and return.
+        '''
+        return CUDAcpl2np(self.CUDAcpl())
+    
 
 
-    def show(self,real_label: Boolean=True,path: str='output', full_output: Boolean = False):
+
+
+    def show(self,real_label: bool=True,path: str='output', full_output: bool = False):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
 
@@ -207,10 +259,11 @@ class TDD:
         '''
         edge=[]              
         dot=Digraph(name='reduced_tree')
-        dot=self.node.layout(dot,edge,real_label, full_output)
+        dot=self.node.layout(self.index_order, dot,edge, real_label, full_output)
         dot.node('-0','',shape='none')
         if list(self.weights.shape)==[2]:
-            dot.edge('-0',str(self.node.id),color="blue",label=str(complex(round(self.weights[0].cpu().item(),2),round(self.weights[1].cpu().item(),2))))
+            dot.edge('-0',str(self.node.id),color="blue",label=
+                str(complex(round(self.weights[0].cpu().item(),2),round(self.weights[1].cpu().item(),2))))
         else:
             if full_output == True:
                 label = str(CUDAcpl2np(self.weights))
