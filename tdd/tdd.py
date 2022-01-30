@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from . import CUDAcpl
-from .CUDAcpl import _U_, CUDAcpl_Tensor
+from .CUDAcpl import _U_, CUDAcpl_Tensor, CUDAcpl2np
 from . import node
 from .node import  Node
 import copy
@@ -55,9 +55,12 @@ class TDD:
             raise Exception('index order not the same!')
 
     @staticmethod
-    def __construct_and_normalize(parallel_shape: List[int], the_successors: List[TDD]):
+    def __construct_and_normalize(order,parallel_shape: List[int], the_successors: List[TDD]):
         '''
             construct the tdd with the_successors, and normalize it
+
+            order: represent the order of this node (which tensor index it represent)
+
             Note: This method requires the index order and data shape of the_successors to be the same.
                     Global information like index order and data shape are not generated.
         '''
@@ -108,7 +111,7 @@ class TDD:
         weigs = CUDAcpl.einsum('k...,...->k...',weigs,weig_max_1)   #shape: [weigs_index,?,2],[?,2]->[weigs_index,?,2]
         succ_nodes=[succ.node for succ in the_successors]
 
-        node=Node.get_unique_node(weigs,succ_nodes)
+        node=Node.get_unique_node(order,weigs,succ_nodes)
         res=TDD(weig_max,parallel_shape,[],node,[])
         return res
 
@@ -152,7 +155,7 @@ class TDD:
             res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,index_order,depth+1)
             the_successors.append(res)
         
-        tdd = TDD.__construct_and_normalize(parallel_shape,the_successors)
+        tdd = TDD.__construct_and_normalize(split_pos,parallel_shape,the_successors)
         return tdd
 
 
@@ -169,13 +172,13 @@ class TDD:
             result_index_order = index_order.copy()
 
 
-        if len(data_shape)!=len(index_order):
+        if len(data_shape)!=len(result_index_order):
             raise Exception('The number of indices must match that provided by tensor.')
 
         '''
             This extra layer is for copying the input list and pre-process.
         '''
-        res = TDD.__as_tensor_iterate(tensor,parallel_shape,index_order,0)
+        res = TDD.__as_tensor_iterate(tensor,parallel_shape,result_index_order,0)
 
         
         res.index_order = result_index_order
@@ -184,14 +187,21 @@ class TDD:
 
 
 
-    def show(self,real_label=True,path: str='output'):
+    def show(self,real_label=True,path: str='output', full_output = False):
+        '''
+            full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
+        '''
         edge=[]              
         dot=Digraph(name='reduced_tree')
-        dot=self.node.layout(self.index_order,dot,edge,real_label)
+        dot=self.node.layout(dot,edge,real_label, full_output)
         dot.node('-0','',shape='none')
         if list(self.weights.shape)==[2]:
             dot.edge('-0',str(self.node.id),color="blue",label=str(complex(round(self.weights[0].cpu().item(),2),round(self.weights[1].cpu().item(),2))))
         else:
-            dot.edge('-0',str(self.node.id),color="blue",label=str(self.parallel_shape))
+            if full_output == True:
+                label = str(CUDAcpl2np(self.weights))
+            else:
+                label =str(self.parallel_shape)
+            dot.edge('-0',str(self.node.id),color="blue",label = label)
         dot.format = 'png'
         return Image(dot.render(path))
