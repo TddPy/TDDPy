@@ -230,7 +230,7 @@ class TDD:
             Transform this tensor to a CUDA complex and return.
         '''
         trival_ordered_data_shape = tuple([self.data_shape[i] for i in order_inverse(self.index_order)])
-        node_data = self.node.to_CUDAcpl_Tensor(self.weights,trival_ordered_data_shape)
+        node_data = self.node.CUDAcpl_Tensor(self.weights,trival_ordered_data_shape)
         
         #permute to the right index order
         node_data = node_data.permute(tuple(self.global_order+[node_data.dim()-1]))

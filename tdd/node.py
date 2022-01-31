@@ -128,16 +128,36 @@ class Node:
             res.successors = succ_nodes.copy()
             Node.__unique_table[temp_key] = res
             return res
-
-
-    def to_CUDAcpl_Tensor(self, weights: CUDAcpl_Tensor, data_shape: Tuple[int]) -> CUDAcpl_Tensor:
+    
+    def CUDAcpl_Tensor(self, weights: CUDAcpl_Tensor, data_shape: Tuple[int]) -> CUDAcpl_Tensor:
         '''
             Get the CUDAcpl_Tensor determined from this node and the weights.
 
             (use the trival index order)
             data_shape(in the corresponding trival index order) is required to broadcast at reduced nodes of indices.
         '''
+
+        parallel_shape = tuple(weights.shape[:-1])
+
+        if self.id == TERMINAL_KEY:
+            res = CUDAcpl.ones(parallel_shape)
+        else:
+            res = self.__CUDAcpl_Tensor(weights, data_shape)
         
+        #this extra layer is for adding the reduced dimensions at the front
+        res = res.view(parallel_shape+self.order*(1,)+res.shape[len(parallel_shape):])
+        res = res.expand(parallel_shape + data_shape+(2,))
+
+        return res
+        
+
+
+
+
+    def __CUDAcpl_Tensor(self, weights: CUDAcpl_Tensor, data_shape: Tuple[int]) -> CUDAcpl_Tensor:
+        '''
+            Note: due to the special handling of iteration, this method expect 'self' to be a non-terminal node.
+        '''
         current_order = self.order
 
         parallel_shape = tuple(weights.shape[:-1])
@@ -149,7 +169,7 @@ class Node:
                 next_order = len(data_shape)
             else:
                 next_order = self.successors[k].order
-                temp_tensor = self.successors[k].to_CUDAcpl_Tensor(self.out_weights[k],data_shape)
+                temp_tensor = self.successors[k].__CUDAcpl_Tensor(self.out_weights[k],data_shape)
                 expanded_out_weights = self.out_weights[k].view(parallel_shape+(1,)*(len(data_shape)-next_order)+(2,))
                 expanded_out_weights = expanded_out_weights.expand_as(temp_tensor)
                 temp_tensor = CUDAcpl.einsum('...,...->...',temp_tensor,expanded_out_weights)

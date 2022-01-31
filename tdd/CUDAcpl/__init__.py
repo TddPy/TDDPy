@@ -23,5 +23,9 @@ einsum3 = main .einsum3
 tensordot = main .tensordot
 scale = main .scale
 e_i_theta = main .e_i_theta
-eye = main .eye
+
+eye = main.eye
+ones = main.ones
+zeros = main.zeros
+
 conj = main .conj

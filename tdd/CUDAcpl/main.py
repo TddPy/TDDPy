@@ -1,4 +1,4 @@
-from typing import NewType, Union
+from typing import NewType, Union, Tuple, List
 import numpy as np
 import torch
 
@@ -86,6 +86,12 @@ def eye(n: int) -> CUDAcpl_Tensor:
     result = _U_(torch.eye,n)
     return torch.stack((result,torch.zeros_like(result)),dim=-1)
     
+def ones(shape: Tuple[int]) -> CUDAcpl_Tensor:
+    return torch.stack((_U_(torch.ones,shape),_U_(torch.zeros,shape)),-1)
+
+def zeros(shape: Tuple[int]) -> CUDAcpl_Tensor:
+    return _U_(torch.zeros, shape+(2,))
+
 def conj(tensor: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
     return torch.stack((tensor[...,0],-tensor[...,1]),dim=-1)
 
