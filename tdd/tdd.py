@@ -6,7 +6,7 @@ import torch
 from . import CUDAcpl
 from .CUDAcpl import _U_, CUDAcpl_Tensor, CUDAcpl2np
 from . import node
-from .node import  TERMINAL_KEY, Node, IndexOrder, order_inverse
+from .node import  TERMINAL_ID, Node, IndexOrder, order_inverse
 import copy
 
 
@@ -24,11 +24,11 @@ class TDD:
     def __init__(self, 
                     weights: CUDAcpl_Tensor,
                     data_shape: List[int],
-                    node: Node,
+                    node: Node|None,
                     index_order: IndexOrder = []):
         self.weights: CUDAcpl_Tensor = weights
         self.data_shape: List[int] = data_shape  #the data index shape
-        self.node: Node = node
+        self.node: Node|None = node
 
         '''
             index_order: how the inner index are mapped to outer representations
@@ -94,7 +94,7 @@ class TDD:
         if all_zeros:
             weights=_U_(torch.zeros_like,the_successors[0].weights)
             
-            node=Node.get_terminal_node()
+            node=None
 
             res=TDD(weights,[],node,[])
             return res
@@ -108,7 +108,7 @@ class TDD:
             int_key = Node.get_int_key(weigs[k])
             if torch.max(int_key) == 0 and torch.min(int_key) == 0:
                 weights = _U_(torch.zeros_like,weigs[k])
-                node=Node.get_terminal_node()
+                node=None
                 the_successors[k]=TDD(weights,[],node,[])
 
                 weigs[k] = _U_(torch.zeros_like,weigs[k])
@@ -161,7 +161,7 @@ class TDD:
                 weights = tensor.clone()
             else:
                 weights = (tensor[...,0:1,:]).clone().detach().view(parallel_shape+[2])
-            node = Node.get_terminal_node()
+            node = None
             res = TDD(weights,[],node,[])
             return res
         
@@ -231,7 +231,7 @@ class TDD:
             Transform this tensor to a CUDA complex and return.
         '''
         trival_ordered_data_shape = [self.data_shape[i] for i in order_inverse(self.index_order)]
-        node_data = self.node.CUDAcpl_Tensor(self.weights,trival_ordered_data_shape)
+        node_data = Node.CUDAcpl_Tensor(self.node,self.weights,trival_ordered_data_shape)
         
         #permute to the right index order
         node_data = node_data.permute(tuple(self.global_order+[node_data.dim()-1]))
@@ -247,6 +247,22 @@ class TDD:
             Transform this tensor to a numpy ndarry and return.
         '''
         return CUDAcpl2np(self.CUDAcpl())
+
+
+
+        '''
+    
+    def __getitem__(self, key) -> TDD:
+        Index on the data dimensions.
+
+        Note that only limited form of indexing is allowed here.
+        if not isinstance(key, int):
+            raise Exception('Indexing form not supported.')
+        
+        # index by a integer
+        inner_index = self.index_order.index(key) #get the corresponding index inside tdd
+        node = self.node.
+        '''
     
 
 
@@ -262,14 +278,20 @@ class TDD:
         dot=Digraph(name='reduced_tree')
         dot=Node.layout(self.node,self.parallel_shape,self.index_order, dot,edge, real_label, full_output)
         dot.node('-0','',shape='none')
+
+        if self.node == None:
+            id_str = str(TERMINAL_ID)
+        else:
+            id_str = str(self.node.id)
+
         if list(self.weights.shape)==[2]:
-            dot.edge('-0',str(self.node.id),color="blue",label=
+            dot.edge('-0',id_str,color="blue",label=
                 str(complex(round(self.weights[0].cpu().item(),2),round(self.weights[1].cpu().item(),2))))
         else:
             if full_output == True:
                 label = str(CUDAcpl2np(self.weights))
             else:
                 label =str(self.parallel_shape)
-            dot.edge('-0',str(self.node.id),color="blue",label = label)
+            dot.edge('-0',id_str,color="blue",label = label)
         dot.format = 'png'
         return Image(dot.render(path))

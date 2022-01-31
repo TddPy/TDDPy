@@ -2,7 +2,7 @@
 #from tdd import index,node,tdd,methods
 
 from . import CUDAcpl
-from .node import Node,TERMINAL_KEY
+from .node import Node,TERMINAL_ID
 from .tdd import TDD
 from . import methods
 
