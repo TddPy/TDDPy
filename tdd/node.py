@@ -57,7 +57,7 @@ class Node:
         The unique_table to store all the node instances used in tdd.
         dictionary key:
             TERMINAL_KEY for terminal node
-            [order, index(weight1,weight2...), successor1, successor2,...] for non-terminal nodes
+            [order, index(weight1), index(weight2), ..., successor1, successor2,...] for non-terminal nodes
     '''
     global_node_id = 0 #it counts the total number of nonterminal nodes
 
@@ -66,16 +66,16 @@ class Node:
         Node.__unique_table.clear()
         Node.global_node_id = 0
         
-        terminal_node = Node()
-        terminal_node.id = 0
-        terminal_node.order = -1
-        terminal_node.out_weights = _U_(torch.tensor,[])
-        terminal_node.successors = []
+        id = 0
+        order = -1
+        out_weights = _U_(torch.tensor,[])
+        successors = []
+        terminal_node = Node(id, order, out_weights, successors)
 
         Node.__unique_table[TERMINAL_KEY] = terminal_node
 
 
-    def __init__(self):
+    def __init__(self,id: int, order: int, out_weights: CUDAcpl_Tensor, successors: List[Node]):
         '''
         The structure of node instances:
         - id
@@ -84,10 +84,10 @@ class Node:
                         and the last index is for complex representation.
         - successor
         '''
-        self.id : int = 0
-        self.order : int = 0
-        self.out_weights : CUDAcpl_Tensor = _U_(torch.tensor,[])
-        self.successors : List[Node] = []
+        self.id : int = id
+        self.order : int = order
+        self.out_weights : CUDAcpl_Tensor = out_weights
+        self.successors : List[Node] = successors
 
     @property
     def index_range(self) -> int:
@@ -120,16 +120,67 @@ class Node:
         if temp_key in Node.__unique_table:
             return Node.__unique_table[temp_key]
         else:
-            res = Node()
             Node.global_node_id += 1
-            res.id = Node.global_node_id
-            res.order = order
-            res.out_weights = out_weights.clone().detach()
-            res.successors = succ_nodes.copy()
+            id = Node.global_node_id
+            successors = succ_nodes.copy()
+            res = Node(id, order, out_weights.clone().detach(),successors)
             Node.__unique_table[temp_key] = res
             return res
+
+    @staticmethod
+    def duplicate(node: Node, parallel_shape: List[int], init_order: int=0,
+                 extra_shape_ahead: Tuple= (), extra_shape_behind: Tuple=()) -> Node:
+        '''
+            Duplicate from this node, with the initial order init_order,
+            and broadcast it to contain the extra (parallel index) shape ahead and behind.
+        '''
+
+        if node.id == TERMINAL_KEY:
+            return Node.get_terminal_node()
+
+        order = node.order + init_order
+        #broadcast to contain the extra shape
+        weights = node.out_weights.view((node.index_range,)+len(extra_shape_ahead)*(1,)
+                                    +tuple(parallel_shape)+len(extra_shape_behind)*(1,)+(2,))
+        weights = weights.broadcast_to((node.index_range,)+extra_shape_ahead+tuple(parallel_shape)
+                                    +extra_shape_behind + (2,))
+        successors = [Node.duplicate(successor,parallel_shape,init_order,extra_shape_ahead)
+                         for successor in node.successors]
+        return Node.get_unique_node(order,weights,successors)
+
+    def __direct_append(self, node: Node) -> Node:
+
+        if self.id == TERMINAL_KEY:
+            return node
+
+        new_successors = []
+        for succ in self.successors:
+            new_successors.append(succ.__direct_append(node))
+        
+        return Node.get_unique_node(self.order,self.out_weights,new_successors)
+
+    @staticmethod
+    def append(a: Node, parallel_shape_a: List[int], depth: int,
+                 b: Node, parallel_shape_b: List[int], parallel_tensor = False)-> Node:
+        '''
+            Replace the terminal node in this graph with 'node', and return the result.
+
+            depth: the depth from this node on, i.e. the number of dims corresponding to this node.
+            parallel_tensor: whether to tensor on the parallel indices
+
+            Node: it should be considered merely as an operation on node structures, with no meaning in the tensor regime.
+        '''
+        if not parallel_tensor:
+            modifided_node = Node.duplicate(b,parallel_shape_b,depth)
+            return a.__direct_append(modifided_node)
+        else:
+            b_node_broadcasted = Node.duplicate(b,parallel_shape_b,depth,tuple(parallel_shape_a),())
+            a_node_broadcasted = Node.duplicate(a,parallel_shape_a,0,(),tuple(parallel_shape_b))
+            return a_node_broadcasted.__direct_append(b_node_broadcasted)
+
+        
     
-    def CUDAcpl_Tensor(self, weights: CUDAcpl_Tensor, data_shape: Tuple[int]) -> CUDAcpl_Tensor:
+    def CUDAcpl_Tensor(self, weights: CUDAcpl_Tensor, data_shape: List[int]) -> CUDAcpl_Tensor:
         '''
             Get the CUDAcpl_Tensor determined from this node and the weights.
 
@@ -146,7 +197,7 @@ class Node:
         
         #this extra layer is for adding the reduced dimensions at the front
         res = res.view(parallel_shape+self.order*(1,)+res.shape[len(parallel_shape):])
-        res = res.expand(parallel_shape + data_shape+(2,))
+        res = res.expand(parallel_shape + tuple(data_shape)+(2,))
 
         return res
         
@@ -154,7 +205,7 @@ class Node:
 
 
 
-    def __CUDAcpl_Tensor(self, weights: CUDAcpl_Tensor, data_shape: Tuple[int]) -> CUDAcpl_Tensor:
+    def __CUDAcpl_Tensor(self, weights: CUDAcpl_Tensor, data_shape: List[int]) -> CUDAcpl_Tensor:
         '''
             Note: due to the special handling of iteration, this method expect 'self' to be a non-terminal node.
         '''
@@ -178,15 +229,16 @@ class Node:
             temp_tensor = temp_tensor.view(
                 parallel_shape+(next_order-current_order-1)*(1,)+temp_shape[len(parallel_shape):])
             temp_tensor = temp_tensor.expand(
-                parallel_shape+data_shape[current_order+1:next_order]+temp_shape[len(parallel_shape):])
+                parallel_shape+tuple(data_shape[current_order+1:next_order])+temp_shape[len(parallel_shape):])
             par_tensor.append(temp_tensor)
         
         return torch.stack(par_tensor,dim=len(parallel_shape))
         
 
 
-
-    def layout(self, index_order: List[int], dot=Digraph(), succ: List=[], real_label: bool=True, full_output: bool=False):
+    @staticmethod
+    def layout(node: Node, parallel_shape: List[int], index_order: List[int],
+                 dot=Digraph(), succ: List=[], real_label: bool=True, full_output: bool=False):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
 
@@ -197,29 +249,29 @@ class Node:
         col=['red','blue','black','green']
 
         if real_label:
-            if self.id==TERMINAL_KEY:
-                dot.node(str(self.id), str(1), fontname="helvetica",shape="circle",color="red")
+            if node.id==TERMINAL_KEY:
+                dot.node(str(node.id), str(1), fontname="helvetica",shape="circle",color="red")
             else:
-                dot.node(str(self.id), 'i'+str(index_order[self.order]), fontname="helvetica",shape="circle",color="red")
+                dot.node(str(node.id), 'i'+str(index_order[node.order]), fontname="helvetica",shape="circle",color="red")
         else:
-            dot.node(str(self.id), 'i'+str(index_order[self.order]), fontname="helvetica",shape="circle",color="red")
+            dot.node(str(node.id), 'i'+str(index_order[node.order]), fontname="helvetica",shape="circle",color="red")
 
-        for k in range(self.index_range):
-            if self.successors[k]:
+        for k in range(node.index_range):
+            if node.successors[k]:
 
                 #if there is no parallel index, directly demonstrate the edge values
-                if list(self.out_weights[0].shape) == [2]:
-                    label1=str(complex(round(self.out_weights[k][0].cpu().item(),2),round(self.out_weights[k][1].cpu().item().imag,2)))
+                if list(node.out_weights[0].shape) == [2]:
+                    label1=str(complex(round(node.out_weights[k][0].cpu().item(),2),round(node.out_weights[k][1].cpu().item().imag,2)))
                 #otherwise, demonstrate the parallel index shape
                 else:
                     if full_output:
-                        label1 = str(CUDAcpl2np(self.out_weights[k]))
+                        label1 = str(CUDAcpl2np(node.out_weights[k]))
                     else:
-                        label1 = str(list(self.out_weights[k].shape[:-1]))
-                if not self.successors[k] in succ:
-                    dot=self.successors[k].layout(index_order, dot,succ,real_label,full_output)
-                    dot.edge(str(self.id),str(self.successors[k].id),color=col[k%4],label=label1)
-                    succ.append(self.successors[k])
+                        label1 = str(list(parallel_shape))
+                if not node.successors[k] in succ:
+                    dot=Node.layout(node.successors[k],parallel_shape,index_order, dot,succ,real_label,full_output)
+                    dot.edge(str(node.id),str(node.successors[k].id),color=col[k%4],label=label1)
+                    succ.append(node.successors[k])
                 else:
-                    dot.edge(str(self.id),str(self.successors[k].id),color=col[k%4],label=label1)
+                    dot.edge(str(node.id),str(node.successors[k].id),color=col[k%4],label=label1)
         return dot        

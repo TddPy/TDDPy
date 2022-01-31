@@ -23,12 +23,10 @@ class TDD:
     '''
     def __init__(self, 
                     weights: CUDAcpl_Tensor,
-                    parallel_shape: List[int],
                     data_shape: List[int],
                     node: Node,
                     index_order: IndexOrder = []):
         self.weights: CUDAcpl_Tensor = weights
-        self.parallel_shape: List[int] = parallel_shape
         self.data_shape: List[int] = data_shape  #the data index shape
         self.node: Node = node
 
@@ -38,6 +36,9 @@ class TDD:
             index_order == None means the trival index mapping [0,1,2,(...)]
         '''
         self.index_order: IndexOrder = index_order
+    @property
+    def parallel_shape(self) -> List[int]:
+        return list(self.weights.shape[:-1])
 
     @property
     def global_order(self)-> List[int]:
@@ -63,7 +64,7 @@ class TDD:
             raise Exception('index order not the same!')
 
     @staticmethod
-    def __construct_and_normalize(order,parallel_shape: List[int], the_successors: List[TDD]):
+    def __construct_and_normalize(order, the_successors: List[TDD]):
         '''
             construct the tdd with the_successors, and normalize it
 
@@ -95,7 +96,7 @@ class TDD:
             
             node=Node.get_terminal_node()
 
-            res=TDD(weights,parallel_shape,[],node,[])
+            res=TDD(weights,[],node,[])
             return res
 
         for k in range(len(the_successors)):
@@ -108,7 +109,7 @@ class TDD:
             if torch.max(int_key) == 0 and torch.min(int_key) == 0:
                 weights = _U_(torch.zeros_like,weigs[k])
                 node=Node.get_terminal_node()
-                the_successors[k]=TDD(weights,parallel_shape,[],node,[])
+                the_successors[k]=TDD(weights,[],node,[])
 
                 weigs[k] = _U_(torch.zeros_like,weigs[k])
         
@@ -132,7 +133,7 @@ class TDD:
         succ_nodes=[succ.node for succ in the_successors]
 
         node=Node.get_unique_node(order,weigs,succ_nodes)
-        res=TDD(weig_max,parallel_shape,[],node,[])
+        res=TDD(weig_max,[],node,[])
         return res
 
 
@@ -161,7 +162,7 @@ class TDD:
             else:
                 weights = (tensor[...,0:1,:]).clone().detach().view(parallel_shape+[2])
             node = Node.get_terminal_node()
-            res = TDD(weights,parallel_shape,[],node,[])
+            res = TDD(weights,[],node,[])
             return res
         
 
@@ -175,7 +176,7 @@ class TDD:
             res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,index_order,depth+1)
             the_successors.append(res)
 
-        tdd = TDD.__construct_and_normalize(depth,parallel_shape,the_successors)
+        tdd = TDD.__construct_and_normalize(depth,the_successors)
         return tdd
 
 
@@ -229,7 +230,7 @@ class TDD:
         '''
             Transform this tensor to a CUDA complex and return.
         '''
-        trival_ordered_data_shape = tuple([self.data_shape[i] for i in order_inverse(self.index_order)])
+        trival_ordered_data_shape = [self.data_shape[i] for i in order_inverse(self.index_order)]
         node_data = self.node.CUDAcpl_Tensor(self.weights,trival_ordered_data_shape)
         
         #permute to the right index order
@@ -259,7 +260,7 @@ class TDD:
         '''
         edge=[]              
         dot=Digraph(name='reduced_tree')
-        dot=self.node.layout(self.index_order, dot,edge, real_label, full_output)
+        dot=Node.layout(self.node,self.parallel_shape,self.index_order, dot,edge, real_label, full_output)
         dot.node('-0','',shape='none')
         if list(self.weights.shape)==[2]:
             dot.edge('-0',str(self.node.id),color="blue",label=

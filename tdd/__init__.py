@@ -12,7 +12,7 @@ CUDAcpl_Tensor = CUDAcpl.CUDAcpl_Tensor
 #the interfaces
 
 as_tensor = methods.as_tensor
-
+direct_product = methods.direct_product
 
 Node.reset()
 

@@ -12,16 +12,23 @@ u2[0,1,0]=3
 U_c = np.array([u1,u2])
 '''
 
-U=np2CUDAcpl(1/np.sqrt(2)*np.array([2,2]))
+
+U=1/np.sqrt(2)*np.array([[1,1],[1,-1]])
+s = np.array([2,3])
 #B = tdd.CUDAcpl.einsum3('...ab,...cd,...ef->...acebdf',U,U,U)
 #B = tdd.CUDAcpl.einsum('...ab,...cd->...acbd',U,U)
 
 #print(B)
+print(np.tensordot(U,s,0))
 print('============')
 tdd1=tdd.as_tensor((U,[],[]))
-tdd1.show(path='output_test',full_output=True)
+tdd2=tdd.as_tensor((s,[2],[]))
 
-print(tdd1.numpy())
+tdd_final = tdd.direct_product(tdd1,tdd1,parallel_tensor=True)
+
+tdd_final.show(path='output_test',full_output=True)
+
+print(tdd_final.numpy())
 print('yes')
 
 exit()
