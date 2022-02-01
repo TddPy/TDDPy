@@ -51,6 +51,10 @@ class TDD:
         parallel_index_order = [i for i in range(len(self.parallel_shape))]
         increment = len(self.parallel_shape)
         return parallel_index_order + [order+increment for order in self.index_order]
+    
+    @property
+    def global_shape(self)-> List[int]:
+        return self.parallel_shape + self.data_shape
 
     def __eq__(self, other: TDD) -> bool:
         '''
@@ -103,7 +107,7 @@ class TDD:
         temp_node = Node(0, depth, out_weights, succ_nodes)
         dangle_weights = CUDAcpl.ones(out_weights.shape[1:-1])
         #normalize at this depth
-        new_node, new_dangle_weights = weighted_node.normalized((temp_node, dangle_weights), False)
+        new_node, new_dangle_weights = weighted_node.normalize((temp_node, dangle_weights), False)
         tdd = TDD(new_dangle_weights, [], new_node, [])
 
         return tdd
@@ -221,6 +225,17 @@ class TDD:
 
         return TDD(new_dangle_weights, new_data_shape, new_node, new_index_order)
 
+    @staticmethod
+    def sum(a: TDD, b: TDD) -> TDD:
+        '''
+            Sum up tdd a and b, and return the reduced result. 
+        '''
+
+        new_node, new_weights = weighted_node.sum((a.node, a.weights), (b.node, b.weights))
+
+        return TDD(new_weights, a.data_shape.copy(), new_node, a.index_order.copy())
+
+
     def show(self,real_label: bool=True,path: str='output', full_output: bool = False):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
@@ -248,3 +263,4 @@ class TDD:
             dot.edge('-0',id_str,color="blue",label = label)
         dot.format = 'png'
         return Image(dot.render(path))
+

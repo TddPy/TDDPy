@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, Union, List, Dict
+from typing import Tuple, Union, List, Dict, cast
 
 from tdd.CUDAcpl.main import norm
 
@@ -23,7 +23,7 @@ def isequal(w_node1: WeightedNode, w_node2: WeightedNode) -> bool:
         return False
         
 
-def normalized(w_node: WeightedNode, iterate: bool) -> WeightedNode:
+def normalize(w_node: WeightedNode, iterate: bool) -> WeightedNode:
     '''
         Conduct the normalization of this node.
         Return the normalized node and normalization coefficients.
@@ -53,7 +53,7 @@ def normalized(w_node: WeightedNode, iterate: bool) -> WeightedNode:
                 node_normalized = None
                 out_weight = node.out_weights[k]
             else:
-                node_normalized, out_weight = normalized((succ, node.out_weights[k]),True)
+                node_normalized, out_weight = normalize((succ, node.out_weights[k]),True)
             out_nodes.append(node_normalized)
             out_weights.append(out_weight)
         #pay attention that out_weigs are stacked at the first index here
@@ -218,7 +218,7 @@ def index_single(w_node: WeightedNode, inner_index: int, key: int) -> WeightedNo
 
         new_weights = torch.stack(out_weights)
         new_node = Node(0,node.order,new_weights,out_nodes)
-        return normalized((new_node, dangle_weights), False)
+        return normalize((new_node, dangle_weights), False)
 
 
 def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> WeightedNode:
@@ -240,5 +240,55 @@ def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> Weighted
         indexing = [(indexing[i+1][0]-1,indexing[i+1][1]) for i in range(len(indexing)-1)]
     
     return res_node, res_weights
+
+def sum(w_node1: WeightedNode, w_node2: WeightedNode) -> WeightedNode:
+    '''
+        Sum up the given weighted nodes, and return the reduced weighted node result.
+    '''
+    node1, dangle_weights1 = w_node1
+    node2, dangle_weights2 = w_node2
+    if node1 == None and node2 == None:
+        return None, dangle_weights1 + dangle_weights2
+
+    out_nodes = []
+    out_weights = []
+    
+    if node1 != None and node2 != None and node1.order == node2.order:
+        for i in range(node1.index_range):
+            next_weights1 = CUDAcpl.mul_element_wise(dangle_weights1, node1.out_weights[i])
+            next_weights2 = CUDAcpl.mul_element_wise(dangle_weights2, node2.out_weights[i])
+            temp_node, temp_weights = sum((node1.successors[i], next_weights1),
+                                            (node2.successors[i], next_weights2))
+            out_nodes.append(temp_node)
+            out_weights.append(temp_weights)
+        
+        A = w_node1
+
+    else: 
+        '''
+            There are three cases following, corresponding to the same procedure:
+            1. node1 == None, node2 != None
+            2. node2 == None, node1 != None
+            3. node1 != None, node2 != None, but node1.order != noder2.order
+            We first analysis the situation to reuse the codes.
+            A will be the lower ordered weighted node.
+        '''
+        if node1 == None:
+            A, B = w_node1, w_node2
+        elif node2 == None:
+            A, B = w_node2, w_node1
+        else:
+            if node1.order < node2.order:
+                A, B = w_node1, w_node2
+
+        for i in range(A.index_range): # type: ignore
+            next_weights_A = CUDAcpl.mul_element_wise(A[1], A[0].out_weights[i]) # type: ignore
+            temp_node, temp_weights = sum((A[0].successors[i], next_weights_A), B) # type: ignore
+            out_nodes.append(temp_node)
+            out_weights.append(temp_weights)
+
+    temp_new_node = Node(0, A[0].order, torch.stack(out_weights), out_nodes)       # type: ignore
+    return normalize((temp_new_node, CUDAcpl.ones(dangle_weights1.shape[:-1])), False)
+
 
     

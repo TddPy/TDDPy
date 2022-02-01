@@ -13,6 +13,8 @@ CUDAcpl_Tensor = CUDAcpl.CUDAcpl_Tensor
 
 as_tensor = methods.as_tensor
 direct_product = methods.direct_product
+#TDD.index
+sum = methods.sum
 
 Node.reset()
 

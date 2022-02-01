@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from operator import index
 from typing import Any,Tuple, List, Union
 from .tdd import TDD
 from . import CUDAcpl, Node
@@ -53,4 +52,8 @@ def direct_product(a: TDD, b: TDD, parallel_tensor: bool = False)-> TDD:
     return res
 
 
-    
+def sum(a: TDD, b: TDD) -> TDD:
+    '''
+        Sum up tdd a and b, and return the reduced result. 
+    '''
+    return TDD.sum(a,b)
