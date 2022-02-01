@@ -29,7 +29,7 @@ class TDD:
                     node: Node|None,
                     index_order: IndexOrder = []):
         self.weights: CUDAcpl_Tensor = weights
-        self.data_shape: List[int] = data_shape  #the data index shape
+        self.data_shape: List[int] = data_shape  #the data index shape (of the tensor it represents)
         self.node: Node|None = node
 
         '''
@@ -57,7 +57,7 @@ class TDD:
             Now this equality check only deals with TDDs with the same index order.
         '''
         res = self.index_order==other.index_order \
-            and isequal(self.node,self.weights,other.node,other.weights)
+            and isequal((self.node,self.weights),(other.node,other.weights))
         return res
 
     @staticmethod
@@ -103,7 +103,7 @@ class TDD:
         temp_node = Node(0, depth, out_weights, succ_nodes)
         dangle_weights = CUDAcpl.ones(out_weights.shape[1:-1])
         #normalize at this depth
-        new_node, new_dangle_weights = weighted_node.normalized(temp_node, dangle_weights, False)
+        new_node, new_dangle_weights = weighted_node.normalized((temp_node, dangle_weights), False)
         tdd = TDD(new_dangle_weights, [], new_node, [])
 
         return tdd
@@ -160,15 +160,12 @@ class TDD:
             Transform this tensor to a CUDA complex and return.
         '''
         trival_ordered_data_shape = [self.data_shape[i] for i in order_inverse(self.index_order)]
-        node_data = to_CUDAcpl_Tensor(self.node,self.weights,trival_ordered_data_shape)
+        node_data = to_CUDAcpl_Tensor((self.node,self.weights),trival_ordered_data_shape)
         
         #permute to the right index order
         node_data = node_data.permute(tuple(self.global_order+[node_data.dim()-1]))
 
-        expanded_weights = self.weights.view(tuple(self.parallel_shape)+(1,)*len(self.data_shape)+(2,))
-        expanded_weights = expanded_weights.expand_as(node_data)
-
-        return CUDAcpl.einsum('...,...->...',node_data,expanded_weights)
+        return node_data
         
 
     def numpy(self) -> np.ndarray:
@@ -195,31 +192,34 @@ class TDD:
         node = self.node.
         '''
     
-    def __index_single(self, inner_index: int, key: int) -> TDD:
+    def index(self, data_indices: List[Tuple[int,int]]) -> TDD:
         '''
-            Indexing on the single index. Again, inner_index indicate that of tdd nodes DIRECTLY.
+        Return the indexed tdd according to the chosen keys at given indices.
+
+        Note: indexing acts on the data indices.
+
+        indices: [(index1, key1), (index2, key2), ...]
         '''
-        return self
+        #transform to inner indices
+        reversed_order = order_inverse(self.index_order)
+        inner_indices = [(reversed_order[item[0]],item[1]) for item in data_indices]
 
-    
-    def __index(self, inner_indices: Tuple[Tuple[int,int]]) -> TDD:
-        '''
-            Return the indexed tdd according to the chosen keys at given indices.
-
-            Note that here inner_indices indicates that of tdd nodes DIRECTLY.
-
-            indices: [(index1, key1), (index2, key2), ...]
-        '''
-        #indexing = list(inner_indices).sort(key=lambda item: item[0])
-        if inner_indices == ():
-            return self.clone()
-        return self
-
+        #get the indexing of inner data
+        new_node, new_dangle_weights = weighted_node.index((self.node, self.weights), inner_indices)
         
+        indexed_indices = [item[0] for item in data_indices]
+    
+        #process the data_shape and the index_order
+        new_data_shape = []
+        indexed_index_order = []
+        for i in range(len(self.data_shape)):
+            if i not in indexed_indices:
+                new_data_shape.append(self.data_shape[i])
+                indexed_index_order.append(self.index_order[i])        
+        new_index_order = sorted(range(len(indexed_index_order)), key = lambda k:indexed_index_order[k])
 
 
-
-
+        return TDD(new_dangle_weights, new_data_shape, new_node, new_index_order)
 
     def show(self,real_label: bool=True,path: str='output', full_output: bool = False):
         '''
@@ -239,7 +239,7 @@ class TDD:
 
         if list(self.weights.shape)==[2]:
             dot.edge('-0',id_str,color="blue",label=
-                str(complex(round(self.weights[0].cpu().item(),2),round(self.weights[1].cpu().item(),2))))
+                str(complex(round(self.weights[0].cpu().item(),4),round(self.weights[1].cpu().item(),4))))
         else:
             if full_output == True:
                 label = str(CUDAcpl2np(self.weights))

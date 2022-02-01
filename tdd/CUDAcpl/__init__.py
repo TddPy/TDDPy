@@ -20,6 +20,9 @@ norm = main .norm
 einsum1 = main .einsum1
 einsum = main .einsum
 einsum3 = main .einsum3
+einsum_sublist = main.einsum_sublist
+mul_element_wise = main.mul_element_wise
+
 tensordot = main .tensordot
 scale = main .scale
 e_i_theta = main .e_i_theta

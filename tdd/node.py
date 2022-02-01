@@ -211,7 +211,7 @@ class Node:
             for k in range(node.index_range):
                 #if there is no parallel index, directly demonstrate the edge values
                 if list(node.out_weights[0].shape) == [2]:
-                    label1=str(complex(round(node.out_weights[k][0].cpu().item(),2),round(node.out_weights[k][1].cpu().item().imag,2)))
+                    label1=str(complex(round(node.out_weights[k][0].cpu().item(),4),round(node.out_weights[k][1].cpu().item().imag,4)))
                 #otherwise, demonstrate the parallel index shape
                 else:
                     if full_output:

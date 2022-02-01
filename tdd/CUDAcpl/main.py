@@ -66,6 +66,25 @@ def einsum3(equation: str, a: CUDAcpl_Tensor, b: CUDAcpl_Tensor, c: CUDAcpl_Tens
             - torch.einsum(equation, a[..., 1], b[..., 1], c[...,1])
     return torch.stack((real, imag), dim=-1)
 
+def einsum_sublist(a: CUDAcpl_Tensor, sublist_a: List[int|...],
+                    b : CUDAcpl_Tensor, sublist_b: List[int|...], output_list: List[int|...]) -> CUDAcpl_Tensor:
+    '''
+    einsum for CUDA complex tensors, in the sublist form.
+    '''
+    real = torch.einsum(a[..., 0], sublist_a, b[..., 0], sublist_b, output_list)\
+            - torch.einsum(a[..., 1], sublist_a, b[..., 1], sublist_b, output_list)
+    imag = torch.einsum(a[..., 0], sublist_a, b[..., 1], sublist_b, output_list)\
+            + torch.einsum(a[..., 1], sublist_a, b[..., 0], sublist_b, output_list)
+    return torch.stack((real, imag), dim=-1)
+
+def mul_element_wise(a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+    '''
+        return a * b (element wise)
+    '''
+    real = a[...,0]*b[...,0] - a[...,1]*b[...,1]
+    imag = a[...,0]*b[...,1] + a[...,1]*b[...,0]
+    return torch.stack((real, imag), dim=-1)
+
 def tensordot(a: CUDAcpl_Tensor,b: CUDAcpl_Tensor, dim: int =2) -> CUDAcpl_Tensor:
     real = torch.tensordot(a[...,0],b[...,0],dim)-torch.tensordot(a[...,1],b[...,1],dim)
     imag = torch.tensordot(a[...,0],b[...,1],dim)+torch.tensordot(a[...,1],b[...,0],dim)

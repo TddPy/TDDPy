@@ -14,27 +14,17 @@ U_c = np.array([u1,u2])
 
 
 U=1/np.sqrt(2)*np.array([[1,1],[1,-1]])
-U2 = np.kron(U,np.kron(U,U)).reshape((2,2,2,2,2,2))
-s = np.array([2,3])
-#B = tdd.CUDAcpl.einsum3('...ab,...cd,...ef->...acebdf',U,U,U)
-#B = tdd.CUDAcpl.einsum('...ab,...cd->...acbd',U,U)
+#U = np.random.rand(2,3)
+U = np.kron(U,U).reshape((2,2,2,2))
 
-#print(B)
-print(np.tensordot(U,s,0))
+print(U[0][1])
 print('============')
-tdd1=tdd.as_tensor((U2,[2,2],[]))
+tdd1=tdd.as_tensor((U,[],[2,0,1,3]))
 
 tdd1.show(full_output=True)
-print(tdd1.numpy())
-exit()
 
-tdd2=tdd.as_tensor((s,[2],[]))
+tdd_indexed = tdd1.index( [(0,0),(1,1)] )
+tdd_indexed.show(path = 'output_indexed', full_output = True)
 
-tdd_final = tdd.direct_product(tdd1,tdd1,parallel_tensor=True)
-
-tdd_final.show(path='output_test',full_output=True)
-
-print(tdd_final.numpy())
-print('yes')
-
+print(tdd_indexed.numpy())
 exit()

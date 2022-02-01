@@ -43,7 +43,7 @@ def direct_product(a: TDD, b: TDD, parallel_tensor: bool = False)-> TDD:
             raise Exception('Parallel shapes of a ' + str(a.parallel_shape)+' and b '
                             +str(b.parallel_shape)+' are not identical.')
 
-        weights = CUDAcpl.einsum('...,...->...',a.weights,b.weights)
+        weights = CUDAcpl.mul_element_wise(a.weights, b.weights)
     new_node = Node.append(a.node,a.parallel_shape,len(a.data_shape),b.node,b.parallel_shape,parallel_tensor)
 
 

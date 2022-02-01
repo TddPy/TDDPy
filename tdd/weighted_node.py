@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Tuple, Union, List, Dict
 
+from tdd.CUDAcpl.main import norm
+
 from . import CUDAcpl
 from .CUDAcpl import CUDAcpl_Tensor, _U_
 from .node import Node
@@ -11,16 +13,17 @@ import torch
 This source contains all the methods at the weighted node level.
 '''
 
-def isequal(node1: Node|None, weights1: CUDAcpl_Tensor, 
-            node2: Node|None ,weights2: CUDAcpl_Tensor) -> bool:
-    if node1 == node2 \
-        and (Node.get_int_key(weights1)==Node.get_int_key(weights2)).all():
+WeightedNode = Tuple[Union[Node,None], CUDAcpl_Tensor]
+
+def isequal(w_node1: WeightedNode, w_node2: WeightedNode) -> bool:
+    if w_node1[0] == w_node2[0] \
+        and (Node.get_int_key(w_node1[1])==Node.get_int_key(w_node2[1])).all():
         return True
     else:
         return False
         
 
-def normalized(node: Node|None, dangle_weights: CUDAcpl_Tensor, iterate: bool) -> Tuple[Node|None, CUDAcpl_Tensor]:
+def normalized(w_node: WeightedNode, iterate: bool) -> WeightedNode:
     '''
         Conduct the normalization of this node.
         Return the normalized node and normalization coefficients.
@@ -29,6 +32,7 @@ def normalized(node: Node|None, dangle_weights: CUDAcpl_Tensor, iterate: bool) -
         Otherwise, it is only conducted for this node,
         and assume its successors are all normalized already.
     '''
+    node, dangle_weights = w_node
 
     if node == None:
         return None, dangle_weights
@@ -49,7 +53,7 @@ def normalized(node: Node|None, dangle_weights: CUDAcpl_Tensor, iterate: bool) -
                 node_normalized = None
                 out_weight = node.out_weights[k]
             else:
-                node_normalized, out_weight = normalized(succ, node.out_weights[k],True)
+                node_normalized, out_weight = normalized((succ, node.out_weights[k]),True)
             out_nodes.append(node_normalized)
             out_weights.append(out_weight)
         #pay attention that out_weigs are stacked at the first index here
@@ -61,11 +65,11 @@ def normalized(node: Node|None, dangle_weights: CUDAcpl_Tensor, iterate: bool) -
     #node reduction check (reduce when all equal)
     all_equal = True
     for k in range(1,node.index_range):
-        if not isequal(node.successors[k], weigs[k], node.successors[0], weigs[0]):
+        if not isequal((node.successors[k], weigs[k]), (node.successors[0], weigs[0])):
             all_equal = False
             break
     if all_equal:
-        new_dangle_weights = CUDAcpl.einsum('...,...->...',dangle_weights,weigs[0])
+        new_dangle_weights = CUDAcpl.mul_element_wise(dangle_weights,weigs[0])
         return out_nodes[0], new_dangle_weights
 
 
@@ -101,11 +105,11 @@ def normalized(node: Node|None, dangle_weights: CUDAcpl_Tensor, iterate: bool) -
     new_node=Node.get_unique_node(node.order,weigs,out_nodes)
 
     #calculate the new dangling weight
-    new_dangle_weights = CUDAcpl.einsum('...,...->...',dangle_weights,weig_max)
+    new_dangle_weights = CUDAcpl.mul_element_wise(dangle_weights,weig_max)
     return  new_node, new_dangle_weights
 
 
-def to_CUDAcpl_Tensor(node: Node|None, weights: CUDAcpl_Tensor, data_shape: List[int]) -> CUDAcpl_Tensor:
+def to_CUDAcpl_Tensor(w_node: WeightedNode, data_shape: List[int]) -> CUDAcpl_Tensor:
     '''
         Get the CUDAcpl_Tensor determined from this node and the weights.
 
@@ -113,7 +117,7 @@ def to_CUDAcpl_Tensor(node: Node|None, weights: CUDAcpl_Tensor, data_shape: List
         data_shape(in the corresponding trival index order) is required,
             for the result should broadcast at reduced nodes of indices.
     '''
-
+    node, weights = w_node
     parallel_shape = tuple(weights.shape[:-1])
 
     if node == None:
@@ -121,22 +125,28 @@ def to_CUDAcpl_Tensor(node: Node|None, weights: CUDAcpl_Tensor, data_shape: List
         n_extra_one = 0
     else:
         tensor_dict = dict()
-        res = __to_CUDAcpl_Tensor(node, weights, data_shape, tensor_dict)
+        res = __to_CUDAcpl_Tensor(node, data_shape, tensor_dict)
         n_extra_one = node.order
     
     #this extra layer is for adding the reduced dimensions at the front
     res = res.view(parallel_shape+n_extra_one*(1,)+res.shape[len(parallel_shape):])
     res = res.expand(parallel_shape + tuple(data_shape)+(2,))
 
+    #multiply by the dangling weights
+    weigths_broadcasted = weights.view(weights.shape[:-1]+(1,)*len(data_shape)+(2,)).expand_as(res)
+    res = CUDAcpl.mul_element_wise(weigths_broadcasted, res)
     return res
     
 
 
-def __to_CUDAcpl_Tensor(node: Node, weights: CUDAcpl_Tensor, data_shape: List[int], tensor_dict: Dict) -> CUDAcpl_Tensor:
-    
+def __to_CUDAcpl_Tensor(node: Node, data_shape: List[int], tensor_dict: Dict) -> CUDAcpl_Tensor:
+    '''
+        tensor_dict: caches the corresponding tensor of this node (weights = 1)
+    '''
+
     current_order = node.order
 
-    parallel_shape = tuple(weights.shape[:-1])
+    parallel_shape = node.out_weights.shape[1:-1]
     par_tensor = []
     for k in range(node.index_range):
         #detect terminal nodes, or iterate on the next node
@@ -148,16 +158,15 @@ def __to_CUDAcpl_Tensor(node: Node, weights: CUDAcpl_Tensor, data_shape: List[in
             #first look up in the dictionary 
             key = succ.unique_key
             if key in tensor_dict:
-                temp_tensor = tensor_dict[key]
-                next_order = succ.order
+                uniform_tensor = tensor_dict[key]
             else:
-                temp_tensor = __to_CUDAcpl_Tensor(succ, node.out_weights[k],data_shape, tensor_dict)
-                next_order = succ.order
-                expanded_out_weights = node.out_weights[k].view(parallel_shape+(1,)*(len(data_shape)-next_order)+(2,))
-                expanded_out_weights = expanded_out_weights.expand_as(temp_tensor)
-                temp_tensor = CUDAcpl.einsum('...,...->...',temp_tensor,expanded_out_weights)
+                uniform_tensor = __to_CUDAcpl_Tensor(succ, data_shape, tensor_dict)
                 #add into the dictionary
-                tensor_dict[key] = temp_tensor
+                tensor_dict[key] = uniform_tensor
+            next_order = succ.order
+            expanded_out_weights = node.out_weights[k].view(parallel_shape+(1,)*(len(data_shape)-next_order)+(2,))
+            expanded_out_weights = expanded_out_weights.expand_as(uniform_tensor)
+            temp_tensor = CUDAcpl.mul_element_wise(uniform_tensor,expanded_out_weights)
         #broadcast according to the index distance
         temp_shape = temp_tensor.shape
         temp_tensor = temp_tensor.view(
@@ -166,5 +175,70 @@ def __to_CUDAcpl_Tensor(node: Node, weights: CUDAcpl_Tensor, data_shape: List[in
             parallel_shape+tuple(data_shape[current_order+1:next_order])+temp_shape[len(parallel_shape):])
         par_tensor.append(temp_tensor)
     
-    return torch.stack(par_tensor,dim=len(parallel_shape))
+    res = torch.stack(par_tensor,dim=len(parallel_shape))
+    return res
+    
+
+
+def index_single(w_node: WeightedNode, inner_index: int, key: int) -> WeightedNode:
+    '''
+        Indexing on the single index. Again, inner_index indicate that of tdd nodes DIRECTLY.
+
+        Detail: normalization is conducted level wise.
+    '''
+    node, dangle_weights = w_node
+
+    if node == None:
+        return None, dangle_weights
+
+    if inner_index < node.order:
+        new_node = Node.get_unique_node(node.order-1,node.out_weights,node.successors) 
+        return new_node, dangle_weights
+    elif inner_index == node.order:
+        #note that order should decrese 1 due to indexing
+        next_node = node.successors[key]
+        new_dangle_weights = CUDAcpl.mul_element_wise(dangle_weights, node.out_weights[key])
+        if next_node == None:
+            return None, new_dangle_weights
+        else:
+            new_node = Node.get_unique_node(node.order,next_node.out_weights,next_node.successors) 
+            return new_node, new_dangle_weights
+    else:
+        out_nodes = []
+        out_weights = []
+        for k in range(node.index_range):
+            succ = node.successors[k]
+            if succ == None:
+                out_nodes.append(None)
+                out_weights.append(node.out_weights[k])
+            else:
+                temp_node, temp_weights = index_single((succ,node.out_weights[k]),inner_index,key)
+                out_nodes.append(temp_node)
+                out_weights.append(temp_weights)
+
+        new_weights = torch.stack(out_weights)
+        new_node = Node(0,node.order,new_weights,out_nodes)
+        return normalized((new_node, dangle_weights), False)
+
+
+def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> WeightedNode:
+    '''
+        Return the indexed tdd according to the chosen keys at given indices.
+
+        Note that here inner_indices indicates that of tdd nodes DIRECTLY.
+
+        indices: [(index1, key1), (index2, key2), ...]
+    '''
+    indexing = list(inner_indices)
+    indexing.sort(key=lambda item: item[0])
+
+    res_node, res_weights = w_node
+
+    while indexing != []:
+        res_node, res_weights = index_single((res_node, res_weights), indexing[0][0], indexing[0][1])
+        #the indices are guaranteed to be in order
+        indexing = [(indexing[i+1][0]-1,indexing[i+1][1]) for i in range(len(indexing)-1)]
+    
+    return res_node, res_weights
+
     
