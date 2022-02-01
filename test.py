@@ -22,9 +22,9 @@ s = np.array([2,3])
 #print(B)
 print(np.tensordot(U,s,0))
 print('============')
-tdd1=tdd.as_tensor((U2,[],[0,3,1,4,2,5]))
+tdd1=tdd.as_tensor((U2,[2,2],[]))
 
-tdd1.show()
+tdd1.show(full_output=True)
 print(tdd1.numpy())
 exit()
 

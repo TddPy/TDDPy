@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from operator import index
 from typing import Any,Tuple, List, Union
 from .tdd import TDD
@@ -8,7 +10,7 @@ import numpy as np
 
 Tensor = torch.Tensor
 
-def as_tensor(data : Union[CUDAcpl_Tensor,np.ndarray,Tuple]) -> TDD:
+def as_tensor(data : CUDAcpl_Tensor|np.ndarray|Tuple) -> TDD:
     '''
     construct the tdd tensor
 

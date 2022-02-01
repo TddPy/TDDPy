@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import NewType, Union, Tuple, List
 import numpy as np
 import torch
@@ -70,7 +71,7 @@ def tensordot(a: CUDAcpl_Tensor,b: CUDAcpl_Tensor, dim: int =2) -> CUDAcpl_Tenso
     imag = torch.tensordot(a[...,0],b[...,1],dim)+torch.tensordot(a[...,1],b[...,0],dim)
     return torch.stack((real, imag), dim=-1)    
 
-def scale(s: Union[int,float], tensor: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+def scale(s: int|float, tensor: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
     real = tensor[...,0]*s.real-tensor[...,1]*s.imag
     imag = tensor[...,0]*s.imag+tensor[...,1]*s.real
     return torch.stack((real, imag), dim=-1)    

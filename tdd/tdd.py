@@ -3,10 +3,12 @@ from typing import Iterable, Tuple, List, Any, Union, cast
 import numpy as np
 import torch
 
-from . import CUDAcpl
+from . import CUDAcpl, weighted_node
 from .CUDAcpl import _U_, CUDAcpl_Tensor, CUDAcpl2np
 from . import node
 from .node import  TERMINAL_ID, Node, IndexOrder, order_inverse
+from .weighted_node import isequal, to_CUDAcpl_Tensor
+
 import copy
 
 
@@ -54,89 +56,9 @@ class TDD:
         '''
             Now this equality check only deals with TDDs with the same index order.
         '''
-        if self.index_order==other.index_order:
-            if self.node == other.node \
-                and (Node.get_int_key(self.weights)==Node.get_int_key(other.weights)).all():
-                return True
-            else:
-                return False
-        else:
-            raise Exception('index order not the same!')
-
-    @staticmethod
-    def __construct_and_normalize(order, the_successors: List[TDD]):
-        '''
-            construct the tdd with the_successors, and normalize it
-
-            order: represent the order of this node (which tensor index it represent)
-
-            Note: This method requires the index order and data shape of the_successors to be the same.
-                    Global information like index order and data shape are not generated.
-        '''
-        all_equal = True
-        for k in range(1,len(the_successors)):
-            if the_successors[k] != the_successors[0]:
-                all_equal = False
-                break
-        if all_equal:
-            return the_successors[0]
-        
-        #pay attention that out_weigs are stacked at the first index here
-        weigs=torch.stack([succ.weights for succ in the_successors])
-
-        all_zeros = True
-        #this zero-checking is not written in CUDA because we expect it to ternimate very soon
-        for k in range(len(the_successors)):
-            int_key = Node.get_int_key(weigs[k])
-            if torch.max(int_key) != 0 or torch.min(int_key) != 0:
-                all_zeros=False
-                break
-        if all_zeros:
-            weights=_U_(torch.zeros_like,the_successors[0].weights)
-            
-            node=None
-
-            res=TDD(weights,[],node,[])
-            return res
-
-        for k in range(len(the_successors)):
-            if the_successors[k].data_shape != the_successors[0].data_shape:
-                raise Exception('This method requires the data shape of the_successors to be the same.')
-            if the_successors[k].index_order != the_successors[0].index_order:
-                raise Exception('This method requires the index order of the_successors to be the same.')
-
-            int_key = Node.get_int_key(weigs[k])
-            if torch.max(int_key) == 0 and torch.min(int_key) == 0:
-                weights = _U_(torch.zeros_like,weigs[k])
-                node=None
-                the_successors[k]=TDD(weights,[],node,[])
-
-                weigs[k] = _U_(torch.zeros_like,weigs[k])
-        
-        #get the maximum abs. of weights
-        weig_abs = CUDAcpl.norm(weigs)
-        weig_abs_max = torch.max(weig_abs,dim=0,keepdim=True)
-        max_indices = weig_abs_max.indices
-        max_abs_values = weig_abs_max.values[0]
-
-        #get the weights at the corresponding maximum abs. positions
-        weig_max = torch.stack((weigs[...,0].gather(0,max_indices),weigs[...,1].gather(0,max_indices)),dim=-1).squeeze(0) #shape: [?,2]
-
-        #get 1/weight_max for normalization
-        weig_max_1 = torch.stack((weig_max[...,0],-weig_max[...,1]),dim=-1)/(weig_max[...,0]**2+weig_max[...,1]**2).unsqueeze(-1)
-
-        #notice that weig_max == 0 cases are considered here
-        zeros_items = (max_abs_values<Node.EPS).unsqueeze(-1).broadcast_to(weig_max_1.shape)
-        weig_max_1 = torch.where(zeros_items,0.,weig_max_1)
-
-        weigs = CUDAcpl.einsum('k...,...->k...',weigs,weig_max_1)   #shape: [weigs_index,?,2],[?,2]->[weigs_index,?,2]
-        succ_nodes=[succ.node for succ in the_successors]
-
-        node=Node.get_unique_node(order,weigs,succ_nodes)
-        res=TDD(weig_max,[],node,[])
+        res = self.index_order==other.index_order \
+            and isequal(self.node,self.weights,other.node,other.weights)
         return res
-
-
 
     @staticmethod
     def __as_tensor_iterate(tensor : CUDAcpl_Tensor, 
@@ -161,8 +83,7 @@ class TDD:
                 weights = tensor.clone()
             else:
                 weights = (tensor[...,0:1,:]).clone().detach().view(parallel_shape+[2])
-            node = None
-            res = TDD(weights,[],node,[])
+            res = TDD(weights,[],None,[])
             return res
         
 
@@ -176,12 +97,20 @@ class TDD:
             res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,index_order,depth+1)
             the_successors.append(res)
 
-        tdd = TDD.__construct_and_normalize(depth,the_successors)
+        #stack the sub-tdd
+        succ_nodes = [item.node for item in the_successors]
+        out_weights = torch.stack([item.weights for item in the_successors])
+        temp_node = Node(0, depth, out_weights, succ_nodes)
+        dangle_weights = CUDAcpl.ones(out_weights.shape[1:-1])
+        #normalize at this depth
+        new_node, new_dangle_weights = weighted_node.normalized(temp_node, dangle_weights, False)
+        tdd = TDD(new_dangle_weights, [], new_node, [])
+
         return tdd
 
 
     @staticmethod
-    def as_tensor(data : Union[CUDAcpl_Tensor,np.ndarray,Tuple]) -> TDD:
+    def as_tensor(data : CUDAcpl_Tensor|np.ndarray|Tuple) -> TDD:
         '''
         construct the tdd tensor
 
@@ -231,7 +160,7 @@ class TDD:
             Transform this tensor to a CUDA complex and return.
         '''
         trival_ordered_data_shape = [self.data_shape[i] for i in order_inverse(self.index_order)]
-        node_data = Node.CUDAcpl_Tensor(self.node,self.weights,trival_ordered_data_shape)
+        node_data = to_CUDAcpl_Tensor(self.node,self.weights,trival_ordered_data_shape)
         
         #permute to the right index order
         node_data = node_data.permute(tuple(self.global_order+[node_data.dim()-1]))
@@ -249,6 +178,8 @@ class TDD:
         return CUDAcpl2np(self.CUDAcpl())
 
 
+    def clone(self) -> TDD:
+        return TDD(self.weights.clone(), self.data_shape.copy(), self.node, self.index_order.copy())
 
         '''
     
@@ -264,6 +195,28 @@ class TDD:
         node = self.node.
         '''
     
+    def __index_single(self, inner_index: int, key: int) -> TDD:
+        '''
+            Indexing on the single index. Again, inner_index indicate that of tdd nodes DIRECTLY.
+        '''
+        return self
+
+    
+    def __index(self, inner_indices: Tuple[Tuple[int,int]]) -> TDD:
+        '''
+            Return the indexed tdd according to the chosen keys at given indices.
+
+            Note that here inner_indices indicates that of tdd nodes DIRECTLY.
+
+            indices: [(index1, key1), (index2, key2), ...]
+        '''
+        #indexing = list(inner_indices).sort(key=lambda item: item[0])
+        if inner_indices == ():
+            return self.clone()
+        return self
+
+        
+
 
 
 
