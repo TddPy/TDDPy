@@ -69,6 +69,10 @@ class TDD:
             and isequal((self.node,self.weights),(other.node,other.weights))
         return res
 
+    def __str__(self):
+        return str(self.numpy())
+
+
     @staticmethod
     def __as_tensor_iterate(tensor : CUDAcpl_Tensor, 
                     parallel_shape: List[int],
@@ -119,16 +123,19 @@ class TDD:
 
 
     @staticmethod
-    def as_tensor(data : CUDAcpl_Tensor|np.ndarray|Tuple) -> TDD:
+    def as_tensor(data : TDD|CUDAcpl_Tensor|np.ndarray|Tuple) -> TDD:
         '''
         construct the tdd tensor
 
         tensor:
+            0. in the form of a TDD, then return a copy of it.
             1. in the form of a matrix only: assume the parallel index and index order to be []
             2. in the form of a tuple (data, index_shape, index_order)
             Note that if the input matrix is a torch tensor, 
                     then it must be already in CUDAcpl_Tensor(CUDA complex) form.
         '''
+        if isinstance(data,TDD):
+            return data.clone()
 
         if isinstance(data,Tuple):
             tensor,parallel_shape,index_order = data

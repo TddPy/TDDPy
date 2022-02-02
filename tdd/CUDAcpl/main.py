@@ -3,7 +3,6 @@ from typing import NewType, Union, Tuple, List
 import numpy as np
 import torch
 
-from tdd import CUDAcpl
 from .config import device,dtype
 
 CUDAcpl_Tensor = torch.Tensor

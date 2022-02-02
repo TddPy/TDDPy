@@ -1,7 +1,7 @@
 
 #from tdd import index,node,tdd,methods
 
-from tdd.CUDAcpl.main import tensordot
+from .CUDAcpl.main import tensordot
 from . import CUDAcpl
 from .node import Node,TERMINAL_ID
 from .tdd import TDD
