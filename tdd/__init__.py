@@ -1,6 +1,7 @@
 
 #from tdd import index,node,tdd,methods
 
+from tdd.CUDAcpl.main import tensordot
 from . import CUDAcpl
 from .node import Node,TERMINAL_ID
 from .tdd import TDD
@@ -15,6 +16,7 @@ as_tensor = methods.as_tensor
 direct_product = methods.direct_product
 #TDD.index
 sum = methods.sum
+tensordot = methods.tensordot
 
 Node.reset()
 

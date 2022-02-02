@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any,Tuple, List, Union
+from typing import Any,Tuple, List, Union, Sequence
 from .tdd import TDD
 from . import CUDAcpl, Node
 from .CUDAcpl import np2CUDAcpl,CUDAcpl_Tensor
@@ -62,3 +62,26 @@ def sum(a: TDD, b: TDD) -> TDD:
     if a.index_order != b.index_order:
         raise Exception('index_order not the same, sum in this case is not supported yet.')
     return TDD.sum(a,b)
+
+def tensordot(a: TDD, b: TDD,
+                axes: Union[int, Sequence[Sequence[int]]], parallel_tensor: bool=False) -> TDD:
+    '''
+        The pytorch-like tensordot method. Note that indices should be counted with data indices only.
+        parallel_tensor: Whether to tensor on the parallel indices.
+    '''
+    
+    indices_a: List[int] = []
+    indices_b: List[int] = []
+
+    if isinstance(axes,int):
+        for i in range(axes):
+            indices_a.append(a.dim_data-axes+i)
+            indices_b.append(a.dim_data+i)
+    else:
+        for k in range(len(axes[0])):
+            indices_a.append(axes[0][k])
+            indices_b.append(a.dim_data + axes[1][k])
+    
+    temp_tensor = direct_product(a,b, parallel_tensor)
+
+    return temp_tensor.contract([indices_a, indices_b])

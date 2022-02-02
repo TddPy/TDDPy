@@ -38,6 +38,11 @@ class TDD:
             index_order == None means the trival index mapping [0,1,2,(...)]
         '''
         self.index_order: IndexOrder = index_order
+
+    @property
+    def dim_data(self) -> int:
+        return len(self.data_shape)
+
     @property
     def parallel_shape(self) -> List[int]:
         return list(self.weights.shape[:-1])
@@ -216,7 +221,7 @@ class TDD:
     def index(self, data_indices: List[Tuple[int,int]]) -> TDD:
         '''
         Return the indexed tdd according to the chosen keys at given indices.
-        Note: Indices should be count in the global order.
+        Note: Indices should be count in the data indices only.
 
         Note: indexing acts on the data indices.
 
@@ -224,8 +229,7 @@ class TDD:
         '''
         #transform to inner indices
         reversed_order = order_inverse(self.index_order)
-        decrement = len(self.parallel_shape)
-        inner_indices = [(reversed_order[item[0]-decrement],item[1]) for item in data_indices]
+        inner_indices = [(reversed_order[item[0]],item[1]) for item in data_indices]
 
         #get the indexing of inner data
         new_node, new_dangle_weights = weighted_node.index((self.node, self.weights.clone()), inner_indices)
@@ -249,14 +253,13 @@ class TDD:
     def contract(self, data_indices: Sequence[List[int]]) -> TDD:
         '''
             Contract the tdd according to the specified data_indices. Return the reduced result.
-            data_indices should be counted in the global order.
+            data_indices should be counted in the data indices only.
             e.g. ([a,b,c],[d,e,f]) means contracting indices a-d, b-e, c-f (of course two lists should be in the same size)
         '''
         #transform to inner indices
         reversed_order = order_inverse(self.index_order)
-        decrement = len(self.parallel_shape)
-        inner_indices = [(reversed_order[data_indices[0][k]-decrement],
-                            reversed_order[data_indices[1][k]-decrement])
+        inner_indices = [(reversed_order[data_indices[0][k]],
+                            reversed_order[data_indices[1][k]])
                             for k in range(len(data_indices[0]))]
 
         res_node, res_weights = self.node, self.weights
