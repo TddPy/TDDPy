@@ -226,7 +226,7 @@ def __index_single(indexed_dict: Dict, w_node: WeightedNode, inner_index: int, k
                     out_nodes.append(None)
                     out_weights.append(node.out_weights[k])
                 else:
-                    temp_node, temp_weights = index_single((succ,node.out_weights[k]),inner_index,key)
+                    temp_node, temp_weights = __index_single(indexed_dict,(succ,node.out_weights[k]),inner_index,key)
                     out_nodes.append(temp_node)
                     out_weights.append(temp_weights)
 

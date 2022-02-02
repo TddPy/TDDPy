@@ -212,7 +212,8 @@ class TDD:
     def __index_reduce_proc(self, reduced_indices: List[int])-> Tuple[List[int], List[int]]:
         '''
             Return the data_shape and index_order after the reduction of specified indices.
-            Note: Indices are counted in the global order.
+            reduced_indices: corresponds to inner data indices, not the indices of tensor it represents.
+            Note: Indices are counted in data indices only.
         '''
         new_data_shape = []
         indexed_index_order = []
@@ -242,7 +243,9 @@ class TDD:
         new_node, new_dangle_weights = weighted_node.index((self.node, self.weights.clone()), inner_indices)
         
         #process the data_shape and the index_order
-        indexed_indices = [item[0] for item in data_indices]
+        indexed_indices = []
+        for pair in inner_indices:
+            indexed_indices.append(pair[0])
         new_data_shape, new_index_order = self.__index_reduce_proc(indexed_indices)
 
         return TDD(new_dangle_weights, new_data_shape, new_node, new_index_order)
@@ -304,7 +307,10 @@ class TDD:
                 inner_indices[i] = (i0, i1)
         
         #process data_shape and index_shape
-        reduced_indices = data_indices[0]+data_indices[1]
+        reduced_indices = ()
+        for pair in inner_indices:
+            reduced_indices += pair
+        reduced_indices = list(reduced_indices)
         new_data_shape, new_index_order = self.__index_reduce_proc(reduced_indices)
 
         return TDD(res_weights, new_data_shape, res_node, new_index_order)
