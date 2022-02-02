@@ -90,6 +90,15 @@ class Node:
         '''
         return Node.get_unique_key(self.order,self.out_weights,self.successors)
         
+    @staticmethod
+    def get_unique_key_all(node: Node|None):
+        '''
+            Get the unique key for all nodes, including terminal ones.
+        '''
+        if node == None:
+            return (None,)
+        else:
+            return node.unique_key
     
     @staticmethod
     def get_unique_key(order:int, out_weights: CUDAcpl_Tensor, succ_nodes: List[Node|None]) -> Tuple:

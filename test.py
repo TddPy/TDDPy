@@ -12,10 +12,9 @@ u2[0,1,0]=3
 U_c = np.array([u1,u2])
 '''
 
-
 U=1/np.sqrt(2)*np.array([[1,1],[1,-1]])
 
-print(np.tensordot(U, U, 2))
+print(np.tensordot(U, U, 1))
 #print(U @ U @ U)
 
 print('============')
@@ -26,7 +25,7 @@ tdd_direct = tdd.direct_product(tdd1,tdd1)
 tdd_direct = tdd.direct_product(tdd_direct,tdd1)
 
 
-tdd_sum = tdd.tensordot(tdd1,tdd1,2)
+tdd_sum = tdd.tensordot(tdd1,tdd1,1)
 
 tdd_sum.show(path = 'after', full_output = True)
 

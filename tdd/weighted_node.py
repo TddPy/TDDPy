@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import unique
 from typing import Tuple, Union, List, Dict, cast
 
 from tdd.CUDAcpl.main import norm
@@ -181,47 +182,65 @@ def __to_CUDAcpl_Tensor(node: Node, data_shape: List[int], tensor_dict: Dict) ->
     return res
     
 
-
 def index_single(w_node: WeightedNode, inner_index: int, key: int) -> WeightedNode:
     '''
         Indexing on the single index. Again, inner_index indicate that of tdd nodes DIRECTLY.
 
         Detail: normalization is conducted level wise.
     '''
+    indexed_dict = dict()
+    return __index_single(indexed_dict, w_node, inner_index, key)
+
+def __index_single(indexed_dict: Dict, w_node: WeightedNode, inner_index: int, key: int) -> WeightedNode:
+    '''
+    indexed_dict are used for caching the already indexed weighted nodes.
+    '''
     node, dangle_weights = w_node
 
     if node == None:
         return None, dangle_weights
+    
+    unique_key = node.unique_key
 
-    if inner_index < node.order:
-        new_node = Node.shift(node, -1)
-        return new_node, dangle_weights
-    elif inner_index == node.order:
-        #note that order should decrese 1 due to indexing
-        next_node = node.successors[key]
-        new_dangle_weights = CUDAcpl.mul_element_wise(dangle_weights, node.out_weights[key])
-        if next_node == None:
-            return None, new_dangle_weights
-        else:
-            new_node = Node.shift(next_node, -1) 
-            return new_node, new_dangle_weights
+    #first look up the indexing result in the dict
+    if unique_key in indexed_dict:
+        # Note (VITAL) : here res_weights_below represents the corresponding indexing result of node,
+        #  assuming dangling weights = 1.
+        res_node, res_weights_below = indexed_dict[unique_key]
+            
     else:
-        out_nodes = []
-        out_weights = []
-        for k in range(node.index_range):
-            succ = node.successors[k]
-            if succ == None:
-                out_nodes.append(None)
-                out_weights.append(node.out_weights[k])
-            else:
-                temp_node, temp_weights = index_single((succ,node.out_weights[k]),inner_index,key)
-                out_nodes.append(temp_node)
-                out_weights.append(temp_weights)
+        if inner_index < node.order:
+            res_node = Node.shift(node, -1)
+            res_weights_below = CUDAcpl.ones(dangle_weights.shape[:-1])
+        elif inner_index == node.order:
+            #note that order should decrese 1 due to indexing
+            res_node = node.successors[key]
+            if res_node != None:
+                res_node = Node.shift(res_node, -1)
+            res_weights_below = node.out_weights[key]
+        else:
+            out_nodes = []
+            out_weights = []
+            for k in range(node.index_range):
+                succ = node.successors[k]
+                if succ == None:
+                    out_nodes.append(None)
+                    out_weights.append(node.out_weights[k])
+                else:
+                    temp_node, temp_weights = index_single((succ,node.out_weights[k]),inner_index,key)
+                    out_nodes.append(temp_node)
+                    out_weights.append(temp_weights)
 
-        new_weights = torch.stack(out_weights)
-        new_node = Node(0,node.order,new_weights,out_nodes)
-        return normalize((new_node, dangle_weights), False)
+            new_weights = torch.stack(out_weights)
+            new_node = Node(0,node.order,new_weights,out_nodes)
+            res_node, res_weights_below =  normalize((new_node, 
+                                        CUDAcpl.ones(dangle_weights.shape[:-1])), False)
+        #append to the dict cache
+        indexed_dict[unique_key] = res_node, res_weights_below
 
+    #multiply at the end
+    new_dangle_weights = CUDAcpl.mul_element_wise(dangle_weights, res_weights_below)
+    return res_node, new_dangle_weights
 
 def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> WeightedNode:
     '''
@@ -247,6 +266,8 @@ def sum(w_node1: WeightedNode, w_node2: WeightedNode) -> WeightedNode:
     '''
         Sum up the given weighted nodes, and return the reduced weighted node result.
     '''
+    # (dictionary cache technique seems impossible for summation)
+
     node1, dangle_weights1 = w_node1
     node2, dangle_weights2 = w_node2
     if node1 == None and node2 == None:
