@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import NewType, Union, Tuple, List
+from typing import Any, NewType, Sequence, Union, Tuple, List
 import numpy as np
 import torch
 
@@ -84,7 +84,7 @@ def mul_element_wise(a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
     imag = a[...,0]*b[...,1] + a[...,1]*b[...,0]
     return torch.stack((real, imag), dim=-1)
 
-def tensordot(a: CUDAcpl_Tensor,b: CUDAcpl_Tensor, dim: int =2) -> CUDAcpl_Tensor:
+def tensordot(a: CUDAcpl_Tensor,b: CUDAcpl_Tensor, dim: Any =2) -> CUDAcpl_Tensor:
     real = torch.tensordot(a[...,0],b[...,0],dim)-torch.tensordot(a[...,1],b[...,1],dim)
     imag = torch.tensordot(a[...,0],b[...,1],dim)+torch.tensordot(a[...,1],b[...,0],dim)
     return torch.stack((real, imag), dim=-1)    
@@ -105,11 +105,11 @@ def eye(n: int) -> CUDAcpl_Tensor:
     result = _U_(torch.eye,n)
     return torch.stack((result,torch.zeros_like(result)),dim=-1)
     
-def ones(shape: Tuple[int]) -> CUDAcpl_Tensor:
+def ones(shape: Sequence[int]) -> CUDAcpl_Tensor:
     return torch.stack((_U_(torch.ones,shape),_U_(torch.zeros,shape)),-1)
 
-def zeros(shape: Tuple[int]) -> CUDAcpl_Tensor:
-    return _U_(torch.zeros, shape+(2,))
+def zeros(shape: Sequence[int]) -> CUDAcpl_Tensor:
+    return _U_(torch.zeros, tuple(shape)+(2,))
 
 def conj(tensor: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
     return torch.stack((tensor[...,0],-tensor[...,1]),dim=-1)
