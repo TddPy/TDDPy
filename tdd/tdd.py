@@ -278,7 +278,7 @@ class TDD:
         if inner_indices == []:
             res_weights = self.weights.clone()
 
-
+        inner_indices_copy = inner_indices.copy()
         while inner_indices != []:
             item = inner_indices[0]
             #get the index width, index it, and sum over it. Fairly Simple.
@@ -308,7 +308,7 @@ class TDD:
         
         #process data_shape and index_shape
         reduced_indices = ()
-        for pair in inner_indices:
+        for pair in inner_indices_copy:
             reduced_indices += pair
         reduced_indices = list(reduced_indices)
         new_data_shape, new_index_order = self.__index_reduce_proc(reduced_indices)
