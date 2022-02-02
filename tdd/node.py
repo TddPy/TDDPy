@@ -128,27 +128,78 @@ class Node:
             res = Node(id, order, out_weights.clone().detach(),successors)
             Node.__unique_table[temp_key] = res
             return res
+    
+    @staticmethod
+    def shift(node: Node|None, order_move: int) -> Node|None:
+        '''
+            Shift the order of node, Return the result.
+            It is a simpler version of Node.duplicate
+        '''
+        shifted_dict = dict()
+        return Node.__shift(shifted_dict, node, order_move)
 
     @staticmethod
-    def duplicate(node: Node|None, parallel_shape: List[int], init_order: int=0,
-                 extra_shape_ahead: Tuple= (), extra_shape_behind: Tuple=()) -> Node|None:
+    def __shift(shifted_dict: Dict, node: Node|None, order_move: int) -> Node|None:
         '''
-            Duplicate from this node, with the initial order init_order,
-            and broadcast it to contain the extra (parallel index) shape ahead and behind.
+            use dict to cache the shfited nodes.
         '''
 
         if node == None:
             return None
+        
+        order = node.order + order_move
 
-        order = node.order + init_order
-        #broadcast to contain the extra shape
-        weights = node.out_weights.view((node.index_range,)+len(extra_shape_ahead)*(1,)
-                                    +tuple(parallel_shape)+len(extra_shape_behind)*(1,)+(2,))
-        weights = weights.broadcast_to((node.index_range,)+extra_shape_ahead+tuple(parallel_shape)
-                                    +extra_shape_behind + (2,))
-        successors = [Node.duplicate(successor,parallel_shape,init_order,extra_shape_ahead)
-                         for successor in node.successors]
-        return Node.get_unique_node(order,weights,successors)
+        shifted_unique_key = node.unique_key
+        #check wether this node has been shifted
+        if shifted_unique_key in shifted_dict:
+            return shifted_dict[shifted_unique_key]
+        else:
+
+            successors = [Node.__shift(shifted_dict, successor, order_move) for successor in node.successors]
+            res = Node.get_unique_node(order, node.out_weights, successors)
+            shifted_dict[shifted_unique_key] = res
+            return res
+
+
+    @staticmethod
+    def duplicate(node: Node|None, parallel_shape: List[int], order_move: int=0,
+                 extra_shape_ahead: Tuple= (), extra_shape_behind: Tuple=()) -> Node|None:
+        '''
+            Duplicate from this node, with the initial order of (node.order + order_move),
+            and broadcast it to contain the extra (parallel index) shape ahead and behind.
+        '''
+        shifted_dict = dict()
+        return Node.__duplicate(shifted_dict, node, parallel_shape, order_move,
+                                extra_shape_ahead, extra_shape_behind)
+
+    @staticmethod
+    def __duplicate(shifted_dict: Dict, node: Node|None, parallel_shape: List[int], order_move: int=0,
+                 extra_shape_ahead: Tuple= (), extra_shape_behind: Tuple=()) -> Node|None:
+        '''
+            use dict to cache the shfited nodes.
+        '''
+
+        if node == None:
+            return None
+        
+        order = node.order + order_move
+
+        shifted_unique_key = node.unique_key
+        #check wether this node has been shifted
+        if shifted_unique_key in shifted_dict:
+            return shifted_dict[shifted_unique_key]
+        else:
+
+            #broadcast to contain the extra shape
+            weights = node.out_weights.view((node.index_range,)+len(extra_shape_ahead)*(1,)
+                                        +tuple(parallel_shape)+len(extra_shape_behind)*(1,)+(2,))
+            weights = weights.broadcast_to((node.index_range,)+extra_shape_ahead+tuple(parallel_shape)
+                                        +extra_shape_behind + (2,))
+            successors = [Node.__duplicate(shifted_dict, successor, parallel_shape, order_move,
+                            extra_shape_ahead, extra_shape_behind) for successor in node.successors]
+            res = Node.get_unique_node(order,weights,successors)
+            shifted_dict[shifted_unique_key] = res
+            return res
 
     @staticmethod
     def __direct_append(a: Node|None, b: Node|None) -> Node|None:

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, Tuple, List, Any, Union, cast
+from typing import Iterable, Sequence, Tuple, List, Any, Union, cast
 import numpy as np
 import torch
 
@@ -86,7 +86,7 @@ class TDD:
             if len(data_shape)==0:
                 weights = tensor.clone()
             else:
-                weights = (tensor[...,0:1,:]).clone().detach().view(parallel_shape+[2])
+                weights = (tensor[...,0:1,:]).clone().view(parallel_shape+[2])
             res = TDD(weights,[],None,[])
             return res
         
@@ -196,9 +196,27 @@ class TDD:
         node = self.node.
         '''
     
+
+    def __index_reduce_proc(self, reduced_indices: List[int])-> Tuple[List[int], List[int]]:
+        '''
+            Return the data_shape and index_order after the reduction of specified indices.
+            Note: Indices are counted in the global order.
+        '''
+        new_data_shape = []
+        indexed_index_order = []
+        for i in range(len(self.data_shape)):
+            if i not in reduced_indices:
+                new_data_shape.append(self.data_shape[i])
+                indexed_index_order.append(self.index_order[i])        
+        new_index_order = sorted(range(len(indexed_index_order)), key = lambda k:indexed_index_order[k])
+
+        return new_data_shape, new_index_order
+
+    
     def index(self, data_indices: List[Tuple[int,int]]) -> TDD:
         '''
         Return the indexed tdd according to the chosen keys at given indices.
+        Note: Indices should be count in the global order.
 
         Note: indexing acts on the data indices.
 
@@ -206,22 +224,15 @@ class TDD:
         '''
         #transform to inner indices
         reversed_order = order_inverse(self.index_order)
-        inner_indices = [(reversed_order[item[0]],item[1]) for item in data_indices]
+        decrement = len(self.parallel_shape)
+        inner_indices = [(reversed_order[item[0]-decrement],item[1]) for item in data_indices]
 
         #get the indexing of inner data
-        new_node, new_dangle_weights = weighted_node.index((self.node, self.weights), inner_indices)
+        new_node, new_dangle_weights = weighted_node.index((self.node, self.weights.clone()), inner_indices)
         
-        indexed_indices = [item[0] for item in data_indices]
-    
         #process the data_shape and the index_order
-        new_data_shape = []
-        indexed_index_order = []
-        for i in range(len(self.data_shape)):
-            if i not in indexed_indices:
-                new_data_shape.append(self.data_shape[i])
-                indexed_index_order.append(self.index_order[i])        
-        new_index_order = sorted(range(len(indexed_index_order)), key = lambda k:indexed_index_order[k])
-
+        indexed_indices = [item[0] for item in data_indices]
+        new_data_shape, new_index_order = self.__index_reduce_proc(indexed_indices)
 
         return TDD(new_dangle_weights, new_data_shape, new_node, new_index_order)
 
@@ -235,8 +246,64 @@ class TDD:
 
         return TDD(new_weights, a.data_shape.copy(), new_node, a.index_order.copy())
 
+    def contract(self, data_indices: Sequence[List[int]]) -> TDD:
+        '''
+            Contract the tdd according to the specified data_indices. Return the reduced result.
+            data_indices should be counted in the global order.
+            e.g. ([a,b,c],[d,e,f]) means contracting indices a-d, b-e, c-f (of course two lists should be in the same size)
+        '''
+        #transform to inner indices
+        reversed_order = order_inverse(self.index_order)
+        decrement = len(self.parallel_shape)
+        inner_indices = [(reversed_order[data_indices[0][k]-decrement],
+                            reversed_order[data_indices[1][k]-decrement])
+                            for k in range(len(data_indices[0]))]
 
-    def show(self,real_label: bool=True,path: str='output', full_output: bool = False):
+        res_node, res_weights = self.node, self.weights
+
+        #prevent the shared reference to weights
+        if inner_indices == []:
+            res_weights = self.weights.clone()
+
+
+        while inner_indices != []:
+            item = inner_indices[0]
+            #get the index width, index it, and sum over it. Fairly Simple.
+            index_width = self.data_shape[self.index_order[item[0]]]
+
+            current_indices = [(item[0],0),(item[1],0)]
+            summed_node, summed_weights = weighted_node.index((res_node, res_weights),current_indices)
+            for i in range(1,index_width):
+                current_indices = [(item[0],i),(item[1],i)]
+                new_node, new_weights = weighted_node.index((res_node, res_weights),current_indices)
+                summed_node, summed_weights = weighted_node.sum((summed_node, summed_weights), (new_node, new_weights))
+            
+            #update the result, adjust the indices
+            res_node, res_weights = summed_node, summed_weights
+            inner_indices = inner_indices[1:]
+            for i in range(len(inner_indices)):
+                i0, i1 = inner_indices[i][0], inner_indices[i][1]
+                if i0 > item[0]:
+                    i0 -= 1
+                if i0 > item[1]:
+                    i0 -= 1
+                if i1 > item[0]:
+                    i1 -= 1
+                if i1 > item[1]:
+                    i1 -= 1
+                inner_indices[i] = (i0, i1)
+        
+        #process data_shape and index_shape
+        reduced_indices = data_indices[0]+data_indices[1]
+        new_data_shape, new_index_order = self.__index_reduce_proc(reduced_indices)
+
+        return TDD(res_weights, new_data_shape, res_node, new_index_order)
+
+
+
+
+
+    def show(self, path: str='output', real_label: bool=True, full_output: bool = False):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
 

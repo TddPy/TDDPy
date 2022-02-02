@@ -13,21 +13,22 @@ U_c = np.array([u1,u2])
 '''
 
 
-#U=1/np.sqrt(2)*np.array([[1,1],[1,-1]])
-U1 = np.random.rand(2,3)
-U2 = -U1
-#U = np.kron(U,U).reshape((2,2,2,2))
+U=1/np.sqrt(2)*np.array([[1,1],[1,-1]])
 
-print(U1+U2)
+#print(np.tensordot(U @ U, U, 0))
+print(U @ U @ U)
+
 print('============')
-tdd1=tdd.as_tensor((U1,[],[]))
-tdd2=tdd.as_tensor((U2,[],[]))
 
-tdd_sum = tdd.sum(tdd1,tdd2)
+tdd1=tdd.as_tensor((U,[],[0,1]))
 
-tdd_sum.show(full_output=True)
+tdd_direct = tdd.direct_product(tdd1,tdd1)
+tdd_direct = tdd.direct_product(tdd_direct,tdd1)
 
-tdd_sum.show(path = 'output', full_output = True)
+
+tdd_sum = tdd_direct.contract([[1,3],[2,4]])
+
+tdd_sum.show(path = 'after', full_output = True)
 
 print(tdd_sum.numpy())
 exit()

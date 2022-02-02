@@ -8,6 +8,8 @@ from .CUDAcpl import CUDAcpl_Tensor, _U_
 from .node import Node
 
 import torch
+from graphviz import Digraph
+from IPython.display import Image
 
 '''
 This source contains all the methods at the weighted node level.
@@ -192,7 +194,7 @@ def index_single(w_node: WeightedNode, inner_index: int, key: int) -> WeightedNo
         return None, dangle_weights
 
     if inner_index < node.order:
-        new_node = Node.get_unique_node(node.order-1,node.out_weights,node.successors) 
+        new_node = Node.shift(node, -1)
         return new_node, dangle_weights
     elif inner_index == node.order:
         #note that order should decrese 1 due to indexing
@@ -201,7 +203,7 @@ def index_single(w_node: WeightedNode, inner_index: int, key: int) -> WeightedNo
         if next_node == None:
             return None, new_dangle_weights
         else:
-            new_node = Node.get_unique_node(node.order,next_node.out_weights,next_node.successors) 
+            new_node = Node.shift(next_node, -1) 
             return new_node, new_dangle_weights
     else:
         out_nodes = []
@@ -229,7 +231,7 @@ def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> Weighted
 
         indices: [(index1, key1), (index2, key2), ...]
     '''
-    indexing = list(inner_indices)
+    indexing = list(inner_indices).copy()
     indexing.sort(key=lambda item: item[0])
 
     res_node, res_weights = w_node
@@ -274,14 +276,16 @@ def sum(w_node1: WeightedNode, w_node2: WeightedNode) -> WeightedNode:
             A will be the lower ordered weighted node.
         '''
         if node1 == None:
-            A, B = w_node1, w_node2
-        elif node2 == None:
             A, B = w_node2, w_node1
+        elif node2 == None:
+            A, B = w_node1, w_node2
         else:
             if node1.order < node2.order:
                 A, B = w_node1, w_node2
+            else:
+                A, B = w_node2, w_node1
 
-        for i in range(A.index_range): # type: ignore
+        for i in range(A[0].index_range): # type: ignore
             next_weights_A = CUDAcpl.mul_element_wise(A[1], A[0].out_weights[i]) # type: ignore
             temp_node, temp_weights = sum((A[0].successors[i], next_weights_A), B) # type: ignore
             out_nodes.append(temp_node)
@@ -291,4 +295,3 @@ def sum(w_node1: WeightedNode, w_node2: WeightedNode) -> WeightedNode:
     return normalize((temp_new_node, CUDAcpl.ones(dangle_weights1.shape[:-1])), False)
 
 
-    

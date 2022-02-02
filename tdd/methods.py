@@ -54,6 +54,11 @@ def direct_product(a: TDD, b: TDD, parallel_tensor: bool = False)-> TDD:
 
 def sum(a: TDD, b: TDD) -> TDD:
     '''
-        Sum up tdd a and b, and return the reduced result. 
+        Sum up tdd a and b, and return the reduced result.
+        Note that the index_order and data_shape must be the same. 
     '''
+    if a.global_shape != b.global_shape:
+        raise Exception('To sum them up, a and b must be in the same shape.')
+    if a.index_order != b.index_order:
+        raise Exception('index_order not the same, sum in this case is not supported yet.')
     return TDD.sum(a,b)
