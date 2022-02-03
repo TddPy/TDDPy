@@ -65,8 +65,8 @@ def einsum3(equation: str, a: CUDAcpl_Tensor, b: CUDAcpl_Tensor, c: CUDAcpl_Tens
             - torch.einsum(equation, a[..., 1], b[..., 1], c[...,1])
     return torch.stack((real, imag), dim=-1)
 
-def einsum_sublist(a: CUDAcpl_Tensor, sublist_a: List[int|...],
-                    b : CUDAcpl_Tensor, sublist_b: List[int|...], output_list: List[int|...]) -> CUDAcpl_Tensor:
+def einsum_sublist(a: CUDAcpl_Tensor, sublist_a: Sequence[int],
+                    b : CUDAcpl_Tensor, sublist_b: Sequence[int], output_list: Sequence[int]) -> CUDAcpl_Tensor:
     '''
     einsum for CUDA complex tensors, in the sublist form.
     '''

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from ast import Index
-from typing import Dict, List, Tuple, Union, cast
+from typing import Dict, List, Sequence, Tuple, Union, cast
 from . import CUDAcpl
 from .CUDAcpl import CUDAcpl_Tensor,_U_,CUDAcpl2np
 import torch
@@ -83,6 +83,22 @@ class Node:
         # how many values this index can take
         return len(self.successors)
 
+    def __node_search(self, id_ls: List[int]):
+        if self.id not in id_ls:
+            id_ls.append(self.id)
+            for node in self.successors:
+                if node != None:
+                    node.__node_search(id_ls)
+
+    def get_size(self) -> int:
+        '''
+            Returns the number of non-terminal nodes connected under this node.
+        '''
+        id_ls = []
+        self.__node_search(id_ls)
+        return len(id_ls)
+
+
     @property
     def unique_key(self) -> Tuple:
         '''
@@ -144,6 +160,8 @@ class Node:
             Shift the order of node, Return the result.
             It is a simpler version of Node.duplicate
         '''
+        if order_move == 0:
+            return node
         shifted_dict = dict()
         return Node.__shift(shifted_dict, node, order_move)
 
@@ -171,7 +189,7 @@ class Node:
 
 
     @staticmethod
-    def duplicate(node: Node|None, parallel_shape: List[int], order_move: int=0,
+    def duplicate(node: Node|None, parallel_shape: Sequence[int], order_move: int=0,
                  extra_shape_ahead: Tuple= (), extra_shape_behind: Tuple=()) -> Node|None:
         '''
             Duplicate from this node, with the initial order of (node.order + order_move),
@@ -182,7 +200,7 @@ class Node:
                                 extra_shape_ahead, extra_shape_behind)
 
     @staticmethod
-    def __duplicate(shifted_dict: Dict, node: Node|None, parallel_shape: List[int], order_move: int=0,
+    def __duplicate(shifted_dict: Dict, node: Node|None, parallel_shape: Sequence[int], order_move: int=0,
                  extra_shape_ahead: Tuple= (), extra_shape_behind: Tuple=()) -> Node|None:
         '''
             use dict to cache the shfited nodes.
@@ -223,8 +241,8 @@ class Node:
         return Node.get_unique_node(a.order,a.out_weights,new_successors)
 
     @staticmethod
-    def append(a: Node|None, parallel_shape_a: List[int], depth: int,
-                 b: Node|None, parallel_shape_b: List[int], parallel_tensor = False)-> Node|None:
+    def append(a: Node|None, parallel_shape_a: Sequence[int], depth: int,
+                 b: Node|None, parallel_shape_b: Sequence[int], parallel_tensor = False)-> Node|None:
         '''
             Replace the terminal node in this graph with 'node', and return the result.
 
@@ -243,7 +261,7 @@ class Node:
 
 
     @staticmethod
-    def layout(node: Node|None, parallel_shape: List[int], index_order: List[int],
+    def layout(node: Node|None, parallel_shape: Sequence[int], index_order: Sequence[int],
                  dot=Digraph(), succ: List=[], real_label: bool=True, full_output: bool=False, precision: int = 2):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.

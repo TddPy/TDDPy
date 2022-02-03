@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from typing import Any,Tuple, List, Union, Sequence
+
+from tdd import weighted_node
+from .node import Node
 from .tdd import TDD
-from . import CUDAcpl, Node
+from . import CUDAcpl
 from .CUDAcpl import np2CUDAcpl,CUDAcpl_Tensor
 import torch
 import numpy as np
@@ -12,7 +15,8 @@ Tensor = torch.Tensor
 def reset():
     Node.reset()
 
-def as_tensor(data : CUDAcpl_Tensor|np.ndarray|Tuple) -> TDD:
+def as_tensor(data : TDD|CUDAcpl_Tensor|np.ndarray|
+    Tuple[CUDAcpl_Tensor|np.ndarray, Sequence[int], Sequence[int]]) -> TDD:
     '''
     construct the tdd tensor
 
