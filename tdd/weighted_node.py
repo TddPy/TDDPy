@@ -243,9 +243,11 @@ def __index_single(indexed_dict: Dict, w_node: WeightedNode, inner_index: int, k
 
 def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> WeightedNode:
     '''
-        Return the indexed tdd according to the chosen keys at given indices.
+        Return the indexed tdd according to the chosen keys at given indices (clone guaranteed).
 
         Note that here inner_indices indicates that of tdd nodes DIRECTLY.
+
+        weights in w_node will not be modified.
 
         indices: [(index1, key1), (index2, key2), ...]
     '''
@@ -253,6 +255,9 @@ def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> Weighted
     indexing.sort(key=lambda item: item[0])
 
     res_node, res_weights = w_node
+
+    if indexing == []:
+        res_weights = res_weights.clone()
 
     while indexing != []:
         res_node, res_weights = index_single((res_node, res_weights), indexing[0][0], indexing[0][1])

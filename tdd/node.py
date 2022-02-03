@@ -244,7 +244,7 @@ class Node:
 
     @staticmethod
     def layout(node: Node|None, parallel_shape: List[int], index_order: List[int],
-                 dot=Digraph(), succ: List=[], real_label: bool=True, full_output: bool=False):
+                 dot=Digraph(), succ: List=[], real_label: bool=True, full_output: bool=False, precision: int = 2):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
 
@@ -271,7 +271,8 @@ class Node:
             for k in range(node.index_range):
                 #if there is no parallel index, directly demonstrate the edge values
                 if list(node.out_weights[0].shape) == [2]:
-                    label1=str(complex(round(node.out_weights[k][0].cpu().item(),4),round(node.out_weights[k][1].cpu().item().imag,4)))
+                    label1=str(complex(round(node.out_weights[k][0].cpu().item(),precision),
+                                        round(node.out_weights[k][1].cpu().item(),precision)))
                 #otherwise, demonstrate the parallel index shape
                 else:
                     if full_output:

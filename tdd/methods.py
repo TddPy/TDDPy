@@ -9,6 +9,9 @@ import numpy as np
 
 Tensor = torch.Tensor
 
+def reset():
+    Node.reset()
+
 def as_tensor(data : CUDAcpl_Tensor|np.ndarray|Tuple) -> TDD:
     '''
     construct the tdd tensor

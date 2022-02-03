@@ -17,7 +17,6 @@ from IPython.display import Image
 
 
 
-
 class TDD:
     '''
         TDD  functions as the compact representation of tensors,
@@ -76,26 +75,26 @@ class TDD:
     @staticmethod
     def __as_tensor_iterate(tensor : CUDAcpl_Tensor, 
                     parallel_shape: List[int],
+                    data_shape: List[int],
                     index_order: List[int], depth: int) -> TDD:
         '''
             The inner interation for as_tensor.
+
+            tensor: will be referred to without cloning
             depth: current iteration depth, used to indicate index_order and termination
+            index_order should not be []
 
             Guarantee: parallel_shape and index_order will not be modified.
         '''
-
-        data_shape = list(tensor.shape[len(parallel_shape):-1])  #the data index shape
-        if index_order == []:
-            index_order = list(range(len(data_shape)))
 
         #checks whether the tensor is reduced to the [[...[val]...]] form
         if depth == len(data_shape):
 
             #maybe some improvement is needed here.
             if len(data_shape)==0:
-                weights = tensor.clone()
+                weights = tensor
             else:
-                weights = (tensor[...,0:1,:]).clone().view(parallel_shape+[2])
+                weights = (tensor[...,0:1,:]).view(parallel_shape+[2])
             res = TDD(weights,[],None,[])
             return res
         
@@ -107,7 +106,7 @@ class TDD:
         the_successors: List[TDD] =[]
 
         for k in range(data_shape[split_pos]):
-            res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,index_order,depth+1)
+            res = TDD.__as_tensor_iterate(split_tensor[k],parallel_shape,data_shape,index_order,depth+1)
             the_successors.append(res)
 
         #stack the sub-tdd
@@ -162,7 +161,7 @@ class TDD:
         '''
             This extra layer is also for copying the input list and pre-process.
         '''
-        res = TDD.__as_tensor_iterate(tensor,parallel_shape,result_index_order,0)
+        res = TDD.__as_tensor_iterate(tensor,parallel_shape,data_shape,result_index_order,0)
 
         
         res.index_order = result_index_order
@@ -240,7 +239,7 @@ class TDD:
         inner_indices = [(reversed_order[item[0]],item[1]) for item in data_indices]
 
         #get the indexing of inner data
-        new_node, new_dangle_weights = weighted_node.index((self.node, self.weights.clone()), inner_indices)
+        new_node, new_dangle_weights = weighted_node.index((self.node, self.weights), inner_indices)
         
         #process the data_shape and the index_order
         indexed_indices = []
@@ -319,7 +318,7 @@ class TDD:
 
 
 
-    def show(self, path: str='output', real_label: bool=True, full_output: bool = False):
+    def show(self, path: str='output', real_label: bool=True, full_output: bool = False, precision: int = 2):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
 
@@ -337,7 +336,7 @@ class TDD:
 
         if list(self.weights.shape)==[2]:
             dot.edge('-0',id_str,color="blue",label=
-                str(complex(round(self.weights[0].cpu().item(),4),round(self.weights[1].cpu().item(),4))))
+                str(complex(round(self.weights[0].cpu().item(),precision),round(self.weights[1].cpu().item(),precision))))
         else:
             if full_output == True:
                 label = str(CUDAcpl2np(self.weights))

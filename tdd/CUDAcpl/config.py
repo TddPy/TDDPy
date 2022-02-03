@@ -7,7 +7,7 @@ if torch.cuda.is_available():
 else:
     device = 'cpu'
 
-#device = 'cpu'
+device = 'cpu'
 
 dtype = torch.float64
 torch.set_printoptions(precision=15)
