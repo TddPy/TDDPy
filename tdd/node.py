@@ -187,6 +187,37 @@ class Node:
             shifted_dict[shifted_unique_key] = res
             return res
 
+    @staticmethod
+    def shift_multiple(node: Node|None, new_order_ls: Sequence[int]) -> Node|None:
+        '''
+            Shift the order of node, Return the result.
+            If order of new node is new_order_ls[node.order]
+        '''
+        shifted_dict = dict()
+        return Node.__shift_multiple(shifted_dict, node, new_order_ls)
+
+    @staticmethod
+    def __shift_multiple(shifted_dict: Dict, node: Node|None, new_order_ls: Sequence[int]) -> Node|None:
+        '''
+            use dict to cache the shfited nodes.
+        '''
+
+        if node == None:
+            return None
+        
+        order = new_order_ls[node.order]
+
+        shifted_unique_key = node.unique_key
+        #check wether this node has been shifted
+        if shifted_unique_key in shifted_dict:
+            return shifted_dict[shifted_unique_key]
+        else:
+
+            successors = [Node.__shift_multiple(shifted_dict, successor, new_order_ls) for successor in node.successors]
+            res = Node.get_unique_node(order, node.out_weights, successors)
+            shifted_dict[shifted_unique_key] = res
+            return res
+
 
     @staticmethod
     def duplicate(node: Node|None, parallel_shape: Sequence[int], order_move: int=0,

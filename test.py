@@ -14,13 +14,14 @@ U_c = np.array([u1,u2])
 
 U=1/np.sqrt(2)*np.array([[1,1],[1,-1]])
 U_2 = np.tensordot(U, U, 0)
-print(np.tensordot(U_2, U_2, 1))
+print(np.tensordot(U_2, U_2, 3))
 #print(U @ U @ U)
 
 print('============')
 
 tdd1=tdd.as_tensor((U_2,[],[1,0,2,3]))
+tdd1.show(path='before')
 
-tdd_dot = tdd.tensordot(tdd1,tdd1,1)
+tdd_dot = tdd.tensordot(tdd1,tdd1,3)
 print(tdd_dot.numpy())
 tdd_dot.show(path = 'after', full_output = True)
