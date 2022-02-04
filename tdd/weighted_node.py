@@ -1,6 +1,9 @@
 from __future__ import annotations
 from enum import unique
-from typing import Tuple, Union, List, Dict, cast
+from math import remainder
+from typing import Sequence, Tuple, Union, List, Dict, cast
+
+from tdd.CUDAcpl.main import norm
 
 
 from . import CUDAcpl
@@ -111,12 +114,12 @@ def normalize(w_node: WeightedNode, iterate: bool) -> WeightedNode:
     return  new_node, new_dangle_weights
 
 
-def to_CUDAcpl_Tensor(w_node: WeightedNode, data_shape: List[int]) -> CUDAcpl_Tensor:
+def to_CUDAcpl_Tensor(w_node: WeightedNode, data_shape: Tuple[int]) -> CUDAcpl_Tensor:
     '''
         Get the CUDAcpl_Tensor determined from this node and the weights.
 
         (use the trival index order)
-        data_shape(in the corresponding trival index order) is required,
+        data_shape(in the corresponding inner index order) is required,
             for the result should broadcast at reduced nodes of indices.
     '''
     node, weights = w_node
@@ -141,7 +144,7 @@ def to_CUDAcpl_Tensor(w_node: WeightedNode, data_shape: List[int]) -> CUDAcpl_Te
     
 
 
-def __to_CUDAcpl_Tensor(node: Node, data_shape: List[int], tensor_dict: Dict) -> CUDAcpl_Tensor:
+def __to_CUDAcpl_Tensor(node: Node, data_shape: Tuple[int], tensor_dict: Dict) -> CUDAcpl_Tensor:
     '''
         tensor_dict: caches the corresponding tensor of this node (weights = 1)
     '''
@@ -241,11 +244,13 @@ def __index_single(indexed_dict: Dict, w_node: WeightedNode, inner_index: int, k
     new_dangle_weights = CUDAcpl.mul_element_wise(dangle_weights, res_weights_below)
     return res_node, new_dangle_weights
 
-def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> WeightedNode:
+def index(w_node: WeightedNode, inner_indices: Sequence[Tuple[int,int]]) -> WeightedNode:
     '''
-        Return the indexed tdd according to the chosen keys at given indices.
+        Return the indexed tdd according to the chosen keys at given indices (clone guaranteed).
 
         Note that here inner_indices indicates that of tdd nodes DIRECTLY.
+
+        weights in w_node will not be modified.
 
         indices: [(index1, key1), (index2, key2), ...]
     '''
@@ -253,6 +258,9 @@ def index(w_node: WeightedNode, inner_indices: List[Tuple[int,int]]) -> Weighted
     indexing.sort(key=lambda item: item[0])
 
     res_node, res_weights = w_node
+
+    if indexing == []:
+        res_weights = res_weights.clone()
 
     while indexing != []:
         res_node, res_weights = index_single((res_node, res_weights), indexing[0][0], indexing[0][1])
@@ -266,7 +274,6 @@ def sum(w_node1: WeightedNode, w_node2: WeightedNode) -> WeightedNode:
         Sum up the given weighted nodes, and return the reduced weighted node result.
     '''
     # (dictionary cache technique seems impossible for summation)
-
     node1, dangle_weights1 = w_node1
     node2, dangle_weights2 = w_node2
     if node1 == None and node2 == None:
@@ -314,4 +321,194 @@ def sum(w_node1: WeightedNode, w_node2: WeightedNode) -> WeightedNode:
     temp_new_node = Node(0, A[0].order, torch.stack(out_weights), out_nodes)       # type: ignore
     return normalize((temp_new_node, CUDAcpl.ones(dangle_weights1.shape[:-1])), False)
 
+
+def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...], 
+            remained_ils: Tuple[Tuple[int,...]|Tuple[()],Tuple[int,...]|Tuple[()]], 
+            waiting_ils: Tuple[Tuple[int,...]|Tuple[()],Tuple[int,...]|Tuple[()]]) -> WeightedNode:
+    '''
+        dict_cache: is used to cache the calculated weighted node (cached results assume the dangling weight to be 1)
+
+        remained_ils: the indices not processed yet
+            (which starts to trace, and is waiting for the second index) 
+        waiting_ils: the list of indices waiting to be traced. 
+            format: ((waiting_index1, waiting_index2, ...), (i_val1, i_val2, ...))
+
+        Note that:
+            1. For remained_ils, we require smaller indices to be in the first list, 
+                and the corresponding larger one in the second.
+            2. waiting_ils[0] must be sorted in the asscending order to keep the dict key unique.
+            3. The returning weighted nodes are NOT shifted. (node.order not adjusted)
+    '''
+    node, dangle_weights = w_node
+
+    if node == None:
+        #close all the unprocessed indices
+        scale = 1.
+        for i in remained_ils[0]:
+            scale *= data_shape[i]
+        new_dangle_weights = dangle_weights*scale
+        return None, new_dangle_weights
+    
+    #first look up in the dictionary
+    key = node.unique_key + remained_ils + waiting_ils
+    if key in dict_cache:
+        final_node, final_weights_below = dict_cache[key]
+        return final_node, CUDAcpl.mul_element_wise(dangle_weights, final_weights_below)
+    else:
+        #store the scaling number due to skipped remained indices
+        scale = 1.
+
+        #process the skipped remained indices (situations only first index skipped will not be processed afterwards)
+        temp_remained_ils_0 = []
+        temp_remained_ils_1 = []
+        for i in range(len(remained_ils[0])):
+            if remained_ils[1][i] >= node.order:
+                temp_remained_ils_0.append(remained_ils[0][i])
+                temp_remained_ils_1.append(remained_ils[1][i])
+            else:
+                scale *= data_shape[remained_ils[0][i]]
+        remained_ils = (tuple(temp_remained_ils_0), tuple(temp_remained_ils_1))
+
+        #process the skipped waiting indices
+        temp_waiting_ils_i = []
+        temp_waiting_ils_v = []
+        for i in range(len(waiting_ils[0])):
+            #if a waiting index is skipped, remove it from the waiting index list
+            if waiting_ils[0][i] >= node.order:
+                temp_waiting_ils_i.append(waiting_ils[0][i])
+                temp_waiting_ils_v.append(waiting_ils[1][i])
+        waiting_ils = (tuple(temp_waiting_ils_i), tuple(temp_waiting_ils_v))
+
+        #the flag for no operation performed
+        not_operated = True
+
+        #check whether all operations have already taken place
+        if len(remained_ils[0])==0 and len(waiting_ils[0]) == 0:
+            final_node = node
+            final_weights_below = CUDAcpl.ones(dangle_weights.shape[:-1]) * scale
+            not_operated = False
+
+        elif len(waiting_ils[0]) != 0:
+            '''
+            waiting_ils is not empty in this case
+            If multiple waiting indices have been skipped, we will resolve with iteration, one by one.
+            '''
+            next_i_to_close = min(waiting_ils[0])
+            #note that next_i_to_close >= node,order is guaranteed here
+            if node.order == next_i_to_close:
+                #close the waiting index
+                ls_pos = waiting_ils[0].index(next_i_to_close)
+                next_w_ils = (waiting_ils[0][:ls_pos]+waiting_ils[0][ls_pos+1:], waiting_ils[1][:ls_pos]+waiting_ils[1][ls_pos+1:])
+                final_node, new_dangle_weights = __contract(dict_cache, 
+                                    (node.successors[waiting_ils[1][ls_pos]], node.out_weights[waiting_ils[1][ls_pos]]),
+                                    data_shape, remained_ils, next_w_ils)
+                final_weights_below = new_dangle_weights*scale
+                not_operated = False
+
+        if len(remained_ils[0]) != 0 and not_operated:
+            '''
+            Check the remained indices to start tracing.
+            If multiple (smaller ones of) remained indices have been skipped, we will resolve with iteration, one by one.
+            '''
+            next_i_to_open = min(remained_ils[0])
+            if node.order >= next_i_to_open:
+                #open the index and finally sum up
+                ls_pos = remained_ils[0].index(next_i_to_open)
+
+                # next_r_ils: sorted.
+                next_r_ils = ((remained_ils[0][:ls_pos]+remained_ils[0][ls_pos+1:]),
+                                (remained_ils[1][:ls_pos]+remained_ils[1][ls_pos+1:]))
+                #find the right insert place in waiting_ils
+                pos = 0
+                for index in waiting_ils[0]:
+                    if index < next_i_to_open:
+                        pos += 1
+                    else:
+                        break
+
+                out_nodes = []
+                out_weights = []
+                if node.order == next_i_to_open:
+                    for i in range(node.index_range):
+                        succ = node.successors[i]
+                        if succ == None:
+                            new_node = None
+                            new_weights = node.out_weights[i]
+                        else:
+                            ##################################
+                            #produce the sorted new index lists
+                            next_w_ils = (waiting_ils[0][:pos]+(remained_ils[1][ls_pos],)+waiting_ils[0][pos:],
+                                             waiting_ils[1][:pos]+(i,)+waiting_ils[1][pos:])   
+
+                            new_node, new_weights = __contract(dict_cache, (succ, node.out_weights[i]),data_shape,next_r_ils,next_w_ils)
+                        out_nodes.append(new_node)
+                        out_weights.append(new_weights)
+                else:
+                    #this node skipped the index next_i_to_open in this case
+                    for i in range(data_shape[next_i_to_open]):
+                        ##################################
+                        #produce the sorted new index lists
+                        next_w_ils = (waiting_ils[0][:pos]+(remained_ils[1][ls_pos],)+waiting_ils[0][pos:],
+                                            waiting_ils[1][:pos]+(i,)+waiting_ils[1][pos:])   
+
+                        new_node, new_weights = __contract(dict_cache, w_node, data_shape, next_r_ils, next_w_ils)
+                        out_nodes.append(new_node)
+                        out_weights.append(new_weights)
+
+                #however the subnode outcomes are calculated, sum them over.
+                final_node, res_weights = out_nodes[0], out_weights[0]
+                for i in range(1,node.index_range):
+                    final_node, res_weights = sum((final_node, res_weights), (out_nodes[i], out_weights[i]))
+                final_weights_below = res_weights*scale
+                not_operated=False
+
+
+        if not_operated:
+            #in this case, no operation can be performed on this node, so we move on the the following nodes.
+            out_nodes = []
+            out_weights = []
+            for i in range(node.index_range):
+                succ = node.successors[i]
+                if succ == None:
+                    new_node = None
+                    new_weights = node.out_weights[i]
+                else:
+                    new_node, new_weights = __contract(dict_cache, (succ, node.out_weights[i]),data_shape,remained_ils,waiting_ils)
+                out_nodes.append(new_node)
+                out_weights.append(new_weights)
+            final_node = Node(0, node.order, torch.stack(out_weights), out_nodes)
+            final_node, final_weights_below = normalize((final_node, CUDAcpl.ones(dangle_weights.shape[:-1])*scale), False)    
+    
+    dict_cache[key] = final_node, final_weights_below # type: ignore
+    return final_node, CUDAcpl.mul_element_wise(dangle_weights, final_weights_below) # type: ignore
+
+
+
+
+        
+
+def contract(w_node: WeightedNode, data_shape: Tuple[int,...], data_indices: Sequence[Sequence[int]],) -> WeightedNode:
+    '''
+        Trace the weighted node according to the specified data_indices. Return the reduced result.
+        data_shape: correponds to data_indices
+        data_indices should be counted in the data indices only.
+        e.g. ([a,b,c],[d,e,f]) means tracing indices a-d, b-e, c-f (of course two lists should be in the same size)
+        (smaller indices are required to be in the first list.)
+    '''
+    dict_cache = dict()
+    res_node, res_weights = __contract(dict_cache, w_node, data_shape, (tuple(data_indices[0]),tuple(data_indices[1])),((),()))
+
+    #shift the nodes at a time
+    new_order_ls = list(range(len(data_shape)))
+    reduced_indices = data_indices[0]+data_indices[1] # type: ignore
+    reduced_indices = sorted(reduced_indices)
+    for i in range(len(reduced_indices)-1):
+        for j in range(reduced_indices[i]+1, reduced_indices[i+1]):
+            new_order_ls[j] = j-i-1
+    for j in range(reduced_indices[-1]+1, len(data_shape)):
+        new_order_ls[j] = j-len(reduced_indices)
+
+
+    return Node.shift_multiple(res_node, new_order_ls), res_weights
+    
 
