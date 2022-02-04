@@ -269,16 +269,11 @@ def index(w_node: WeightedNode, inner_indices: Sequence[Tuple[int,int]]) -> Weig
     
     return res_node, res_weights
 
-call_count = 0
-
 def sum(w_node1: WeightedNode, w_node2: WeightedNode) -> WeightedNode:
     '''
         Sum up the given weighted nodes, and return the reduced weighted node result.
     '''
     # (dictionary cache technique seems impossible for summation)
-    global call_count
-    call_count += 1
-    print(call_count)
     node1, dangle_weights1 = w_node1
     node2, dangle_weights2 = w_node2
     if node1 == None and node2 == None:

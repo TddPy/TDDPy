@@ -286,7 +286,6 @@ class TDD:
             return self.clone()
         else:
             #transform to inner indices
-            weighted_node.call_count = 0
             reversed_order = order_inverse(self.index_order)
             inner_ls1 = [reversed_order[data_indices[0][k]] for k in range(len(data_indices[0]))]
             inner_ls2 = [reversed_order[data_indices[1][k]] for k in range(len(data_indices[0]))]
