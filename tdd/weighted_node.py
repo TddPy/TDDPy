@@ -3,8 +3,6 @@ from enum import unique
 from math import remainder
 from typing import Sequence, Tuple, Union, List, Dict, cast
 
-from tdd.CUDAcpl.main import norm
-
 
 from . import CUDAcpl
 from .CUDAcpl import CUDAcpl_Tensor, _U_

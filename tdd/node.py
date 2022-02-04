@@ -1,5 +1,4 @@
 from __future__ import annotations
-from ast import Index
 from typing import Dict, List, Sequence, Tuple, Union, cast
 from . import CUDAcpl
 from .CUDAcpl import CUDAcpl_Tensor,_U_,CUDAcpl2np
@@ -7,11 +6,9 @@ import torch
 
 from graphviz import Digraph
 
-IndexOrder = List[int]
-
 TERMINAL_ID = -1
 
-def order_inverse(index_order: IndexOrder) -> IndexOrder:
+def order_inverse(index_order: Sequence[int]) -> Sequence[int]:
     '''
         Return the "inverse" of the given index order.
         (it can be understand as the inverse in the permutation group.)

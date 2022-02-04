@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any,Tuple, List, Union, Sequence
 
-from tdd import weighted_node
 from .node import Node
 from .tdd import TDD
 from . import CUDAcpl
@@ -54,7 +53,7 @@ def direct_product(a: TDD, b: TDD, parallel_tensor: bool = False)-> TDD:
 
 
     data_shape = a.data_shape + b.data_shape
-    index_order = a.index_order+[i+len(a.index_order) for i in b.index_order]
+    index_order = a.index_order+tuple([i+len(a.index_order) for i in b.index_order])
     res = TDD(weights, data_shape, new_node, index_order)
     return res
 

@@ -5,7 +5,7 @@ import torch
 
 from . import CUDAcpl, weighted_node
 from .CUDAcpl import _U_, CUDAcpl_Tensor, CUDAcpl2np
-from .node import  TERMINAL_ID, Node, IndexOrder, order_inverse
+from .node import  TERMINAL_ID, Node, order_inverse
 from .weighted_node import isequal, to_CUDAcpl_Tensor
 
 
@@ -23,7 +23,7 @@ class TDD:
                     weights: CUDAcpl_Tensor,
                     data_shape: Sequence[int],
                     node: Node|None,
-                    index_order: IndexOrder = []):
+                    index_order: Sequence[int] = []):
         self.weights: CUDAcpl_Tensor = weights
         self.__data_shape: List[int] = list(data_shape)  #the data index shape (of the tensor it represents)
         self.node: Node|None = node
@@ -33,11 +33,15 @@ class TDD:
             for example, tdd[a,b,c] under index_order=[0,2,1] returns the value tdd[a,c,b]
             index_order == None means the trival index mapping [0,1,2,(...)]
         '''
-        self.index_order: IndexOrder = index_order
+        self.__index_order: List[int] = list(index_order)
 
     @property
     def data_shape(self) -> Tuple[int,...]:
         return tuple(self.__data_shape)
+
+    @property
+    def index_order(self) -> Tuple[int,...]:
+        return tuple(self.__index_order)
 
     @property
     def dim_data(self) -> int:
@@ -55,7 +59,7 @@ class TDD:
         '''
         parallel_index_order = [i for i in range(len(self.parallel_shape))]
         increment = len(self.parallel_shape)
-        return tuple(parallel_index_order + [order+increment for order in self.index_order])
+        return tuple(parallel_index_order + [order+increment for order in self.__index_order])
     
     @property
     def global_shape(self)-> Tuple[int,...]:
@@ -65,7 +69,7 @@ class TDD:
         '''
             Now this equality check only deals with TDDs with the same index order.
         '''
-        res = self.index_order==other.index_order \
+        res = self.__index_order==other.__index_order \
             and isequal((self.node,self.weights),(other.node,other.weights))
         return res
 
@@ -171,7 +175,7 @@ class TDD:
         res = TDD.__as_tensor_iterate(tensor,list(parallel_shape),data_shape,result_index_order,0)
 
         
-        res.index_order = result_index_order
+        res.__index_order = result_index_order
         res.__data_shape = data_shape
         return res
 
@@ -183,7 +187,7 @@ class TDD:
         dim = self.dim_data
         res = [0]*dim
         for i in range(dim):
-            res[i] = self.__data_shape[self.index_order[i]]
+            res[i] = self.__data_shape[self.__index_order[i]]
         return tuple(res)
     
             
@@ -207,7 +211,13 @@ class TDD:
 
 
     def clone(self) -> TDD:
-        return TDD(self.weights.clone(), self.__data_shape.copy(), self.node, self.index_order.copy())
+        return TDD(self.weights.clone(), self.__data_shape.copy(), self.node, self.__index_order.copy())
+
+    def get_view(self) -> TDD:
+        '''
+            Return a view of this tdd.
+        '''
+        return TDD(self.weights, self.__data_shape.copy(), self.node, self.__index_order.copy())
 
         '''
     
@@ -235,7 +245,7 @@ class TDD:
         for i in range(len(self.__data_shape)):
             if i not in reduced_indices:
                 new_data_shape.append(self.__data_shape[i])
-                indexed_index_order.append(self.index_order[i])        
+                indexed_index_order.append(self.__index_order[i])        
         new_index_order = sorted(range(len(indexed_index_order)), key = lambda k:indexed_index_order[k])
 
         return new_data_shape, new_index_order
@@ -251,7 +261,7 @@ class TDD:
         indices: [(index1, key1), (index2, key2), ...]
         '''
         #transform to inner indices
-        reversed_order = order_inverse(self.index_order)
+        reversed_order = order_inverse(self.__index_order)
         inner_indices = [(reversed_order[item[0]],item[1]) for item in data_indices]
 
         #get the indexing of inner data
@@ -273,7 +283,7 @@ class TDD:
 
         new_node, new_weights = weighted_node.sum((a.node, a.weights), (b.node, b.weights))
 
-        return TDD(new_weights, a.__data_shape.copy(), new_node, a.index_order.copy())
+        return TDD(new_weights, a.__data_shape.copy(), new_node, a.__index_order.copy())
 
 
     def contract(self, data_indices: Sequence[Sequence[int]]) -> TDD:
@@ -286,7 +296,7 @@ class TDD:
             return self.clone()
         else:
             #transform to inner indices
-            reversed_order = order_inverse(self.index_order)
+            reversed_order = order_inverse(self.__index_order)
             inner_ls1 = [reversed_order[data_indices[0][k]] for k in range(len(data_indices[0]))]
             inner_ls2 = [reversed_order[data_indices[1][k]] for k in range(len(data_indices[0]))]
 
@@ -299,6 +309,16 @@ class TDD:
             return TDD(weights, new_data_shape, node, new_index_order)
 
 
+    def permute(self, dims: Sequence[int]) -> TDD:
+        '''
+            Returns a view of the original tensor input with its dimensions permuted.
+        '''
+        res = self.get_view()
+        for i in range(len(dims)):
+            res.__data_shape[i] = self.__data_shape[dims[i]]
+        res.__index_order = [dims[i] for i in self.__index_order]
+        return res
+
 
 
 
@@ -310,7 +330,7 @@ class TDD:
         '''
         edge=[]              
         dot=Digraph(name='reduced_tree')
-        dot=Node.layout(self.node,self.parallel_shape,self.index_order, dot,edge, real_label, full_output)
+        dot=Node.layout(self.node,self.parallel_shape,self.__index_order, dot,edge, real_label, full_output)
         dot.node('-0','',shape='none')
 
         if self.node == None:
@@ -329,4 +349,6 @@ class TDD:
             dot.edge('-0',id_str,color="blue",label = label)
         dot.format = 'png'
         return Image(dot.render(path))
+    
+
 

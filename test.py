@@ -12,16 +12,15 @@ u2[0,1,0]=3
 U_c = np.array([u1,u2])
 '''
 
-U=1/np.sqrt(2)*np.array([[1,1],[1,-1]])
+U=1/np.sqrt(2)*np.array([[1,1],[-1,1]])
 U_2 = np.tensordot(U, U, 0)
 print(np.tensordot(U_2, U_2, 3))
 #print(U @ U @ U)
 
 print('============')
 
-tdd1=tdd.as_tensor((U_2,[],[1,0,2,3]))
-tdd1.show(path='before')
+tdd1=tdd.as_tensor((U,[],[1,0]))
+tdd2 = tdd1.permute([1,0])
+tdd2.show()
 
-tdd_dot = tdd.tensordot(tdd1,tdd1,3)
-print(tdd_dot.numpy())
-tdd_dot.show(path = 'after', full_output = True)
+print(tdd2.numpy())
