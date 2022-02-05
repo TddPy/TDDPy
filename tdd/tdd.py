@@ -24,9 +24,9 @@ class TDD:
                     data_shape: Sequence[int],
                     node: Node|None,
                     index_order: Sequence[int] = []):
-        self.weights: CUDAcpl_Tensor = weights
+        self.__weights: CUDAcpl_Tensor = weights
         self.__data_shape: List[int] = list(data_shape)  #the data index shape (of the tensor it represents)
-        self.node: Node|None = node
+        self.__node: Node|None = node
 
         '''
             index_order: how the inner index are mapped to outer representations
@@ -34,6 +34,14 @@ class TDD:
             index_order == None means the trival index mapping [0,1,2,(...)]
         '''
         self.__index_order: List[int] = list(index_order)
+
+    @property
+    def node(self) -> Node|None:
+        return self.__node
+
+    @property
+    def weights(self) -> CUDAcpl_Tensor:
+        return self.__weights
 
     @property
     def data_shape(self) -> Tuple[int,...]:
@@ -49,7 +57,7 @@ class TDD:
 
     @property
     def parallel_shape(self) -> Tuple[int,...]:
-        return tuple(self.weights.shape[:-1])
+        return tuple(self.__weights.shape[:-1])
 
     @property
     def global_order(self)-> Tuple[int,...]:
@@ -70,16 +78,16 @@ class TDD:
             Now this equality check only deals with TDDs with the same index order.
         '''
         res = self.__index_order==other.__index_order \
-            and isequal((self.node,self.weights),(other.node,other.weights))
+            and isequal((self.__node,self.__weights),(other.__node,other.__weights))
         return res
 
     def __str__(self):
         return str(self.numpy())
 
     def get_size(self) -> int:
-        if self.node == None:
+        if self.__node == None:
             return 0
-        return self.node.get_size()
+        return self.__node.get_size()
 
     @staticmethod
     def __as_tensor_iterate(tensor : CUDAcpl_Tensor, 
@@ -119,8 +127,8 @@ class TDD:
             the_successors.append(res)
 
         #stack the sub-tdd
-        succ_nodes = [item.node for item in the_successors]
-        out_weights = torch.stack([item.weights for item in the_successors])
+        succ_nodes = [item.__node for item in the_successors]
+        out_weights = torch.stack([item.__weights for item in the_successors])
         temp_node = Node(0, depth, out_weights, succ_nodes)
         dangle_weights = CUDAcpl.ones(out_weights.shape[1:-1])
         #normalize at this depth
@@ -195,7 +203,7 @@ class TDD:
         '''
             Transform this tensor to a CUDA complex and return.
         '''
-        node_data = to_CUDAcpl_Tensor((self.node,self.weights),self.__inner_data_shape)
+        node_data = to_CUDAcpl_Tensor((self.__node,self.__weights),self.__inner_data_shape)
         
         #permute to the right index order
         node_data = node_data.permute(self.global_order+(node_data.dim()-1,))
@@ -211,13 +219,13 @@ class TDD:
 
 
     def clone(self) -> TDD:
-        return TDD(self.weights.clone(), self.__data_shape.copy(), self.node, self.__index_order.copy())
+        return TDD(self.__weights.clone(), self.__data_shape.copy(), self.__node, self.__index_order.copy())
 
     def get_view(self) -> TDD:
         '''
             Return a view of this tdd.
         '''
-        return TDD(self.weights, self.__data_shape.copy(), self.node, self.__index_order.copy())
+        return TDD(self.__weights, self.__data_shape.copy(), self.__node, self.__index_order.copy())
 
         '''
     
@@ -265,7 +273,7 @@ class TDD:
         inner_indices = [(reversed_order[item[0]],item[1]) for item in data_indices]
 
         #get the indexing of inner data
-        new_node, new_dangle_weights = weighted_node.index((self.node, self.weights), inner_indices)
+        new_node, new_dangle_weights = weighted_node.index((self.__node, self.__weights), inner_indices)
         
         #process the data_shape and the index_order
         indexed_indices = []
@@ -281,7 +289,7 @@ class TDD:
             Sum up tdd a and b, and return the reduced result. 
         '''
 
-        new_node, new_weights = weighted_node.sum((a.node, a.weights), (b.node, b.weights))
+        new_node, new_weights = weighted_node.sum((a.__node, a.__weights), (b.__node, b.__weights))
 
         return TDD(new_weights, a.__data_shape.copy(), new_node, a.__index_order.copy())
 
@@ -301,7 +309,7 @@ class TDD:
             inner_ls2 = [reversed_order[data_indices[1][k]] for k in range(len(data_indices[0]))]
 
             #inner_ls1[i] < inner_ls2[i] should hold for every i
-            node, weights = weighted_node.contract((self.node, self.weights), self.__inner_data_shape, [inner_ls1, inner_ls2])
+            node, weights = weighted_node.contract((self.__node, self.__weights), self.__inner_data_shape, [inner_ls1, inner_ls2])
 
             #assume data_indices[0] and data_indices[1] are in the same type
             new_data_shape, new_index_order = self.__index_reduce_proc(inner_ls1+inner_ls2)
@@ -330,20 +338,20 @@ class TDD:
         '''
         edge=[]              
         dot=Digraph(name='reduced_tree')
-        dot=Node.layout(self.node,self.parallel_shape,self.__index_order, dot,edge, real_label, full_output)
+        dot=Node.layout(self.__node,self.parallel_shape,self.__index_order, dot,edge, real_label, full_output)
         dot.node('-0','',shape='none')
 
-        if self.node == None:
+        if self.__node == None:
             id_str = str(TERMINAL_ID)
         else:
-            id_str = str(self.node.id)
+            id_str = str(self.__node.id)
 
-        if list(self.weights.shape)==[2]:
+        if list(self.__weights.shape)==[2]:
             dot.edge('-0',id_str,color="blue",label=
-                str(complex(round(self.weights[0].cpu().item(),precision),round(self.weights[1].cpu().item(),precision))))
+                str(complex(round(self.__weights[0].cpu().item(),precision),round(self.__weights[1].cpu().item(),precision))))
         else:
             if full_output == True:
-                label = str(CUDAcpl2np(self.weights))
+                label = str(CUDAcpl2np(self.__weights))
             else:
                 label =str(self.parallel_shape)
             dot.edge('-0',id_str,color="blue",label = label)

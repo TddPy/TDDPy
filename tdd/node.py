@@ -324,7 +324,7 @@ class Node:
                     if full_output:
                         label1 = str(CUDAcpl2np(node.out_weights[k]))
                     else:
-                        label1 = str(list(parallel_shape))
+                        label1 = str(parallel_shape)
                 
                 temp = node.successors[k]
                 id_str = str(TERMINAL_ID) if temp == None else str(temp.id)
