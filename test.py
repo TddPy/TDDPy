@@ -14,13 +14,13 @@ U_c = np.array([u1,u2])
 
 U=1/np.sqrt(2)*np.array([[1,1],[-1,1]])
 U_2 = np.tensordot(U, U, 0)
-print(np.tensordot(U_2, U_2, 3))
+print(np.tensordot(U, U, 1))
 #print(U @ U @ U)
 
 print('============')
 
-tdd1=tdd.as_tensor((U,[],[1,0]))
-tdd2 = tdd1.permute([1,0])
+tdd1=tdd.as_tensor((U,[],[]))
+tdd2 = tdd.tensordot(tdd1, tdd1, 1)
 tdd2.show()
 
 print(tdd2.numpy())

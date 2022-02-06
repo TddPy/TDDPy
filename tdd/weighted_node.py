@@ -267,64 +267,133 @@ def index(w_node: WeightedNode, inner_indices: Sequence[Tuple[int,int]]) -> Weig
     
     return res_node, res_weights
 
-def sum(w_node1: WeightedNode, w_node2: WeightedNode) -> WeightedNode:
+
+def __sum_weights_normalize(dangle_weights1: CUDAcpl_Tensor, dangle_weights2: CUDAcpl_Tensor)\
+            -> Tuple[CUDAcpl_Tensor, CUDAcpl_Tensor, CUDAcpl_Tensor]:
     '''
-        Sum up the given weighted nodes, and return the reduced weighted node result.
+        Process the weights, and normalize them as a whole. Return (new_weights1, new_weights2, renorm_coef).
+
+        The strategy to produce the weights (for every individual element):
+            maximum_norm := max(weight1.norm, weight2.norm)
+            1. if maximum_norm > EPS: renormalize max_weight to 1.
+            3. else key is 0000...,0000...
     '''
-    # (dictionary cache technique seems impossible for summation)
+
+    # chose the larger norm party
+    norm1 = CUDAcpl.norm(dangle_weights1)
+    norm2 = CUDAcpl.norm(dangle_weights2)
+    chose1_CUDAcpl = (norm1 > norm2).unsqueeze(-1).broadcast_to(dangle_weights1.shape)
+    maximum_element = torch.where(chose1_CUDAcpl, dangle_weights1, dangle_weights2)
+    maximum_norm = torch.maximum(norm1, norm2)
+
+    zero_item_CUDAcpl = (maximum_norm < Node.EPS).unsqueeze(-1).broadcast_to(dangle_weights1.shape)
+
+    # renormalization coefficient for zero items are left to be 1.
+    renorm_coef = torch.where(zero_item_CUDAcpl, CUDAcpl.ones(dangle_weights1.shape[:-1]), maximum_element)
+
+    # perform the renormalization
+    new_dangle_weights1 = CUDAcpl.div_element_wise(dangle_weights1, renorm_coef)
+    new_dangle_weights2 = CUDAcpl.div_element_wise(dangle_weights2, renorm_coef)
+    return new_dangle_weights1, new_dangle_weights2, renorm_coef
+
+
+def __sum(dict_cache: Dict, w_node1: WeightedNode, w_node2: WeightedNode, renorm_coef) -> WeightedNode:
+    '''
+        Sum up the given weighted nodes, multply the renorm_coef, and return the reduced weighted node result.
+        Note that weights1 and weights2 as a whole should have been normalized,
+         and renorm_coef is the coefficient.
+    '''
+
     node1, dangle_weights1 = w_node1
     node2, dangle_weights2 = w_node2
     if node1 == None and node2 == None:
-        return None, dangle_weights1 + dangle_weights2
+        return None, CUDAcpl.mul_element_wise(dangle_weights1 + dangle_weights2, renorm_coef)
 
-    out_nodes = []
-    out_weights = []
-    
-    if node1 != None and node2 != None and node1.order == node2.order:
-        for i in range(node1.index_range):
-            next_weights1 = CUDAcpl.mul_element_wise(dangle_weights1, node1.out_weights[i])
-            next_weights2 = CUDAcpl.mul_element_wise(dangle_weights2, node2.out_weights[i])
-            temp_node, temp_weights = sum((node1.successors[i], next_weights1),
-                                            (node2.successors[i], next_weights2))
-            out_nodes.append(temp_node)
-            out_weights.append(temp_weights)
+
+    #produce the unique key and look up in the dictionary
+    key_part1 = Node.get_unique_key_all(node1) + tuple(Node.get_int_key(dangle_weights1).view(-1).tolist())
+    key_part2 = Node.get_unique_key_all(node2) + tuple(Node.get_int_key(dangle_weights2).view(-1).tolist())
+    key1 = key_part1+key_part2
+    #Note: the swapped key will also be stored, so here we do not need the other swapped one.
+    if key1 in dict_cache:
+        final_node, final_dangle_weights = dict_cache[key1]
+        final_dangle_weights = CUDAcpl.mul_element_wise(renorm_coef, final_dangle_weights)
+        return final_node, final_dangle_weights
+
+    else:
+        out_nodes = []
+        out_weights = []
         
-        A = w_node1
+        if node1 != None and node2 != None and node1.order == node2.order:
+            for i in range(node1.index_range):
+                next_weights1 = CUDAcpl.mul_element_wise(dangle_weights1, node1.out_weights[i])
+                next_weights2 = CUDAcpl.mul_element_wise(dangle_weights2, node2.out_weights[i])
+                # normalize as a whole
+                new_weights1, new_weights2, new_renorm_coef = __sum_weights_normalize(next_weights1, next_weights2)
+                temp_node, temp_weights = __sum(dict_cache, (node1.successors[i], new_weights1),
+                                                (node2.successors[i], new_weights2), new_renorm_coef)
+                out_nodes.append(temp_node)
+                out_weights.append(temp_weights)
+            
+            A = w_node1
 
-    else: 
-        '''
-            There are three cases following, corresponding to the same procedure:
-            1. node1 == None, node2 != None
-            2. node2 == None, node1 != None
-            3. node1 != None, node2 != None, but node1.order != noder2.order
-            We first analysis the situation to reuse the codes.
-            A will be the lower ordered weighted node.
-        '''
-        if node1 == None:
-            A, B = w_node2, w_node1
-        elif node2 == None:
-            A, B = w_node1, w_node2
-        else:
-            if node1.order < node2.order:
+        else: 
+            '''
+                There are three cases following, corresponding to the same procedure:
+                1. node1 == None, node2 != None
+                2. node2 == None, node1 != None
+                3. node1 != None, node2 != None, but node1.order != noder2.order
+                We first analysis the situation to reuse the codes.
+                A will be the lower ordered weighted node.
+            '''
+            if node1 == None:
+                A, B = w_node2, w_node1
+            elif node2 == None:
                 A, B = w_node1, w_node2
             else:
-                A, B = w_node2, w_node1
+                if node1.order < node2.order:
+                    A, B = w_node1, w_node2
+                else:
+                    A, B = w_node2, w_node1
 
-        for i in range(A[0].index_range): # type: ignore
-            next_weights_A = CUDAcpl.mul_element_wise(A[1], A[0].out_weights[i]) # type: ignore
-            temp_node, temp_weights = sum((A[0].successors[i], next_weights_A), B) # type: ignore
-            out_nodes.append(temp_node)
-            out_weights.append(temp_weights)
+            for i in range(A[0].index_range): # type: ignore
+                next_weights_A = CUDAcpl.mul_element_wise(A[1], A[0].out_weights[i]) # type: ignore
+                # normalize as a whole
+                new_weights_A, new_weights_B, new_renorm_coef = __sum_weights_normalize(next_weights_A, B[1])
+                temp_node, temp_weights = __sum(dict_cache, (A[0].successors[i], new_weights_A), (B[0], new_weights_B), new_renorm_coef) # type: ignore
+                out_nodes.append(temp_node)
+                out_weights.append(temp_weights)
+        
+        temp_new_node = Node(0, A[0].order, torch.stack(out_weights), out_nodes)       # type: ignore
+        final_node, final_weights = normalize((temp_new_node, CUDAcpl.ones(dangle_weights1.shape[:-1])), False)
 
-    temp_new_node = Node(0, A[0].order, torch.stack(out_weights), out_nodes)       # type: ignore
-    return normalize((temp_new_node, CUDAcpl.ones(dangle_weights1.shape[:-1])), False)
+        key2 = key_part2 + key_part1
+        dict_cache[key1] = final_node, final_weights
+        dict_cache[key2] = final_node, final_weights
+        '''
+            In fact, here we can check whether the two weights are opposite numbers, and add to the dictionary.
+            Because when dangle_weights1 + dangle_weights2 == 0, they will be normalized randomly.
+            But for parallel case it is too hard to implement.
+        '''
+        #finally multiply the renorm_coef
+        final_weights = CUDAcpl.mul_element_wise(final_weights, renorm_coef)
+        return final_node, final_weights
+
+
+def sum(w_node1: WeightedNode, w_node2: WeightedNode, dict_cache: Dict= None) -> WeightedNode:
+    if dict_cache == None:
+        dict_cache = dict()
+    new_weights1, new_weights2, new_reform_coef = __sum_weights_normalize(w_node1[1], w_node2[1])
+    return __sum(dict_cache, (w_node1[0], new_weights1), (w_node2[0], new_weights2), new_reform_coef)
 
 
 def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...], 
             remained_ils: Tuple[Tuple[int,...]|Tuple[()],Tuple[int,...]|Tuple[()]], 
-            waiting_ils: Tuple[Tuple[int,...]|Tuple[()],Tuple[int,...]|Tuple[()]]) -> WeightedNode:
+            waiting_ils: Tuple[Tuple[int,...]|Tuple[()],Tuple[int,...]|Tuple[()]],
+            sum_dict_cache: Dict= None) -> WeightedNode:
     '''
         dict_cache: is used to cache the calculated weighted node (cached results assume the dangling weight to be 1)
+        sum_dict_cache: the dict_cache from former calculations
 
         remained_ils: the indices not processed yet
             (which starts to trace, and is waiting for the second index) 
@@ -399,7 +468,7 @@ def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...
                 next_w_ils = (waiting_ils[0][:ls_pos]+waiting_ils[0][ls_pos+1:], waiting_ils[1][:ls_pos]+waiting_ils[1][ls_pos+1:])
                 final_node, new_dangle_weights = __contract(dict_cache, 
                                     (node.successors[waiting_ils[1][ls_pos]], node.out_weights[waiting_ils[1][ls_pos]]),
-                                    data_shape, remained_ils, next_w_ils)
+                                    data_shape, remained_ils, next_w_ils, sum_dict_cache)
                 final_weights_below = new_dangle_weights*scale
                 not_operated = False
 
@@ -438,7 +507,7 @@ def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...
                             next_w_ils = (waiting_ils[0][:pos]+(remained_ils[1][ls_pos],)+waiting_ils[0][pos:],
                                              waiting_ils[1][:pos]+(i,)+waiting_ils[1][pos:])   
 
-                            new_node, new_weights = __contract(dict_cache, (succ, node.out_weights[i]),data_shape,next_r_ils,next_w_ils)
+                            new_node, new_weights = __contract(dict_cache, (succ, node.out_weights[i]),data_shape,next_r_ils,next_w_ils, sum_dict_cache)
                         out_nodes.append(new_node)
                         out_weights.append(new_weights)
                 else:
@@ -449,14 +518,14 @@ def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...
                         next_w_ils = (waiting_ils[0][:pos]+(remained_ils[1][ls_pos],)+waiting_ils[0][pos:],
                                             waiting_ils[1][:pos]+(i,)+waiting_ils[1][pos:])   
 
-                        new_node, new_weights = __contract(dict_cache, w_node, data_shape, next_r_ils, next_w_ils)
+                        new_node, new_weights = __contract(dict_cache, w_node, data_shape, next_r_ils, next_w_ils, sum_dict_cache)
                         out_nodes.append(new_node)
                         out_weights.append(new_weights)
 
                 #however the subnode outcomes are calculated, sum them over.
                 final_node, res_weights = out_nodes[0], out_weights[0]
                 for i in range(1,node.index_range):
-                    final_node, res_weights = sum((final_node, res_weights), (out_nodes[i], out_weights[i]))
+                    final_node, res_weights = sum((final_node, res_weights), (out_nodes[i], out_weights[i]), sum_dict_cache)
                 final_weights_below = res_weights*scale
                 not_operated=False
 
@@ -471,7 +540,7 @@ def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...
                     new_node = None
                     new_weights = node.out_weights[i]
                 else:
-                    new_node, new_weights = __contract(dict_cache, (succ, node.out_weights[i]),data_shape,remained_ils,waiting_ils)
+                    new_node, new_weights = __contract(dict_cache, (succ, node.out_weights[i]),data_shape,remained_ils,waiting_ils, sum_dict_cache)
                 out_nodes.append(new_node)
                 out_weights.append(new_weights)
             final_node = Node(0, node.order, torch.stack(out_weights), out_nodes)
@@ -485,7 +554,9 @@ def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...
 
         
 
-def contract(w_node: WeightedNode, data_shape: Tuple[int,...], data_indices: Sequence[Sequence[int]],) -> WeightedNode:
+def contract(w_node: WeightedNode, data_shape: Tuple[int,...],
+         data_indices: Sequence[Sequence[int]],
+         sum_dict_cache: Dict= None) -> WeightedNode:
     '''
         Trace the weighted node according to the specified data_indices. Return the reduced result.
         data_shape: correponds to data_indices
@@ -493,8 +564,15 @@ def contract(w_node: WeightedNode, data_shape: Tuple[int,...], data_indices: Seq
         e.g. ([a,b,c],[d,e,f]) means tracing indices a-d, b-e, c-f (of course two lists should be in the same size)
         (smaller indices are required to be in the first list.)
     '''
+
+    #at least the summation results should be cached during one contraction
+    if sum_dict_cache == None:
+        sum_dict_cache = dict()
+
+
     dict_cache = dict()
-    res_node, res_weights = __contract(dict_cache, w_node, data_shape, (tuple(data_indices[0]),tuple(data_indices[1])),((),()))
+    res_node, res_weights = __contract(dict_cache, w_node, data_shape, 
+                (tuple(data_indices[0]),tuple(data_indices[1])),((),()), sum_dict_cache)
 
     #shift the nodes at a time
     new_order_ls = list(range(len(data_shape)))

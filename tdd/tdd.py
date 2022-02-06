@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, Sequence, Tuple, List, Any, Union, cast
+from typing import Dict, Iterable, Sequence, Tuple, List, Any, Union, cast
 import numpy as np
 import torch
 
@@ -294,7 +294,7 @@ class TDD:
         return TDD(new_weights, a.__data_shape.copy(), new_node, a.__index_order.copy())
 
 
-    def contract(self, data_indices: Sequence[Sequence[int]]) -> TDD:
+    def contract(self, data_indices: Sequence[Sequence[int]], sum_dict_cache: Dict= None) -> TDD:
         '''
             Contract the tdd according to the specified data_indices. Return the reduced result.
             data_indices should be counted in the data indices only.
@@ -309,7 +309,8 @@ class TDD:
             inner_ls2 = [reversed_order[data_indices[1][k]] for k in range(len(data_indices[0]))]
 
             #inner_ls1[i] < inner_ls2[i] should hold for every i
-            node, weights = weighted_node.contract((self.__node, self.__weights), self.__inner_data_shape, [inner_ls1, inner_ls2])
+            node, weights = weighted_node.contract((self.__node, self.__weights),
+                     self.__inner_data_shape, [inner_ls1, inner_ls2], sum_dict_cache)
 
             #assume data_indices[0] and data_indices[1] are in the same type
             new_data_shape, new_index_order = self.__index_reduce_proc(inner_ls1+inner_ls2)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any,Tuple, List, Union, Sequence
+from typing import Any, Dict,Tuple, List, Union, Sequence
 
 from .node import Node
 from .tdd import TDD
@@ -70,9 +70,12 @@ def sum(a: TDD, b: TDD) -> TDD:
     return TDD.sum(a,b)
 
 def tensordot(a: TDD, b: TDD,
-                axes: Union[int, Sequence[Sequence[int]]], parallel_tensor: bool=False) -> TDD:
+                axes: Union[int, Sequence[Sequence[int]]], 
+                sum_dict_cache: Dict= None,
+                parallel_tensor: bool=False) -> TDD:
     '''
         The pytorch-like tensordot method. Note that indices should be counted with data indices only.
+        sum_dict_cache: the dictionary cache of former summation calculations.
         parallel_tensor: Whether to tensor on the parallel indices.
     '''
     
@@ -90,4 +93,4 @@ def tensordot(a: TDD, b: TDD,
     
     temp_tensor = direct_product(a,b, parallel_tensor)
 
-    return temp_tensor.contract([indices_a, indices_b])
+    return temp_tensor.contract([indices_a, indices_b], sum_dict_cache)

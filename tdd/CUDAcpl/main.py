@@ -84,6 +84,15 @@ def mul_element_wise(a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
     imag = a[...,0]*b[...,1] + a[...,1]*b[...,0]
     return torch.stack((real, imag), dim=-1)
 
+def div_element_wise(a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+    '''
+        reutrn a / b (element wise)
+    '''
+    denominator = b[...,0]**2 + b[...,1]**2
+    real = (a[...,0]*b[...,0] + a[...,1]*b[...,1])/denominator
+    imag = (a[...,1]*b[...,0] - a[...,0]*b[...,1])/denominator
+    return torch.stack((real,imag),dim=-1)
+
 def tensordot(a: CUDAcpl_Tensor,b: CUDAcpl_Tensor, dim: Any =2) -> CUDAcpl_Tensor:
     real = torch.tensordot(a[...,0],b[...,0],dim)-torch.tensordot(a[...,1],b[...,1],dim)
     imag = torch.tensordot(a[...,0],b[...,1],dim)+torch.tensordot(a[...,1],b[...,0],dim)

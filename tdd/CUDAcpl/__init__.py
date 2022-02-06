@@ -22,6 +22,7 @@ einsum = main .einsum
 einsum3 = main .einsum3
 einsum_sublist = main.einsum_sublist
 mul_element_wise = main.mul_element_wise
+div_element_wise = main.div_element_wise
 
 tensordot = main .tensordot
 scale = main .scale
