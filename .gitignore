@@ -1,4 +1,13 @@
-__pycache__
+#Python cache
+__pycache__/
 
-#the original tdd package
-tdd_origin/
+# the original tdd package
+pytdd/tdd_origin/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.ncb
+Debug/
+Release/
