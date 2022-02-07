@@ -101,7 +101,7 @@ def TDD_new_contract():
 
 #count = 1000 # <- recommended value for demonstration
 count = 1
-width = 10
+width = 4
 
 rand_para_1 = torch.tensor(np.random.random((count, width)), device = CUDAcpl.device)
 rand_para_2 = torch.tensor(np.random.random((count, width)), device = CUDAcpl.device)
@@ -129,12 +129,12 @@ print('count: {}, width: {}'.format(count,width))
 print('input tensor shape: ', gates_1_np.shape)
 print()
 
+'''
 print('===================================================')
 print('PyTorch:')
 timing(PyTorch,1)
 print(str(result)[:200])
 print()
-
 print('===================================================')
 print('TDD original, construction:')
 timing(TDD_original_construct, 1)
@@ -146,7 +146,7 @@ timing(TDD_original_construct_contract, 1)
 print(str(result.to_array())[:200])
 print()
 result.show('original_result', real_label = True)
-
+'''
 print('===================================================')
 print('TDD refactorized, construction:')
 timing(TDD_new_construct, 1)
