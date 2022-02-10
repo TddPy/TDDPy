@@ -13,10 +13,57 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="CUDAcpl">
+      <UniqueIdentifier>{b8ad2fdc-5dce-42b3-93d0-0db986d82369}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="interface">
+      <UniqueIdentifier>{4ee1d293-44cb-42f2-8c63-d284f2a68c5b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ctddmodule.cpp">
+    <ClCompile Include="Node.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="weighted_node.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="weights.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="tdd.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="CUDAcpl.cpp">
+      <Filter>CUDAcpl</Filter>
+    </ClCompile>
+    <ClCompile Include="ctddmodule.cpp">
+      <Filter>interface</Filter>
+    </ClCompile>
+    <ClCompile Include="main_test.cpp">
+      <Filter>interface</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Node.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="weighted_node.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="weights.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="tdd.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="CUDAcpl.h">
+      <Filter>CUDAcpl</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

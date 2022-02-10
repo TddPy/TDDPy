@@ -11,3 +11,4 @@ pytdd/tdd_origin/
 *.ncb
 Debug/
 Release/
+Inner/

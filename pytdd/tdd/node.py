@@ -131,7 +131,7 @@ class Node:
             Return the required node. It is either from the unique table, or a newly created one.
             
             order: represent the order of this node (which tensor index it represent)
-            out_weights: the incoming weights of this node, shape: [succ_num, ..., 2].
+            out_weights: the weights of this node, shape: [succ_num, ..., 2].
             succ_nodes: the successor nodes.
 
             Note: The equality checking inside is conducted with the node.EPS tolerance. So feel free

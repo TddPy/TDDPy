@@ -40,7 +40,7 @@ def normalize(w_node: WeightedNode, iterate: bool) -> WeightedNode:
     if node == None:
         return None, dangle_weights
 
-    #redirect all_zero edges to the terminal node
+    #redirect zero weighted nodes to the terminal node
     int_key = Node.get_int_key(dangle_weights)
     if torch.max(int_key) == 0 and torch.min(int_key) == 0:
         new_dangle_weights = _U_(torch.zeros_like,dangle_weights)

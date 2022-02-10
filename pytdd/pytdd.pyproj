@@ -21,6 +21,9 @@
   <PropertyGroup>
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Inner' ">
+    <OutputPath>bin\Inner\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="compare.py" />
     <Compile Include="pytdd\interface.py">
