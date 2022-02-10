@@ -13,6 +13,11 @@ namespace CUDAcpl {
 	// The CUDA complex tensor.
 	typedef torch::Tensor Tensor;
 
+	CUDAcpl::Tensor from_complex(Complex cpl);
 
 	Complex item(const Tensor& t);
+
+	CUDAcpl::Tensor ones(c10::IntArrayRef size);
+
+	CUDAcpl::Tensor mul_element_wise(const Tensor& t, Complex s);
 }

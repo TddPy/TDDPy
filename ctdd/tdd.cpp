@@ -3,6 +3,17 @@
 using namespace wnode;
 using namespace tdd;
 
+
+void TDD::get_inner_data_shape(int64_t* p_storage) const {
+	for (int i = 0; i < m_dim_data; i++) {
+		p_storage[i] = mp_data_shape[mp_index_order[i]];
+	}
+	p_storage[m_dim_data] = 2;
+}
+
+
+
+
 TDD::~TDD() {
 	free(mp_index_order);
 	free(mp_parallel_shape);
@@ -17,7 +28,7 @@ int TDD::dim_data() const {
 	return m_dim_data;
 }
 
-const int* TDD::data_shape() const {
+const int64_t* TDD::data_shape() const {
 	return mp_data_shape;
 }
 
@@ -36,13 +47,15 @@ TDD* TDD::as_tensor(const CUDAcpl::Tensor& t, int dim_parallel, const int* p_ind
 	auto dim_total = t.dim()-1;
 	auto dim_data = dim_total - dim_parallel;
 	//use one int* to store parallel shape and data shape together.
-	int* p_parallel_shape = (int*)malloc(sizeof(int) * dim_total);
+	int64_t* p_parallel_shape = (int64_t*)malloc(sizeof(int64_t) * (dim_total + 1));
+	//this is the extra inner dimension for CUDAcpl
+	p_parallel_shape[dim_total] = 2;
 	for (int i = 0; i < dim_total; i++) {
 		p_parallel_shape[i] = t.size(i);
 	}
 
 	//prepare data_shape
-	int* p_data_shape = p_parallel_shape + dim_parallel;
+	int64_t* p_data_shape = p_parallel_shape + dim_parallel;
 	//prepare index_order
 	int* p_index_order_pd = (int*)malloc(sizeof(int) * dim_data);
 	if (p_index_order == nullptr) {
@@ -68,4 +81,12 @@ TDD* TDD::as_tensor(const CUDAcpl::Tensor& t, int dim_parallel, const int* p_ind
 	p_res->mp_data_shape = p_data_shape;
 
 	return p_res;
+}
+
+CUDAcpl::Tensor TDD::CUDAcpl() const {
+	int64_t* p_inner_shape = (int64_t*)malloc(sizeof(int64_t) * (m_dim_data + 1));
+	get_inner_data_shape(p_inner_shape);
+	CUDAcpl::Tensor res = wnode::to_CUDAcpl(m_wnode, m_dim_data, p_inner_shape);
+	free(p_inner_shape);
+	return res;
 }

@@ -19,7 +19,9 @@ namespace tdd {
 		//The inner data of this TDD.
 		wnode::weightednode m_wnode;
 
-		//The total number of parallel indices in this TDD.
+		/* The total number of parallel indices in this TDD.
+		* Note that the actual array is of dim_total+1 length, because there will be the extra inner dimension for CUDAcpl Wat the end.
+		*/
 		int m_dim_parallel;
 
 		//The total number of data indices in this TDD.
@@ -29,14 +31,19 @@ namespace tdd {
 		int* mp_index_order;
 
 		//The shape of each parallel index.
-		int* mp_parallel_shape;
+		int64_t* mp_parallel_shape;
 
 		//The shape of each data index.
-		int* mp_data_shape;
+		int64_t* mp_data_shape;
 
 
 	private:
 
+		/// <summary>
+		/// get the corresponding shape for each inner index
+		/// </summary>
+		/// <param name="">[borrowed] Notice that the extra dimension of 2 at the end is needed.</param>
+		void get_inner_data_shape(int64_t* p_storage) const;
 
 	public:
 		~TDD();
@@ -48,7 +55,7 @@ namespace tdd {
 		int dim_data() const;
 
 		// get the shape of each data index)
-		const int* data_shape() const;
+		const int64_t* data_shape() const;
 
 		// get the data index order
 		const int* index_order() const;
@@ -62,7 +69,7 @@ namespace tdd {
 		/// </summary>
 		/// <param name="t">The given direct representation of a tensor.</param>
 		/// <param name="dim_parallel">The number of parallel indices at front.</param>
-		/// <param name="index_order">[borrowed] The index order used to stor this representation.
+		/// <param name="p_index_order">[borrowed] The index order used to stor this representation.
 		/// Note that the item count + dim_parallel should be the dim of t strictly.
 		/// If nullptr is put in, the trival order will be taken.</param>
 		/// <returns>The tdd created.</returns>
@@ -74,5 +81,11 @@ namespace tdd {
 		/// <param name="other"></param>
 		/// <returns></returns>
 		static TDD *as_tensor(const TDD& other);
+
+		/// <summary>
+		/// Transform this tensor to a CUDA complex and return.
+		/// </summary>
+		/// <returns></returns>
+		CUDAcpl::Tensor CUDAcpl() const;
 	};
 }
