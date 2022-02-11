@@ -31,11 +31,40 @@ void TDD::__print() const {
 	cout << "size: " << get_size() << endl;
 }
 
+TDD::TDD(weightednode w_node, int dim_parallel, int dim_data, int* p_index_order,
+	int64_t* p_parallel_shape, int64_t* p_data_shape) {
+	m_wnode = w_node;
+	m_dim_parallel = dim_parallel;
+	m_dim_data = dim_data;
+	mp_index_order = p_index_order;
+	mp_parallel_shape = p_parallel_shape;
+	mp_data_shape = p_data_shape;
+}
+
+
+TDD::TDD(const TDD& other) {
+	m_wnode = other.m_wnode;
+	m_dim_parallel = other.m_dim_parallel;
+	m_dim_data = other.m_dim_data;
+	mp_index_order = array_clone(other.mp_index_order, m_dim_data);
+	mp_parallel_shape = array_clone(other.mp_parallel_shape, m_dim_parallel + m_dim_data + 1);
+	mp_data_shape = mp_parallel_shape + m_dim_parallel;
+}
 
 TDD::~TDD() {
+	//mp_data_shape should not be freed because it points into mp_parallel_shape.
+#ifdef DECONSTRUCTOR_DEBUG
+	if (mp_index_order == nullptr || mp_parallel_shape == nullptr) {
+		std::cout << "TDD repeat deconstruction" << std::endl;
+	}
+	free(mp_index_order);
+	mp_index_order = nullptr;
+	free(mp_parallel_shape);
+	mp_parallel_shape = nullptr;
+#elif
 	free(mp_index_order);
 	free(mp_parallel_shape);
-	//mp_data_shape should not be freed because it points into mp_parallel_shape.
+#endif
 }
 
 weightednode TDD::wnode() const {
@@ -59,6 +88,30 @@ int TDD::get_size() const {
 		return 0;
 	}
 	return m_wnode.p_node->get_size();
+}
+
+TDD& TDD::operator=(const TDD& other) {
+	if (mp_data_shape != nullptr) {
+		free(mp_data_shape);
+	}
+	if (mp_parallel_shape != nullptr) {
+		free(mp_parallel_shape);
+	}
+	if (mp_index_order != nullptr) {
+		free(mp_index_order);
+	}
+	m_wnode = other.m_wnode;
+	m_dim_data = other.m_dim_data;
+	m_dim_parallel = other.m_dim_parallel;
+	mp_data_shape = array_clone(other.mp_data_shape, m_dim_data);
+	mp_index_order = array_clone(other.mp_index_order, m_dim_data);
+	mp_parallel_shape = array_clone(other.mp_parallel_shape, m_dim_parallel);
+	return *this;
+}
+
+TDD TDD::clone() const {
+	TDD* p_res = new TDD(*this);
+	return *p_res;
 }
 
 TDD TDD::as_tensor(const CUDAcpl::Tensor& t, int dim_parallel, const int* p_index_order) {
@@ -89,16 +142,13 @@ TDD TDD::as_tensor(const CUDAcpl::Tensor& t, int dim_parallel, const int* p_inde
 
 	weightednode w_node = as_tensor_iterate(t, dim_parallel, p_parallel_shape, dim_data, p_data_shape, p_index_order_pd, 0);
 
-	TDD* p_res = new TDD();
 	//note the ownership transfer here
-	p_res->m_wnode = w_node;
-	p_res->m_dim_parallel = dim_parallel;
-	p_res->m_dim_data = dim_data;
-	p_res->mp_index_order = p_index_order_pd;
-	p_res->mp_parallel_shape = p_parallel_shape;
-	p_res->mp_data_shape = p_data_shape;
-
+	TDD* p_res = new TDD(w_node, dim_parallel, dim_data, p_index_order_pd, p_parallel_shape, p_data_shape);
 	return *p_res;
+}
+
+TDD TDD::as_tensor(const TDD& other) {
+	return other.clone();
 }
 
 TDD TDD::direct_product(const TDD& a, const TDD& b, bool parallel_tensor) {
@@ -109,11 +159,10 @@ TDD TDD::direct_product(const TDD& a, const TDD& b, bool parallel_tensor) {
 		// check the equality of parallel shapes
 		//...
 	}
-	TDD* p_res = new TDD();
-	p_res->m_wnode = wnode::direct_product(a.m_wnode, a.m_dim_data, b.m_wnode, parallel_tensor);
+	auto w_node = wnode::direct_product(a.m_wnode, a.m_dim_data, b.m_wnode, parallel_tensor);
 	//It can be different for parallel situations
-	p_res->m_dim_parallel = a.m_dim_parallel;
-	p_res->m_dim_data = a.m_dim_data + b.m_dim_data;
+	auto dim_parallel = a.m_dim_parallel;
+	auto dim_data = a.m_dim_data + b.m_dim_data;
 	auto temp_index_order = (int*)malloc(sizeof(int) * (a.m_dim_data + b.m_dim_data));
 	for (int i = 0; i < a.m_dim_data; i++) {
 		temp_index_order[i] = a.mp_index_order[i];
@@ -121,11 +170,30 @@ TDD TDD::direct_product(const TDD& a, const TDD& b, bool parallel_tensor) {
 	for (int i = 0; i < b.m_dim_data; i++) {
 		temp_index_order[i + a.m_dim_data] = b.mp_index_order[i] + a.m_dim_data;
 	}
-	p_res->mp_index_order = temp_index_order;
-	p_res->mp_parallel_shape = array_clone<int64_t>(a.mp_parallel_shape, a.m_dim_parallel);
+	auto p_parallel_shape = (int64_t*)malloc(sizeof(int64_t) * (dim_parallel + dim_data + 1));
+	p_parallel_shape[dim_parallel + dim_data] = 2;
+	for (int i = 0; i < dim_parallel; i++) {
+		p_parallel_shape[i] = a.mp_parallel_shape[i];
+	}
+	for (int i = 0; i < a.m_dim_data; i++) {
+		p_parallel_shape[i+dim_parallel] = a.mp_data_shape[i];
+	}	
+	for (int i = 0; i < b.m_dim_data; i++) {
+		p_parallel_shape[i + dim_parallel+a.m_dim_data] = b.mp_data_shape[i];
+	}
 	// +1 to put the extra dimension at the end.
-	p_res->mp_data_shape = array_concat<int64_t>(a.mp_data_shape, a.m_dim_data, b.mp_data_shape, b.m_dim_data + 1);
+	auto p_data_shape = p_parallel_shape + dim_parallel;
+	TDD* p_res = new TDD(w_node, dim_parallel, dim_data, temp_index_order, p_parallel_shape, p_data_shape);
 	return *p_res;
+}
+
+TDD TDD::sum(const TDD& a, const TDD& b) {
+	// check whether they are in the same shape
+	//...
+	auto res_wnode = wnode::sum(a.m_wnode, b.m_wnode);
+	TDD&& p_res = a.clone();
+	p_res.m_wnode = res_wnode;
+	return p_res;
 }
 
 

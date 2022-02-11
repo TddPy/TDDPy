@@ -4,12 +4,65 @@
 using namespace dict;
 using namespace node;
 
+unique_table_key::unique_table_key(node_int _order, node_int _range, const wcomplex* _p_weights, const node::Node** _p_nodes) {
+	order = _order;
+	range = _range;
+	p_weights_real = (int*)malloc(sizeof(int) * range);
+	p_weights_imag = (int*)malloc(sizeof(int) * range);
+	for (int i = 0; i < range; i++) {
+		p_weights_real[i] = Node::get_int_key(_p_weights[i].real());
+		p_weights_imag[i] = Node::get_int_key(_p_weights[i].imag());
+	}
+	p_nodes = _p_nodes;
+}
+unique_table_key&  unique_table_key::operator =(const unique_table_key& other) {
+	if (range != other.range) {
+		range = other.range;
+		free(p_weights_real);
+		free(p_weights_imag);
+		p_weights_real = (int*)malloc(sizeof(int) * range);
+		p_weights_imag = (int*)malloc(sizeof(int) * range);
+	}
+	order = other.order;
+	p_nodes = other.p_nodes;
+	for (int i = 0; i < range; i++) {
+		p_weights_real[i] = other.p_weights_real[i];
+		p_weights_imag[i] = other.p_weights_imag[i];
+	}
+	return *this;
+}
+
+unique_table_key::unique_table_key(const unique_table_key& other) {
+	order = other.order;
+	range = other.range;
+	p_weights_real = array_clone(other.p_weights_real, range);
+	p_weights_imag = array_clone(other.p_weights_imag, range);
+	p_nodes = other.p_nodes;
+}
+
+unique_table_key::~unique_table_key() {
+#ifdef DECONSTRUCTOR_DEBUG
+	if (p_weights_real == nullptr || p_weights_imag == nullptr) {
+		std::cout << "unique_table_key repeat deconstruction" << std::endl;
+	}
+	free(p_weights_real);
+	p_weights_real = nullptr;
+	free(p_weights_imag);
+	p_weights_imag = nullptr;
+#elif
+	free(p_weights_real);
+	free(p_weights_imag);
+#endif
+}
+
 bool dict::operator==(const unique_table_key& a, const unique_table_key& b) {
 	if (a.order == b.order &&
 		a.range == b.range) {
 		double eps = Node::EPS();
 		for (int i = 0; i < a.range; i++) {
-			if (weights::is_equal(a.p_weights[i], b.p_weights[i], eps) && a.p_nodes[i] == b.p_nodes[i]) {
+			if (a.p_weights_real[i] == b.p_weights_real[i] && 
+				a.p_weights_imag[i] == b.p_weights_imag[i] &&
+				a.p_nodes[i] == b.p_nodes[i]) {
 				continue;
 			}
 			else {
@@ -27,8 +80,8 @@ std::size_t dict::hash_value(const unique_table_key& key_struct) {
 	std::size_t seed = 0;
 	boost::hash_combine(seed, key_struct.order);
 	for (int i = 0; i < key_struct.range; i++) {
-		boost::hash_combine(seed, Node::get_int_key(key_struct.p_weights[i].real()));
-		boost::hash_combine(seed, Node::get_int_key(key_struct.p_weights[i].imag()));
+		boost::hash_combine(seed, key_struct.p_weights_real[i]);
+		boost::hash_combine(seed, key_struct.p_weights_imag[i]);
 	}
 	for (int i = 0; i < key_struct.range; i++) {
 		boost::hash_combine(seed, key_struct.p_nodes[i]);
@@ -61,13 +114,13 @@ void Node::node_search(std::vector<node_int>& id_ls) const {
 	}
 }
 
-const Node* Node::duplicate_iterate(const Node* p_node, int order_shift, dict::duplicate_cache& duplicate_cache) {
+const Node* Node::duplicate_iterate(const Node* p_node, int order_shift, dict::duplicate_table& duplicate_cache) {
 	if (p_node == TERMINAL_NODE) {
 		return TERMINAL_NODE;
 	}
 
 	auto order = p_node->m_order + order_shift;
-	auto key = p_node->m_id;
+	auto key = Node::get_id_all(p_node);
 	auto p_find_res = duplicate_cache.find(key);
 	if (p_find_res != duplicate_cache.end()) {
 		return p_find_res->second;
@@ -125,8 +178,18 @@ Node::Node(int id, node_int order, node_int range, wcomplex* p_weights, const No
 }
 
 Node::~Node() {
+#ifdef DECONSTRUCTOR_DEBUG
+	if (mp_weights == nullptr || mp_successors == nullptr) {
+		std::cout << "Node repeat deconstruction" << std::endl;
+	}
+	free(mp_weights);
+	mp_weights = nullptr;
+	free(mp_successors);
+	mp_successors = nullptr;
+#elif
 	free(mp_weights);
 	free(mp_successors);
+#endif
 }
 
 int Node::get_id() const {
@@ -156,16 +219,11 @@ size_t Node::get_size() const {
 }
 
 dict::unique_table_key Node::get_key_struct() const {
-	dict::unique_table_key key_struct = {
-		m_order,
-		m_range,
-		mp_weights,
-		mp_successors
-	};
-	return key_struct;
+	auto* p_key_struct = new dict::unique_table_key(m_order, m_range, mp_weights, mp_successors);
+	return *p_key_struct;
 }
 
-std::size_t Node::get_hash(Node* p_node) {
+std::size_t Node::get_hash(const Node* p_node) {
 	if (p_node == TERMINAL_NODE) {
 		return 0;
 	}
@@ -173,13 +231,17 @@ std::size_t Node::get_hash(Node* p_node) {
 	return dict::hash_value(p_node->get_key_struct());
 }
 
+int Node::get_id_all(const Node* p_node) {
+	if (p_node == TERMINAL_NODE) {
+		return TERMINAL_NODE_ID;
+	}
+	else {
+		return p_node->m_id;
+	}
+}
+
 const Node* Node::get_unique_node(node_int order, node_int range, wcomplex* p_weights, const Node** p_successors) {
-	dict::unique_table_key key_struct = {
-		order,
-		range,
-		p_weights,
-		p_successors
-	};
+	auto key_struct = dict::unique_table_key(order, range, p_weights, p_successors);
 	auto p_res = m_unique_table.find(key_struct);
 	if (p_res != m_unique_table.end()) {
 		free(p_weights);
@@ -194,7 +256,7 @@ const Node* Node::get_unique_node(node_int order, node_int range, wcomplex* p_we
 }
 
 const Node* Node::duplicate(const Node* p_node, int order_shift) {
-	auto duplicate_cache = dict::duplicate_cache();
+	auto duplicate_cache = dict::duplicate_table();
 	return Node::duplicate_iterate(p_node, order_shift, duplicate_cache);
 }
 

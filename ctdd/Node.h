@@ -10,20 +10,36 @@ namespace node {
 
 namespace dict {
 
+	// the type for unique table
 	struct unique_table_key {
 		node_int order;
 		node_int range;
-		wcomplex* p_weights;
+		int* p_weights_real;
+		int* p_weights_imag;
+		//note that p_nodes will always be borrowed.
 		const node::Node** p_nodes;
+
+		/// <summary>
+		/// Construction of a unique_table key
+		/// </summary>
+		/// <param name="_order"></param>
+		/// <param name="_range"></param>
+		/// <param name="_p_weights">[borrowed]</param>
+		/// <param name="_p_nodes">[borrowed</param>
+		unique_table_key(node_int _order, node_int _range,
+			const wcomplex* _p_weights, const node::Node** _p_nodes);
+		unique_table_key(const unique_table_key& other);
+		unique_table_key& operator =(const unique_table_key& other);
+		~unique_table_key();
 	};
 
 	bool operator == (const unique_table_key & a, const unique_table_key & b);
 	std::size_t hash_value(const unique_table_key& key_struct);
 
-
 	typedef boost::unordered_map<unique_table_key, const node::Node*> unique_table;
 
-	typedef boost::unordered_map<int, const node::Node*> duplicate_cache;
+	// the type for duplicate cache
+	typedef boost::unordered_map<int, const node::Node*> duplicate_table;
 }
 
 namespace node {
@@ -66,7 +82,7 @@ namespace node {
 		/// <param name="p_id"> the memory to store all the ids (it is a borrowed pointer) </param>
 		void node_search(std::vector<node_int> & id_ls) const;
 
-		static const Node* duplicate_iterate(const Node* p_node, int order_shift, dict::duplicate_cache& duplicate_cache);
+		static const Node* duplicate_iterate(const Node* p_node, int order_shift, dict::duplicate_table& duplicate_cache);
 
 		/// <summary>
 		/// Direct append without any further operation. Only used within other methods (like Node::append).
@@ -92,7 +108,7 @@ namespace node {
 		/// <param name="id"></param>
 		/// <param name="order"></param>
 		/// <param name="range"></param>
-		/// <param name="p_out_weights">[ownership transfer]</param>
+		/// <param name="p_weights">[ownership transfer]</param>
 		/// <param name="p_successors">[ownership transfer]</param>
 		Node(int id, node_int order, node_int range, wcomplex* p_weights, const Node** p_successors);
 
@@ -121,7 +137,14 @@ namespace node {
 		/// </summary>
 		/// <param name="p_node"></param>
 		/// <returns></returns>
-		static std::size_t get_hash(Node* p_node);
+		static std::size_t get_hash(const Node* p_node);
+
+		/// <summary>
+		/// Get ID for all nodes (including terminal nodes)
+		/// </summary>
+		/// <param name="p_node"></param>
+		/// <returns></returns>
+		static int get_id_all(const Node* p_node);
 
 		/// <summary>
 		/// Return the required node. It is either from the unique table, or a newly created one.
@@ -160,4 +183,5 @@ namespace node {
 
 	// The pointer of the terminal node (nullptr).
 	Node* const TERMINAL_NODE = nullptr;
+	const int TERMINAL_NODE_ID = -1;
 }

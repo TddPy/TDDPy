@@ -53,6 +53,20 @@ namespace tdd {
 		/// </summary>
 		void __print() const;
 
+		/// <summary>
+		/// Note: All pointer ownership transfered.
+		/// </summary>
+		/// <param name="w_node"></param>
+		/// <param name="dim_parallel"></param>
+		/// <param name="dim_data"></param>
+		/// <param name="p_index_order"></param>
+		/// <param name="p_parallel_shape"></param>
+		/// <param name="p_data_shape"></param>
+		TDD(wnode::weightednode w_node, int dim_parallel, int dim_data, int* p_index_order, 
+			int64_t* p_parallel_shape, int64_t* p_data_shape);
+
+		TDD(const TDD& other);
+
 		~TDD();
 
 		// get the coresponding weighted node
@@ -67,9 +81,12 @@ namespace tdd {
 		// get the data index order
 		const int* index_order() const;
 
-
 		// get the size of this tdd (defined as the number of different nodes)
 		int get_size() const;
+
+		TDD& operator = (const TDD& other);
+
+		TDD clone() const;
 
 		/// <summary>
 		/// Construct a tdd tensor with the given direct representation.
@@ -103,6 +120,14 @@ namespace tdd {
 		/// </param>
 		/// <returns></returns>
 		static TDD direct_product(const TDD& a, const TDD& b, bool parallel_tensor = false);
+
+		/// <summary>
+		/// Sum up tdd a and b, and return the reduced result.
+		/// </summary>
+		/// <param name="a"></param>
+		/// <param name="b"></param>
+		/// <returns></returns>
+		static TDD sum(const TDD& a, const TDD& b);
 
 		/// <summary>
 		/// Transform this tensor to a CUDA complex and return.

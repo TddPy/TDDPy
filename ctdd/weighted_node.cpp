@@ -6,6 +6,49 @@ using namespace CUDAcpl;
 using namespace node;
 using namespace wnode;
 
+
+dict::sum_key::sum_key(int id_a, wcomplex weight_a, int id_b, wcomplex weight_b) {
+	if (id_a < id_b) {
+		id_1 = id_a;
+		id_2 = id_b;
+		nweight1_real = Node::get_int_key(weight_a.real());
+		nweight1_imag = Node::get_int_key(weight_a.imag());
+		nweight2_real = Node::get_int_key(weight_b.real());
+		nweight2_imag = Node::get_int_key(weight_b.imag());
+	}
+	else {
+		id_1 = id_b;
+		id_2 = id_a;
+		nweight1_real = Node::get_int_key(weight_b.real());
+		nweight1_imag = Node::get_int_key(weight_b.imag());
+		nweight2_real = Node::get_int_key(weight_a.real());
+		nweight2_imag = Node::get_int_key(weight_a.imag());
+	}
+}
+
+
+bool dict::operator == (const sum_key& a, const sum_key& b) {
+	return a.id_1 == b.id_1 && a.id_2 == b.id_2 &&
+		a.nweight1_real == b.nweight1_real &&
+		a.nweight1_imag == b.nweight1_imag &&
+		a.nweight2_real == b.nweight2_real &&
+		a.nweight2_imag == b.nweight2_imag;
+}
+
+std::size_t dict::hash_value(const sum_key& key_struct) {
+	std::size_t seed = 0;
+	boost::hash_combine(seed, key_struct.id_1);
+	boost::hash_combine(seed, key_struct.nweight1_real);
+	boost::hash_combine(seed, key_struct.nweight1_imag);
+	boost::hash_combine(seed, key_struct.id_2);
+	boost::hash_combine(seed, key_struct.nweight2_real);
+	boost::hash_combine(seed, key_struct.nweight2_imag);
+	return seed;
+}
+
+
+
+
 inline bool wnode::is_equal(weightednode a, weightednode b) {
 	return a.p_node == b.p_node && weights::is_equal(a.weight, b.weight, Node::EPS());
 }
@@ -145,7 +188,7 @@ CUDAcpl::Tensor wnode::to_CUDAcpl_iterate(weightednode w_node, int dim_data, int
 		}
 		else {
 			// first look up in the dictionary
-			auto key = succ->get_id();
+			auto key = Node::get_id_all(succ);
 			auto p_res = tensor_cache.find(key);
 			if (p_res != tensor_cache.end()) {
 				uniform_tensor = p_res->second;
@@ -233,3 +276,134 @@ weightednode wnode::direct_product(weightednode a, int a_depth, weightednode b, 
 	weightednode res = weightednode{ weight, p_res_node };
 	return res;
 }
+
+sum_nweights wnode::sum_weights_normalize(wcomplex weight1, wcomplex weight2) {
+	sum_nweights res = sum_nweights{ wcomplex(0.,0.), wcomplex(0.,0.), wcomplex(1.,0.) };
+	//chose the larger norm
+	wcomplex renorm_coef = (norm(weight1) > norm(weight2)) ? weight1 : weight2;
+	if (norm(renorm_coef) > Node::EPS()) {
+		res.nweight1 = weight1 / renorm_coef;
+		res.nweight2 = weight2 / renorm_coef;
+		res.renorm_coef = renorm_coef;
+	}
+	return res;
+}
+
+
+weightednode wnode::sum_iterate(weightednode w_node1, weightednode w_node2, wcomplex renorm_coef, dict::sum_table sum_cache) {
+	if (w_node1.p_node == TERMINAL_NODE && w_node2.p_node == TERMINAL_NODE) {
+		weightednode res = weightednode{ (w_node1.weight + w_node2.weight) * renorm_coef, TERMINAL_NODE };
+		return res;
+	}
+	
+	// produce the unique key and look up in the dictionary
+	auto key = dict::sum_key(Node::get_id_all(w_node1.p_node), w_node1.weight,
+		Node::get_id_all(w_node2.p_node), w_node2.weight);
+
+	auto p_find_res = sum_cache.find(key);
+	if (p_find_res != sum_cache.end()) {
+		weightednode res = p_find_res->second;
+		res.weight = res.weight * renorm_coef;
+		return res;
+	}
+	else {
+		node_int range = 0;
+		if (w_node1.p_node != TERMINAL_NODE) {
+			range = w_node1.p_node->get_range();
+		}
+		else {
+			range = w_node2.p_node->get_range();
+		}
+		wcomplex* p_weights = (wcomplex*)malloc(sizeof(wcomplex) * range);
+		const Node** p_nodes = (const Node**)malloc(sizeof(const Node*) * range);
+
+		// A and B are used to refer to the nodes of smaller and larger orders.
+		weightednode A, B;
+
+		if (w_node1.p_node != TERMINAL_NODE && w_node2.p_node != TERMINAL_NODE &&
+			w_node1.p_node->get_order() == w_node2.p_node->get_order()) {
+			auto successors1 = w_node1.p_node->get_successors();
+			auto successors2 = w_node2.p_node->get_successors();
+			for (int i = 0; i < range; i++) {
+				auto next_weight1 = w_node1.weight * w_node1.p_node->get_weights()[i];
+				auto next_weight2 = w_node2.weight * w_node2.p_node->get_weights()[i];
+				//normalize as a whole
+				auto renorm_res = sum_weights_normalize(next_weight1, next_weight2);
+				weightednode next_wnode1 = weightednode{ renorm_res.nweight1, successors1[i] };
+				weightednode next_wnode2 = weightednode{ renorm_res.nweight2, successors2[i] };
+				weightednode res = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef, sum_cache);
+				p_nodes[i] = res.p_node;
+				p_weights[i] = res.weight;
+			}
+			A = w_node1;
+		}
+		else {
+			/*  
+				There are three cases following, corresponding to the same procedure:
+                1. node1 == None, node2 != None
+                2. node2 == None, node1 != None
+                3. node1 != None, node2 != None, but node1.order != noder2.order
+                We first analysis the situation to reuse the codes.
+                A will be the lower ordered weighted node.
+			*/
+			if (w_node1.p_node == TERMINAL_NODE) {
+				A = w_node2;
+				B = w_node1;
+			}
+			else if (w_node2.p_node == TERMINAL_NODE) {
+				A = w_node1;
+				B = w_node2;
+			}
+			else if (w_node1.p_node->get_order() < w_node2.p_node->get_order()) {
+				A = w_node1;
+				B = w_node2;
+			}
+			else {
+				A = w_node2;
+				B = w_node1;
+			}
+			auto weightsA = A.p_node->get_weights();
+			auto successorsA = A.p_node->get_successors();
+			for (int i = 0; i < range; i++) {
+				auto next_weight_A = A.weight * weightsA[i];
+				//normalize as a whole
+				auto renorm_res = sum_weights_normalize(next_weight_A, B.weight);
+				weightednode next_wnodeA = weightednode{ renorm_res.nweight1, successorsA[i] };
+				weightednode next_wnodeB = weightednode{ renorm_res.nweight2, B.p_node };
+				weightednode res = sum_iterate(next_wnodeA, next_wnodeB, renorm_res.renorm_coef, sum_cache);
+				p_weights[i] = res.weight;
+				p_nodes[i] = res.p_node;
+			}
+		}
+		auto temp_new_node = Node(0, A.p_node->get_order(), range, p_weights, p_nodes);
+		auto res = normalize(weightednode{ wcomplex(1.,0.), &temp_new_node });
+
+		//cache the result
+		sum_cache.insert(std::make_pair(key, res));
+		
+		//finally multiply the renorm_coef
+		res.weight = res.weight * renorm_coef;
+		return res;
+	}
+
+}
+
+weightednode wnode::sum(weightednode w_node1, weightednode w_node2, dict::sum_table* p_sum_cache) {
+	dict::sum_table* p_cache;
+	if (p_sum_cache == nullptr) {
+		p_cache = new dict::sum_table();
+	}
+	else {
+		p_cache = p_sum_cache;
+	}
+	// normalize as a whole
+	auto renorm_res = sum_weights_normalize(w_node1.weight, w_node2.weight);
+	weightednode next_wnode1 = weightednode{ renorm_res.nweight1, w_node1.p_node };
+	weightednode next_wnode2 = weightednode{ renorm_res.nweight2, w_node2.p_node };
+	auto res = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef, *p_cache);
+	if (p_sum_cache == nullptr) {
+		delete p_cache;
+	}
+	return res;
+}
+

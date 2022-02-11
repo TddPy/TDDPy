@@ -3,10 +3,38 @@
 #include "Node.h"
 
 
+namespace wnode {
+	struct weightednode;
+}
+
 namespace dict {
 
-	//use id as the key
+	// the type for CUDAcpl cache
 	typedef boost::unordered_map<int, CUDAcpl::Tensor> CUDAcpl_table;
+
+	// the type for summation cache
+	struct sum_key {
+		int id_1;
+		int nweight1_real;
+		int nweight1_imag;
+		int id_2;
+		int nweight2_real;
+		int nweight2_imag;
+
+		/// <summary>
+		/// Construct the key. Note that id_1 will be set as the smaller one.
+		/// </summary>
+		/// <param name="id_a"></param>
+		/// <param name="weight_a"></param>
+		/// <param name="id_b"></param>
+		/// <param name="weight_b"></param>
+		sum_key(int id_a, wcomplex weight_a, int id_b, wcomplex weight_b);
+	};
+	bool operator == (const sum_key& a, const sum_key& b);
+	std::size_t hash_value(const sum_key& key_struct);
+
+	typedef boost::unordered_map<sum_key, wnode::weightednode> sum_table;
+
 }
 
 namespace wnode {
@@ -73,4 +101,43 @@ namespace wnode {
 
 
 	weightednode direct_product(weightednode a, int a_depth, weightednode b, bool parallel_tensor = false);
+
+	struct sum_nweights {
+		wcomplex nweight1;
+		wcomplex nweight2;
+		wcomplex renorm_coef;
+	};
+	/// <summary>
+	/// Process the weights, and normalize them as a whole. Return (new_weights1, new_weights2, renorm_coef).
+	///	The strategy to produce the weights(for every individual element) :
+	///		maximum_norm: = max(weight1.norm, weight2.norm)
+	///		1. if maximum_norm > EPS: renormalize max_weight to 1.
+	///		3. else key is 0000..., 0000...
+	///	Renormalization coefficient for zero items are left to be 1.
+	/// </summary>
+	/// <param name="weight1"></param>
+	/// <param name="weight2"></param>
+	/// <returns></returns>
+	sum_nweights sum_weights_normalize(wcomplex weight1, wcomplex weight2);
+
+	/// <summary>
+	/// Sum up the given weighted nodes, multiply the renorm_coef, and return the reduced weighted node result.
+	/// Note that weights1 and weights2 as a whole should have been normalized,
+	/// and renorm_coef is the coefficient.
+	/// </summary>
+	/// <param name="w_node1"></param>
+	/// <param name="w_node2"></param>
+	/// <param name="renorm_coef"></param>
+	/// <param name="sum_cache"></param>
+	/// <returns></returns>
+	weightednode sum_iterate(weightednode w_node1, weightednode w_node2, wcomplex renorm_coef, dict::sum_table sum_cache);
+
+	/// <summary>
+	/// sum two weighted nodes.
+	/// </summary>
+	/// <param name="w_node1"></param>
+	/// <param name="w_node2"></param>
+	/// <param name="p_sum_cache">[borrowed] used to cache the results. If nullptr, then a local cache will be used.</param>
+	/// <returns></returns>
+	weightednode sum(weightednode w_node1, weightednode w_node2, dict::sum_table* p_sum_cache = nullptr);
 }
