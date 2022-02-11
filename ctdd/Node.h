@@ -21,9 +21,9 @@ namespace dict {
 	std::size_t hash_value(const unique_table_key& key_struct);
 
 
+	typedef boost::unordered_map<unique_table_key, const node::Node*> unique_table;
 
-
-	typedef boost::unordered_map<unique_table_key, node::Node*> unique_table;
+	typedef boost::unordered_map<int, const node::Node*> duplicate_cache;
 }
 
 namespace node {
@@ -66,7 +66,15 @@ namespace node {
 		/// <param name="p_id"> the memory to store all the ids (it is a borrowed pointer) </param>
 		void node_search(std::vector<node_int> & id_ls) const;
 
+		static const Node* duplicate_iterate(const Node* p_node, int order_shift, dict::duplicate_cache& duplicate_cache);
 
+		/// <summary>
+		/// Direct append without any further operation. Only used within other methods (like Node::append).
+		/// </summary>
+		/// <param name="p_a"></param>
+		/// <param name="p_b"></param>
+		/// <returns></returns>
+		static const Node* append_iterate(const Node* p_a, const Node* p_b);
 	public:
 		// Reset the dictionary caches.
 		static void reset();
@@ -90,6 +98,7 @@ namespace node {
 
 		~Node();
 
+		int get_id() const;
 		node_int get_order() const;
 		node_int get_range() const;
 		const wcomplex* get_weights() const;
@@ -121,10 +130,32 @@ namespace node {
 		/// </summary>
 		/// <param name="order">represent the order of this node(which tensor index it represent)</param>
 		/// <param name="range">the count of possible value</param>
-		/// <param name="weights">[onwership transfer] the weights of this node</param>
-		/// <param name="successors">[onwership transfer] the successor nodes</param>
+		/// <param name="p_weights">[onwership transfer] the weights of this node</param>
+		/// <param name="p_successors">[onwership transfer] the successor nodes</param>
 		/// <returns></returns>
-		static Node* get_unique_node(node_int order, node_int range, wcomplex* p_weights, const Node** p_successors);
+		static const Node* get_unique_node(node_int order, node_int range, wcomplex* p_weights, const Node** p_successors);
+
+		/// <summary>
+		/// Duplicate from this node, with the initial order of (node.order + order_shift),
+		///	and broadcast it to contain the extra(parallel index) shape aheadand behind.
+		/// </summary>
+		/// <param name="p_node"></param>
+		/// <param name="order_shift"></param>
+		/// <returns></returns>
+		static const Node* duplicate(const Node* p_node, int order_shift);
+
+		/// <summary>
+		/// Replace the terminal node in this graph with 'node', and return the result.
+		/// depth: 
+		/// parallel_tensor : whether to tensor on the parallel indices
+		/// Note : it should be considered merely as an operation on node structures, with no meaning in the tensor regime.
+		/// </summary>
+		/// <param name="p_a"></param>
+		/// <param name="a_depth">the depth from 'node a' on, i.e.the number of dims corresponding to this node.</param>
+		/// <param name="p_b"></param>
+		/// <param name="parallel_tensor"></param>
+		/// <returns></returns>
+		static const Node* append(const Node* p_a, int a_depth, const Node* p_b, bool parallel_tensor = false);
 	};
 
 	// The pointer of the terminal node (nullptr).

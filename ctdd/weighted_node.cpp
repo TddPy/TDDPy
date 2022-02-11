@@ -39,7 +39,7 @@ weightednode wnode::as_tensor_iterate(const CUDAcpl::Tensor& t,
 
 	// stack the weighted subnodes
 	wcomplex* p_new_weights = (wcomplex*)malloc(sizeof(wcomplex) * the_successors.size());
-	const Node** p_new_successors = (const Node**)malloc(sizeof(Node*) * the_successors.size());
+	const Node** p_new_successors = (const Node**)malloc(sizeof(const Node*) * the_successors.size());
 	for (int i = 0; i < the_successors.size(); i++) {
 		p_new_weights[i] = the_successors[i].weight;
 		p_new_successors[i] = the_successors[i].p_node;
@@ -108,17 +108,17 @@ weightednode wnode::normalize(weightednode w_node) {
 	}
 	wcomplex weig_max = weights[i_max];
 	wcomplex* new_weights = (wcomplex*)malloc(sizeof(wcomplex) * range);
-	const Node** new_successors = (const Node**)malloc(sizeof(Node*) * range);
+	const Node** new_successors = (const Node**)malloc(sizeof(const Node*) * range);
 	for (int i = 0; i < range; i++) {
 		new_weights[i] = weights[i] / weig_max;
 		new_successors[i] = successors[i];
 	}
-	Node* new_node = Node::get_unique_node(w_node.p_node->get_order(), range, new_weights, new_successors);
+	const Node* new_node = Node::get_unique_node(w_node.p_node->get_order(), range, new_weights, new_successors);
 	weightednode res = weightednode{ weig_max * w_node.weight, new_node };
 	return res;
 }
 
-CUDAcpl::Tensor wnode::to_CUDAcpl_iterate(weightednode w_node, int dim_data, int64_t* p_data_shape, dict::CUDAcpl_table& tensor_dict) {
+CUDAcpl::Tensor wnode::to_CUDAcpl_iterate(weightednode w_node, int dim_data, int64_t* p_data_shape, dict::CUDAcpl_table& tensor_cache) {
 	// w_node.p_node is guaranteed not to be the TERMINAL_NODE
 
 	node_int current_order = w_node.p_node->get_order();
@@ -145,16 +145,16 @@ CUDAcpl::Tensor wnode::to_CUDAcpl_iterate(weightednode w_node, int dim_data, int
 		}
 		else {
 			// first look up in the dictionary
-			auto key = succ->get_key_struct();
-			auto p_res = tensor_dict.find(key);
-			if (p_res != tensor_dict.end()) {
+			auto key = succ->get_id();
+			auto p_res = tensor_cache.find(key);
+			if (p_res != tensor_cache.end()) {
 				uniform_tensor = p_res->second;
 			}
 			else {
 				auto next_wnode = weightednode{ wcomplex(1.,0.), succ};
-				uniform_tensor = to_CUDAcpl_iterate(next_wnode, dim_data, p_data_shape, tensor_dict);
+				uniform_tensor = to_CUDAcpl_iterate(next_wnode, dim_data, p_data_shape, tensor_cache);
 				//add into the dictionary
-				tensor_dict[key] = uniform_tensor;
+				tensor_cache.insert(std::make_pair(key, uniform_tensor));
 			}
 			next_order = succ->get_order();
 			// multiply the dangling weight
@@ -216,5 +216,20 @@ CUDAcpl::Tensor wnode::to_CUDAcpl(weightednode w_node, int dim_data, int64_t* p_
 	res = res.view(full_data_shape);
 	full_data_shape = c10::IntArrayRef(p_inner_data_shape, dim_data + 1);
 	res = res.expand(full_data_shape);
+	return res;
+}
+
+
+weightednode wnode::direct_product(weightednode a, int a_depth, weightednode b, bool parallel_tensor) {
+	wcomplex weight;
+	if (parallel_tensor) {
+		//not implemented yet
+		throw - 1;
+	}
+	else {
+		weight = a.weight * b.weight;
+	}
+	auto p_res_node = Node::append(a.p_node, a_depth, b.p_node, parallel_tensor);
+	weightednode res = weightednode{ weight, p_res_node };
 	return res;
 }

@@ -61,6 +61,46 @@ void Node::node_search(std::vector<node_int>& id_ls) const {
 	}
 }
 
+const Node* Node::duplicate_iterate(const Node* p_node, int order_shift, dict::duplicate_cache& duplicate_cache) {
+	if (p_node == TERMINAL_NODE) {
+		return TERMINAL_NODE;
+	}
+
+	auto order = p_node->m_order + order_shift;
+	auto key = p_node->m_id;
+	auto p_find_res = duplicate_cache.find(key);
+	if (p_find_res != duplicate_cache.end()) {
+		return p_find_res->second;
+	}
+	else {
+		//broadcast to contain the extra shape
+		//...
+
+		
+		wcomplex* p_weights = array_clone<wcomplex>(p_node->mp_weights, p_node->m_range);
+		const Node** p_successors = (const Node**)malloc(sizeof(const Node*) * p_node->m_range);
+		for (int i = 0; i < p_node->m_range; i++) {
+			p_successors[i] = Node::duplicate_iterate(p_node->mp_successors[i], order_shift, duplicate_cache);
+		}
+		
+		auto p_res = Node::get_unique_node(order, p_node->m_range, p_weights, p_successors);
+		duplicate_cache.insert(std::make_pair(key, p_res));
+		return p_res;
+	}
+}
+
+const Node* Node::append_iterate(const Node* p_a, const Node* p_b) {
+	if (p_a == TERMINAL_NODE) {
+		return p_b;
+	}
+
+	wcomplex* p_weights = array_clone<wcomplex>(p_a->mp_weights, p_a->m_range);
+	const Node** p_successors = (const Node**)malloc(sizeof(const Node*) * p_a->m_range);
+	for (int i = 0; i < p_a->m_range; i++) {
+		p_successors[i] = Node::append_iterate(p_a->mp_successors[i], p_b);
+	}
+	return Node::get_unique_node(p_a->m_order, p_a->m_range, p_weights, p_successors);
+}
 
 
 double Node::EPS() {
@@ -87,6 +127,10 @@ Node::Node(int id, node_int order, node_int range, wcomplex* p_weights, const No
 Node::~Node() {
 	free(mp_weights);
 	free(mp_successors);
+}
+
+int Node::get_id() const {
+	return m_id;
 }
 
 node_int Node::get_order() const {
@@ -129,7 +173,7 @@ std::size_t Node::get_hash(Node* p_node) {
 	return dict::hash_value(p_node->get_key_struct());
 }
 
-Node* Node::get_unique_node(node_int order, node_int range, wcomplex* p_weights, const Node** p_successors) {
+const Node* Node::get_unique_node(node_int order, node_int range, wcomplex* p_weights, const Node** p_successors) {
 	dict::unique_table_key key_struct = {
 		order,
 		range,
@@ -145,8 +189,24 @@ Node* Node::get_unique_node(node_int order, node_int range, wcomplex* p_weights,
 
 	Node* p_node = new Node(m_global_id, order, range, p_weights, p_successors);
 	m_global_id += 1;
-	m_unique_table[key_struct] = p_node;
+	m_unique_table.insert(std::make_pair(key_struct, p_node));
 	return p_node;
 }
 
-//Node* const TERMINAL_NODE = nullptr;
+const Node* Node::duplicate(const Node* p_node, int order_shift) {
+	auto duplicate_cache = dict::duplicate_cache();
+	return Node::duplicate_iterate(p_node, order_shift, duplicate_cache);
+}
+
+
+
+const Node* Node::append(const Node* p_a, int a_depth, const Node* p_b, bool parallel_tensor) {
+	if (!parallel_tensor) {
+		auto modified_node = Node::duplicate(p_b, a_depth);
+		return Node::append_iterate(p_a, modified_node);
+	}
+	else {
+		//not implemented yet
+		throw - 1;
+	}
+}

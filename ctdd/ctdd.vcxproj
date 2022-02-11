@@ -221,6 +221,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Node.cpp" />
+    <ClCompile Include="simpletools.cpp" />
     <ClCompile Include="tdd.cpp" />
     <ClCompile Include="weighted_node.cpp" />
     <ClCompile Include="weights.cpp" />
@@ -228,6 +229,7 @@
   <ItemGroup>
     <ClInclude Include="config.h" />
     <ClInclude Include="CUDAcpl.h" />
+    <ClInclude Include="simpletools.h" />
     <ClInclude Include="Node.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="tdd.h" />

@@ -12,3 +12,4 @@
 #include <torch/torch.h>
 #include <torch/python.h>
 #include "CUDAcpl.h"
+#include "simpletools.h"

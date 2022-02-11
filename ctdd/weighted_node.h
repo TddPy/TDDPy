@@ -5,10 +5,8 @@
 
 namespace dict {
 
-	// for the cache in to_CUDAcpl(), use the same key as unique_table's
-	typedef unique_table_key CUDAcpl_table_key;
-
-	typedef boost::unordered_map<unique_table_key, CUDAcpl::Tensor> CUDAcpl_table;
+	//use id as the key
+	typedef boost::unordered_map<int, CUDAcpl::Tensor> CUDAcpl_table;
 }
 
 namespace wnode {
@@ -58,9 +56,9 @@ namespace wnode {
 	/// <param name="w_node">Note that w_node.p_node should not be TERMINAL_NODE</param>
 	/// <param name="dim_data"></param>
 	/// <param name="p_data_shape"></param>
-	/// <param name="tensor_dict">caches the corresponding tensor of this node (weights = 1)</param>
+	/// <param name="tensor_cache">caches the corresponding tensor of this node (weights = 1)</param>
 	/// <returns></returns>
-	CUDAcpl::Tensor to_CUDAcpl_iterate(weightednode w_node, int dim_data, int64_t* p_data_shape, dict::CUDAcpl_table& tensor_dict);
+	CUDAcpl::Tensor to_CUDAcpl_iterate(weightednode w_node, int dim_data, int64_t* p_data_shape, dict::CUDAcpl_table& tensor_cache);
 
 	/// <summary>
 	/// Get the CUDAcpl_Tensor determined from this node and the weights.
@@ -72,4 +70,7 @@ namespace wnode {
 	/// Note that an *extra dimension* of 2 is needed at the end of p_inner_data_shape.</param>
 	/// <returns></returns>
 	CUDAcpl::Tensor to_CUDAcpl(weightednode w_node, int dim_data, int64_t* p_inner_data_shape);
+
+
+	weightednode direct_product(weightednode a, int a_depth, weightednode b, bool parallel_tensor = false);
 }
