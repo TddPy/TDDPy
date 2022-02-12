@@ -35,6 +35,37 @@ namespace dict {
 
 	typedef boost::unordered_map<sum_key, wnode::weightednode> sum_table;
 
+	// the type for contraction cache
+	struct cont_key {
+		int id;
+		int num_remained;
+		int* p_r_i1;
+		int* p_r_i2;
+		int num_waiting;
+		int* p_w_i;
+		int* p_w_v;
+
+		/// <summary>
+		/// Note: all pointer ownership borrowed.
+		/// </summary>
+		/// <param name="_id"></param>
+		/// <param name="_num_remained"></param>
+		/// <param name="_p_r_i1"></param>
+		/// <param name="_p_r_i2"></param>
+		/// <param name="_num_waiting"></param>
+		/// <param name="_p_w_i"></param>
+		/// <param name="_p_w_v"></param>
+		cont_key(int _id, int _num_remained, const int* _p_r_i1, const int* _p_r_i2,
+			int _num_waiting, const int* _p_w_i, const int* _p_w_v);
+		cont_key(const cont_key& other);
+		cont_key& operator =(const cont_key& other);
+		~cont_key();
+	};
+
+	bool operator == (const cont_key& a, const cont_key& b);
+	std::size_t hash_value(const cont_key& key_struct);
+
+	typedef boost::unordered_map<cont_key, wnode::weightednode> cont_table;
 }
 
 namespace wnode {
@@ -139,5 +170,45 @@ namespace wnode {
 	/// <param name="w_node2"></param>
 	/// <param name="p_sum_cache">[borrowed] used to cache the results. If nullptr, then a local cache will be used.</param>
 	/// <returns></returns>
-	weightednode sum(weightednode w_node1, weightednode w_node2, dict::sum_table* p_sum_cache = nullptr);
+	weightednode sum(weightednode w_node1, weightednode w_node2, dict::sum_table* p_sum_cache);
+
+
+	/// <summary>
+	///	Note that :
+	///	1. For remained_ils, we require smaller indices to be in the first list p_r_i1,
+	///	and the corresponding larger one in the second p_r_i2.
+	///	2. p_w_i must be sorted in the asscending order to keep the dict key unique.
+	///	3. The returning weighted nodes are NOT shifted. (node.order not adjusted)
+	/// </summary>
+	/// <param name="w_node"></param>
+	/// <param name="dim_data"></param>
+	/// <param name="p_data_shape"></param>
+	/// <param name="num_remained">the indices not processed yet (which starts to trace, and is waiting for the second index)</param>
+	/// <param name="p_r_i1">contract index 1</param>
+	/// <param name="p_r_i2">contract index 2</param>
+	/// <param name="num_waiting">the list of indices waiting to be traced.</param>
+	/// <param name="p_w_i">the index wanted</param>
+	/// <param name="p_w_v">corresponding values of selection</param>
+	/// <param name="sum_cache">the dict_cache from former calculations</param>
+	/// <param name="cont_cache">used to cache the calculated weighted node (cached results assume the dangling weight to be 1)</param>
+	/// <returns></returns>
+	weightednode contract_iterate(weightednode w_node, int dim_data, const int64_t* p_data_shape,
+		int num_remained, const int* p_r_i1, const int* p_r_i2,
+		int num_waiting, const int* p_w_i, const int* p_w_v, dict::sum_table& sum_cache, dict::cont_table& cont_cache);
+
+	/// <summary>
+	/// Trace the weighted node according to the specified data_indices. Return the reduced result.
+	///	e.g. ([a, b, c], [d, e, f]) means tracing indices a - d, b - e, c - f(of course two lists should be in the same size)
+	/// </summary>
+	/// <param name="w_node"></param>
+	/// <param name="dim_data"></param>
+	/// <param name="p_data_shape">correponds to data_indices</param>
+	/// <param name="num_pair"></param>
+	/// <param name="p_i1">data_indices should be counted in the data indices only.(smaller indices are required to be in the first list.)</param>
+	/// <param name="p_i2">data_indices should be counted in the data indices only.(smaller indices are required to be in the first list.)</param>
+	/// <param name="p_sum_cache"></param>
+	/// <returns></returns>
+	weightednode contract(weightednode w_node, int dim_data, const int64_t* p_data_shape,
+		int num_pair, const int* p_i1, const int* p_i2, dict::sum_table* p_sum_cache);
 }
+

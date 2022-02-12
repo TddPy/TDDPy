@@ -425,7 +425,7 @@ def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...
         #store the scaling number due to skipped remained indices
         scale = 1.
 
-        #process the skipped remained indices (situations only first index skipped will not be processed afterwards)
+        #process the skipped remained indices (situations only first index skipped will be processed afterwards)
         temp_remained_ils_0 = []
         temp_remained_ils_1 = []
         for i in range(len(remained_ils[0])):
@@ -524,6 +524,7 @@ def __contract(dict_cache: Dict, w_node: WeightedNode, data_shape: Tuple[int,...
 
                 #however the subnode outcomes are calculated, sum them over.
                 final_node, res_weights = out_nodes[0], out_weights[0]
+                raise Exception("index range below is wrong! fix the bug first")
                 for i in range(1,node.index_range):
                     final_node, res_weights = sum((final_node, res_weights), (out_nodes[i], out_weights[i]), sum_dict_cache)
                 final_weights_below = res_weights*scale

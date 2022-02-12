@@ -25,6 +25,6 @@ Tensor CUDAcpl::tensordot(const Tensor& a, const Tensor& b,
 		torch::tensordot(a_imag, b_imag, dim_self, dim_other);
 	auto res_imag = torch::tensordot(a_real, b_imag, dim_self, dim_other) +
 		torch::tensordot(a_imag, b_real, dim_self, dim_other);
-	return torch::stack({ res_real, res_imag }, a_dim + b_dim);
+	return torch::stack({ res_real, res_imag }, res_real.dim());
 }
 

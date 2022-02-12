@@ -15,6 +15,15 @@ unique_table_key::unique_table_key(node_int _order, node_int _range, const wcomp
 	}
 	p_nodes = _p_nodes;
 }
+
+unique_table_key::unique_table_key(const unique_table_key& other) {
+	order = other.order;
+	range = other.range;
+	p_weights_real = array_clone(other.p_weights_real, range);
+	p_weights_imag = array_clone(other.p_weights_imag, range);
+	p_nodes = other.p_nodes;
+}
+
 unique_table_key&  unique_table_key::operator =(const unique_table_key& other) {
 	if (range != other.range) {
 		range = other.range;
@@ -32,13 +41,6 @@ unique_table_key&  unique_table_key::operator =(const unique_table_key& other) {
 	return *this;
 }
 
-unique_table_key::unique_table_key(const unique_table_key& other) {
-	order = other.order;
-	range = other.range;
-	p_weights_real = array_clone(other.p_weights_real, range);
-	p_weights_imag = array_clone(other.p_weights_imag, range);
-	p_nodes = other.p_nodes;
-}
 
 unique_table_key::~unique_table_key() {
 #ifdef DECONSTRUCTOR_DEBUG
@@ -141,6 +143,31 @@ const Node* Node::duplicate_iterate(const Node* p_node, int order_shift, dict::d
 		return p_res;
 	}
 }
+
+const Node* Node::shift_multiple_iterate(const Node* p_node, int length, const int* p_new_order, dict::duplicate_table& shift_cache) {
+	if (p_node == TERMINAL_NODE) {
+		return TERMINAL_NODE;
+	}
+	auto order = p_new_order[p_node->m_order];
+	auto key = Node::get_id_all(p_node);
+	auto p_find_res = shift_cache.find(key);
+	if (p_find_res != shift_cache.end()) {
+		return p_find_res->second;
+	}
+	else {
+		auto range = p_node->get_range();
+		auto p_successors = p_node->get_successors();
+		auto p_weights = array_clone(p_node->get_weights(), range);
+		const Node** p_nodes = (const Node**)malloc(sizeof(const Node*) * range);
+		for (int i = 0; i < range; i++) {
+			p_nodes[i] = shift_multiple_iterate(p_successors[i], length, p_new_order, shift_cache);
+		}
+		auto p_res_node = Node::get_unique_node(order, range, p_weights, p_nodes);
+		shift_cache.insert(std::make_pair(key, p_res_node));
+		return p_res_node;
+	}
+}
+
 
 const Node* Node::append_iterate(const Node* p_a, const Node* p_b) {
 	if (p_a == TERMINAL_NODE) {
@@ -259,6 +286,12 @@ const Node* Node::duplicate(const Node* p_node, int order_shift) {
 	auto duplicate_cache = dict::duplicate_table();
 	return Node::duplicate_iterate(p_node, order_shift, duplicate_cache);
 }
+
+const Node* Node::shift_multiple(const Node* p_node, int length, const int* p_new_order) {
+	dict::duplicate_table shift_cache = dict::duplicate_table();
+	return Node::shift_multiple_iterate(p_node, length, p_new_order, shift_cache);
+}
+
 
 
 

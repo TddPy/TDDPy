@@ -84,6 +84,10 @@ namespace node {
 
 		static const Node* duplicate_iterate(const Node* p_node, int order_shift, dict::duplicate_table& duplicate_cache);
 
+
+		static const Node* shift_multiple_iterate(const Node* p_node, int length, const int* p_new_order, dict::duplicate_table& shift_cache);
+
+
 		/// <summary>
 		/// Direct append without any further operation. Only used within other methods (like Node::append).
 		/// </summary>
@@ -166,6 +170,17 @@ namespace node {
 		/// <param name="order_shift"></param>
 		/// <returns></returns>
 		static const Node* duplicate(const Node* p_node, int order_shift);
+
+		/// <summary>
+		/// Shift the order of node, Return the result.
+		/// order of new node is p_new_order[node.order]
+		/// </summary>
+		/// <param name="p_node"></param>
+		/// <param name="length"></param>
+		/// <param name="p_new_order">[borrowed]</param>
+		/// <returns></returns>
+		static const Node* shift_multiple(const Node* p_node, int length, const int* p_new_order);
+
 
 		/// <summary>
 		/// Replace the terminal node in this graph with 'node', and return the result.

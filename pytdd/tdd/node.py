@@ -188,7 +188,7 @@ class Node:
     def shift_multiple(node: Node|None, new_order_ls: Sequence[int]) -> Node|None:
         '''
             Shift the order of node, Return the result.
-            If order of new node is new_order_ls[node.order]
+            order of new node is new_order_ls[node.order]
         '''
         shifted_dict = dict()
         return Node.__shift_multiple(shifted_dict, node, new_order_ls)
