@@ -9,6 +9,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ctdd", "ctdd\ctdd.vcxproj",
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		build|Any CPU = build|Any CPU
+		build|x64 = build|x64
+		build|x86 = build|x86
 		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
@@ -20,6 +23,9 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.build|Any CPU.ActiveCfg = build|Any CPU
+		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.build|x64.ActiveCfg = build|Any CPU
+		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.build|x86.ActiveCfg = build|Any CPU
 		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.Debug|x86.ActiveCfg = Debug|Any CPU
@@ -29,6 +35,12 @@ Global
 		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.Release|x64.ActiveCfg = Release|Any CPU
 		{5F5EFA84-B7F3-4CD6-AFEB-60291FEBEBB3}.Release|x86.ActiveCfg = Release|Any CPU
+		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.build|Any CPU.ActiveCfg = build|x64
+		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.build|Any CPU.Build.0 = build|x64
+		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.build|x64.ActiveCfg = build|x64
+		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.build|x64.Build.0 = build|x64
+		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.build|x86.ActiveCfg = build|Win32
+		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.build|x86.Build.0 = build|Win32
 		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.Debug|Any CPU.Build.0 = Debug|x64
 		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.Debug|x64.ActiveCfg = Debug|x64

@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="build|Win32">
+      <Configuration>build</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="build|x64">
+      <Configuration>build</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
@@ -53,6 +61,13 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -66,6 +81,13 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
@@ -86,6 +108,9 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='build|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -93,6 +118,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -105,20 +133,30 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <TargetExt>.pyd</TargetExt>
-    <LibraryPath>$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
     <LinkIncremental>true</LinkIncremental>
     <TargetExt>.exe</TargetExt>
-    <LibraryPath>$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.pyd</TargetExt>
-    <LibraryPath>$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetExt>.pyd</TargetExt>
+    <LibraryPath>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)pytdd\pytdd\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -160,6 +198,22 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='build|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -172,8 +226,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(libtorch)\lib;$(Boost)\stage\lib;$(PythonPath)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(PythonPath)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\anaconda3\libs\python39.lib;D:\anaconda3\Lib\site-packages\torch\lib\caffe2_nvrtc.lib;D:\anaconda3\Lib\site-packages\torch\lib\torch_python.lib;$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
@@ -188,8 +242,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(libtorch)\lib;$(Boost)\stage\lib;$(PythonPath)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(PythonPath)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\anaconda3\libs\python39.lib;D:\anaconda3\Lib\site-packages\torch\lib\caffe2_nvrtc.lib;D:\anaconda3\Lib\site-packages\torch\lib\torch_python.lib;$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -201,14 +255,35 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(libtorch)\include;$(libtorch)\include\torch\csrc\api\include;$(Boost);$(PythonPath)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(libtorch)\lib;$(Boost)\stage\lib;$(PythonPath)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(PythonPath)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\anaconda3\libs\python39.lib;D:\anaconda3\Lib\site-packages\torch\lib\caffe2_nvrtc.lib;D:\anaconda3\Lib\site-packages\torch\lib\torch_python.lib;$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(libtorch)\include;$(libtorch)\include\torch\csrc\api\include;$(Boost);$(PythonPath)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(PythonPath)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\anaconda3\libs\python39.lib;D:\anaconda3\Lib\site-packages\torch\lib\caffe2_nvrtc.lib;D:\anaconda3\Lib\site-packages\torch\lib\torch_python.lib;$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -219,6 +294,7 @@
     <ClCompile Include="main_test.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="simpletools.cpp" />

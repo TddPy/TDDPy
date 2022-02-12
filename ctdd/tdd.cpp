@@ -13,12 +13,14 @@ void TDD::get_inner_data_shape(int64_t* p_storage) const {
 }
 
 std::pair<int64_t*, int*> TDD::index_reduced_info(int length, int* p_inner_i) const {
+	int* p_order = (int*)malloc(sizeof(int) * (m_dim_data - length));
 	int64_t* p_shape = (int64_t*)malloc(sizeof(int64_t) * (m_dim_data + m_dim_parallel + 1 - length));
 	p_shape[m_dim_data + m_dim_parallel - length] = 2;
-	int* p_order = (int*)malloc(sizeof(int) * (m_dim_data - length));
 	for (int i = 0; i < m_dim_parallel; i++) {
 		p_shape[i] = mp_parallel_shape[i];
 	}
+
+	auto p_inner_shape = inner_data_shape();
 
 	int new_count = 0;
 	for (int i = 0; i < m_dim_data; i++) {
@@ -31,19 +33,31 @@ std::pair<int64_t*, int*> TDD::index_reduced_info(int length, int* p_inner_i) co
 			}
 		}
 		if (!reduced) {
-			p_shape[new_count + m_dim_parallel] = mp_data_shape[i];
+			p_shape[new_count + m_dim_parallel] = p_inner_shape[i];
 			p_order[new_count] = mp_index_order[i];
 			new_count++;
 		}
 	}
+
+	free(p_inner_shape);
+
 	int* p_order_res = (int*)malloc(sizeof(int) * (m_dim_data - length));
+	for (int i = 0; i < m_dim_data - length; i++) {
+		p_order_res[i] = i;
+	}
 	sort(p_order_res, p_order_res + m_dim_data - length,
 		[p_order](int a, int b) {
 			return (p_order[a] < p_order[b]);
 		}
 	);
+	int64_t* p_shape_res = array_clone(p_shape, m_dim_data + m_dim_parallel + 1 - length);
+	//sort the data_shape
+	for (int i = 0; i < m_dim_data - length; i++) {
+		p_shape_res[m_dim_parallel + i] = p_shape[p_order_res[i]];
+	}
 	free(p_order);
-	return std::make_pair(p_shape, p_order_res);
+	free(p_shape);
+	return std::make_pair(p_shape_res, p_order_res);
 }
 
 
@@ -264,7 +278,7 @@ TDD TDD::contract(int num_pair, const int* p_i1, const int* p_i2, dict::sum_tabl
 		}
 
 		//note that inner_ls1[i] < inner_ls2[i] should hold for every i.
-		auto&& res_wnode = wnode::contract(m_wnode, m_dim_data, p_inner_data_shape, num_pair, p_i1, p_i2, p_sum_cache);
+		auto&& res_wnode = wnode::contract(m_wnode, m_dim_data, p_inner_data_shape, num_pair, p_inner_i1, p_inner_i2, p_sum_cache);
 		
 		auto p_inner_i_reduced = array_concat(p_inner_i1, num_pair, p_inner_i2, num_pair);
 		auto reduced_info = index_reduced_info(2 * num_pair, p_inner_i_reduced);

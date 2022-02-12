@@ -24,8 +24,15 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Inner' ">
     <OutputPath>bin\Inner\</OutputPath>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'build' ">
+    <OutputPath>bin\build\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="compare.py" />
+    <Compile Include="pytdd\CUDAcpl\config.py" />
+    <Compile Include="pytdd\CUDAcpl\main.py" />
+    <Compile Include="pytdd\CUDAcpl\quantum_basic.py" />
+    <Compile Include="pytdd\CUDAcpl\__init__.py" />
     <Compile Include="pytdd\interface.py">
       <SubType>Code</SubType>
     </Compile>
@@ -48,6 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="pytdd\" />
+    <Folder Include="pytdd\CUDAcpl\" />
     <Folder Include="tdd" />
     <Folder Include="tdd\CUDAcpl" />
     <Folder Include="tdd_origin" />

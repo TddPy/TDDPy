@@ -12,3 +12,10 @@ pytdd/tdd_origin/
 Debug/
 Release/
 Inner/
+build/
+
+# the C++ ctdd package
+ctdd.exp
+ctdd.lib
+ctdd.pdb
+ctdd.pyd

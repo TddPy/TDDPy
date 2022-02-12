@@ -248,6 +248,7 @@ class TDD:
             reduced_indices: corresponds to inner data indices, not the indices of tensor it represents.
             Note: Indices are counted in data indices only.
         '''
+        raise Exception("bug here. innershape should be used. data shape should also be sorted.")
         new_data_shape = []
         indexed_index_order = []
         for i in range(len(self.__data_shape)):

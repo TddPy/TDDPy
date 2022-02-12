@@ -3,17 +3,18 @@ import os
 import torch
 
 from pytdd import interface
-
-
-from ctdd import test,as_tensor
+from pytdd import CUDAcpl
 
 
 a = torch.rand((2,3,2))
-print(a)
+b = torch.rand((3,3,2))
+print(CUDAcpl.tensordot(a,b,[[1],[1]]))
+
 print('start')
-z = as_tensor(a,0,[0,1,2])
-print('\n')
-print(z)
+x = interface.as_tensor((a,0,[1,0]))
+y = interface.as_tensor(b)
+z = interface.tensordot(x,y,[[1],[1]])
+print(interface.to_CUDAcpl(z))
 
 
 
