@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <stdlib.h>
 #include <utility>
 
@@ -84,4 +85,19 @@ inline T* inserted(const T* p, int size, int pos, const T& val) {
 		p_res[i] = p[i - 1];
 	}
 	return p_res;
+}
+
+/// <summary>
+/// print the list
+/// </summary>
+/// <typeparam name="T"></typeparam>
+/// <param name="p"></param>
+/// <param name="size"></param>
+template <typename T>
+inline void print_ls(const T* p, int size) {
+	std::cout << "(";
+	for (int i = 0; i < size; i++) {
+		std::cout << p[i] << ", ";
+	}
+	std::cout << ")" << std::endl;
 }

@@ -64,16 +64,21 @@ std::pair<int64_t*, int*> TDD::index_reduced_info(int length, int* p_inner_i) co
 void TDD::__print() const {
 	cout << "weight: " << m_wnode.weight << endl;
 	cout << "node: " << m_wnode.p_node << endl;
-	cout << "dim_parallel: " << m_dim_parallel << endl;
-	cout << "parallel_shape: (";
+	cout << "dim parallel: " << m_dim_parallel << endl;
+	cout << "parallel shape: (";
 	for (int i = 0; i < m_dim_parallel; i++) {
 		cout << mp_parallel_shape[i] << ", ";
 	}
 	cout << ")\n";
-	cout << "dim_data: " << m_dim_data << endl;
-	cout << "data_shape: (";
+	cout << "dim data: " << m_dim_data << endl;
+	cout << "data hape: (";
 	for (int i = 0; i < m_dim_data; i++) {
 		cout << mp_data_shape[i] << ", ";
+	}
+	cout << ")\n";
+	cout << "index order: (";
+	for (int i = 0; i < m_dim_data; i++) {
+		cout << mp_index_order[i] << ", ";
 	}
 	cout << ")\n";
 	cout << "size: " << get_size() << endl;
@@ -123,8 +128,16 @@ int TDD::dim_data() const {
 	return m_dim_data;
 }
 
+int TDD::dim_parallel() const {
+	return m_dim_parallel;
+}
+
 const int64_t* TDD::data_shape() const {
 	return mp_data_shape;
+}
+
+const int64_t* TDD::parallel_shape() const {
+	return mp_parallel_shape;
 }
 
 const int* TDD::index_order() const {

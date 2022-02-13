@@ -16,6 +16,12 @@ y = interface.as_tensor(b)
 z = interface.tensordot(x,y,[[1],[1]])
 print(interface.to_CUDAcpl(z))
 
+d = interface.get_tdd_info(z)
+print(d)
+print("\n")
+print(interface.get_node_info(z.node))
+z.show()
+
 
 
 os.system('pause')

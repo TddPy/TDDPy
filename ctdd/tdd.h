@@ -78,9 +78,15 @@ namespace tdd {
 
 		// get the total number of data indices
 		int dim_data() const;
-
-		// get the shape of each data index)
+		
+		// get the total number of parallel indices
+		int dim_parallel() const;
+		
+		// get the shape of each data index
 		const int64_t* data_shape() const;
+
+		// get the shape of each parallel index
+		const int64_t* parallel_shape() const;
 
 		// get the data index order
 		const int* index_order() const;

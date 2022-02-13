@@ -13,6 +13,8 @@ from tdd import CUDAcpl
 from tdd_origin import TDD, TN
 import tqdm
 
+from pytdd import interface
+
 #timing method
 def timing(method, count=1):
     t1 = time.perf_counter()
@@ -93,6 +95,20 @@ def TDD_new_contract():
         indices2.append(i*2)
     result = tdd.tensordot(tdd1, tdd2, [indices1, indices2], cache)
 
+def pytdd_construct():
+    global tdd1,tdd2, gates_1, gates_2
+    tdd1 = interface.as_tensor((gates_1[0],0,[]))
+    tdd2 = interface.as_tensor((gates_2[0],0,[]))
+
+def pytdd_contract():
+    global result
+    indices1 =[]
+    indices2 =[]
+
+    for i in range(width):
+        indices1.append(i*2+1)
+        indices2.append(i*2)
+    result = interface.tensordot(tdd1, tdd2, [indices1, indices2])
 
 
 
@@ -101,7 +117,7 @@ def TDD_new_contract():
 
 #count = 1000 # <- recommended value for demonstration
 count = 1
-width = 4
+width = 8
 
 rand_para_1 = torch.tensor(np.random.random((count, width)), device = CUDAcpl.device)
 rand_para_2 = torch.tensor(np.random.random((count, width)), device = CUDAcpl.device)
@@ -129,12 +145,15 @@ print('count: {}, width: {}'.format(count,width))
 print('input tensor shape: ', gates_1_np.shape)
 print()
 
-'''
+
 print('===================================================')
 print('PyTorch:')
 timing(PyTorch,1)
 print(str(result)[:200])
 print()
+
+
+
 print('===================================================')
 print('TDD original, construction:')
 timing(TDD_original_construct, 1)
@@ -146,6 +165,9 @@ timing(TDD_original_construct_contract, 1)
 print(str(result.to_array())[:200])
 print()
 result.show('original_result', real_label = True)
+
+
+
 '''
 print('===================================================')
 print('TDD refactorized, construction:')
@@ -160,3 +182,15 @@ print()
 result.show('refactorized_result')
 
 print('TDD size: ', tdd1.get_size())
+'''
+
+
+print('===================================================')
+print('pytdd, construction:')
+timing(pytdd_construct, 1)
+print()
+
+print('pytdd, contraction:')
+timing(pytdd_contract, 1)
+print(str(interface.to_numpy(result))[:200])
+print()
