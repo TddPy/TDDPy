@@ -6,4 +6,4 @@ typedef unsigned short node_int;
 
 const double DEFAULT_EPS = 1E-8;
 
-#define DECONSTRUCTOR_DEBUG
+//#define DECONSTRUCTOR_DEBUG
