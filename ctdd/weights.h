@@ -13,4 +13,10 @@ namespace weights {
 	inline bool is_equal(wcomplex a, wcomplex b, double eps) {
 		return abs(a.real() - b.real()) < eps && abs(a.imag() - b.imag()) < eps;
 	}
+
+	/*
+		The precision for comparing two float numbers.
+		It also decides the precision of weights stored in unique_table.
+	*/
+	extern double EPS;
 }
