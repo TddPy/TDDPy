@@ -4,6 +4,16 @@ using namespace std;
 using namespace wnode;
 using namespace tdd;
 
+void tdd::reset() {
+	node::Node::reset();
+	dict::global_duplicate_cache = dict::duplicate_table();
+	dict::global_shift_cache = dict::duplicate_table();
+	dict::global_CUDAcpl_cache = dict::CUDAcpl_table();
+	dict::global_sum_cache = dict::sum_table();
+	dict::global_cont_cache = dict::cont_table();
+}
+
+
 
 void TDD::get_inner_data_shape(int64_t* p_storage) const {
 	for (int i = 0; i < m_dim_data; i++) {
@@ -267,15 +277,13 @@ TDD TDD::direct_product(const TDD& a, const TDD& b, bool parallel_tensor) {
 TDD TDD::sum(const TDD& a, const TDD& b) {
 	// check whether they are in the same shape
 	//...
-	dict::sum_table* p_cache = new dict::sum_table();
-	auto res_wnode = wnode::sum(a.m_wnode, b.m_wnode, p_cache);
+	auto res_wnode = wnode::sum(a.m_wnode, b.m_wnode, &dict::global_sum_cache);
 	TDD&& res = a.clone();
 	res.m_wnode = res_wnode;
-	delete p_cache;
 	return res;
 }
 
-TDD TDD::contract(int num_pair, const int* p_i1, const int* p_i2, dict::sum_table* p_sum_cache) {
+TDD TDD::contract(int num_pair, const int* p_i1, const int* p_i2) {
 	if (num_pair == 0) {
 		return clone();
 	}
@@ -291,7 +299,7 @@ TDD TDD::contract(int num_pair, const int* p_i1, const int* p_i2, dict::sum_tabl
 		}
 
 		//note that inner_ls1[i] < inner_ls2[i] should hold for every i.
-		auto&& res_wnode = wnode::contract(m_wnode, m_dim_data, p_inner_data_shape, num_pair, p_inner_i1, p_inner_i2, p_sum_cache);
+		auto&& res_wnode = wnode::contract(m_wnode, m_dim_data, p_inner_data_shape, num_pair, p_inner_i1, p_inner_i2);
 		
 		auto p_inner_i_reduced = array_concat(p_inner_i1, num_pair, p_inner_i2, num_pair);
 		auto reduced_info = index_reduced_info(2 * num_pair, p_inner_i_reduced);
@@ -314,7 +322,7 @@ TDD TDD::tensordot(const TDD& a, const TDD& b, int num_pair, const int* p_ia, co
 	for (int i = 0; i < num_pair; i++) {
 		ptemp_ib[i] = p_ib[i] + a.m_dim_data;
 	}
-	auto&& res = temp_tdd.contract(num_pair, p_ia, ptemp_ib, nullptr);
+	auto&& res = temp_tdd.contract(num_pair, p_ia, ptemp_ib);
 	free(ptemp_ib);
 	return res;
 }

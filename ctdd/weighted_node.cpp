@@ -150,6 +150,13 @@ std::size_t dict::hash_value(const cont_key& key_struct) {
 }
 
 
+dict::CUDAcpl_table dict::global_CUDAcpl_cache = dict::CUDAcpl_table();
+dict::sum_table dict::global_sum_cache = dict::sum_table();
+dict::cont_table dict::global_cont_cache = dict::cont_table();
+
+/*
+* implementation of wnode
+*/
 
 
 inline bool wnode::is_equal(weightednode a, weightednode b) {
@@ -492,6 +499,9 @@ weightednode wnode::sum_iterate(weightednode w_node1, weightednode w_node2, wcom
 }
 
 weightednode wnode::sum(weightednode w_node1, weightednode w_node2, dict::sum_table* p_sum_cache) {
+	if (p_sum_cache == nullptr) {
+		p_sum_cache = &dict::global_sum_cache;
+	}
 	// normalize as a whole
 	auto renorm_res = sum_weights_normalize(w_node1.weight, w_node2.weight);
 	weightednode next_wnode1 = weightednode{ renorm_res.nweight1, w_node1.p_node };
@@ -731,18 +741,11 @@ weightednode wnode::contract_iterate(weightednode w_node, int dim_data, const in
 }
 
 weightednode wnode::contract(weightednode w_node, int dim_data, const int64_t* p_data_shape,
-	int num_pair, const int* p_i1, const int* p_i2, dict::sum_table* p_sum_cache) {
-	dict::sum_table* p_cache;
-	if (p_sum_cache == nullptr) {
-		p_cache = new dict::sum_table();
-	}
-	else {
-		p_cache = p_sum_cache;
-	}
+	int num_pair, const int* p_i1, const int* p_i2) {
 
-	auto cont_cache = dict::cont_table();
 
-	auto&& res = contract_iterate(w_node, dim_data, p_data_shape, num_pair, p_i1, p_i2, 0, nullptr, nullptr, *p_cache, cont_cache);
+	auto&& res = contract_iterate(w_node, dim_data, p_data_shape, num_pair, p_i1, p_i2, 0, nullptr, nullptr,
+		dict::global_sum_cache, dict::global_cont_cache);
 
 	// shift the nodes at a time
 
@@ -764,9 +767,6 @@ weightednode wnode::contract(weightednode w_node, int dim_data, const int64_t* p
 	}
 	/////////////////////////////////
 	res.p_node = Node::shift_multiple(res.p_node, dim_data, p_new_order);
-	if (p_sum_cache == nullptr) {
-		delete p_cache;
-	}
 	free(p_reduced_indices);
 	free(p_new_order);
 	return res;

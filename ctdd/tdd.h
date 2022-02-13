@@ -5,6 +5,9 @@
 
 namespace tdd {
 
+	//reset unique table and all cache
+	void reset();
+
 	/// <summary>
 	/// TDD  functions as the compact representation of tensors,
 	/// and can fit into tensor networks.
@@ -162,9 +165,8 @@ namespace tdd {
 		/// <param name="num_pair">number of pairs of tracing indices</param>
 		/// <param name="p_i1">p_i1[i] less than p_i2[i] should hold for every i</param>
 		/// <param name="p_i2">p_i1[i] less than p_i2[i] should hold for every i</param>
-		/// <param name="p_sum_cache"></param>
 		/// <returns></returns>
-		TDD contract(int num_pair, const int* p_i1, const int* p_i2, dict::sum_table* p_sum_cache = nullptr);
+		TDD contract(int num_pair, const int* p_i1, const int* p_i2);
 
 		/// <summary>
 		/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.

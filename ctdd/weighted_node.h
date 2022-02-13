@@ -12,6 +12,8 @@ namespace dict {
 	// the type for CUDAcpl cache
 	typedef boost::unordered_map<int, CUDAcpl::Tensor> CUDAcpl_table;
 
+	extern CUDAcpl_table global_CUDAcpl_cache;
+
 	// the type for summation cache
 	struct sum_key {
 		int id_1;
@@ -34,6 +36,7 @@ namespace dict {
 	std::size_t hash_value(const sum_key& key_struct);
 
 	typedef boost::unordered_map<sum_key, wnode::weightednode> sum_table;
+	extern sum_table global_sum_cache;
 
 	// the type for contraction cache
 	struct cont_key {
@@ -66,6 +69,8 @@ namespace dict {
 	std::size_t hash_value(const cont_key& key_struct);
 
 	typedef boost::unordered_map<cont_key, wnode::weightednode> cont_table;
+
+	extern cont_table global_cont_cache;
 }
 
 namespace wnode {
@@ -206,9 +211,8 @@ namespace wnode {
 	/// <param name="num_pair"></param>
 	/// <param name="p_i1">data_indices should be counted in the data indices only.(smaller indices are required to be in the first list.)</param>
 	/// <param name="p_i2">data_indices should be counted in the data indices only.(smaller indices are required to be in the first list.)</param>
-	/// <param name="p_sum_cache"></param>
 	/// <returns></returns>
 	weightednode contract(weightednode w_node, int dim_data, const int64_t* p_data_shape,
-		int num_pair, const int* p_i1, const int* p_i2, dict::sum_table* p_sum_cache);
+		int num_pair, const int* p_i1, const int* p_i2);
 }
 

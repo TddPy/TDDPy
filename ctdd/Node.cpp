@@ -92,6 +92,10 @@ std::size_t dict::hash_value(const unique_table_key& key_struct) {
 }
 
 
+dict::duplicate_table dict::global_duplicate_cache = dict::duplicate_table();
+dict::duplicate_table dict::global_shift_cache = dict::duplicate_table();
+
+
 /*
 	Implementations of Node.
 */
@@ -283,13 +287,11 @@ const Node* Node::get_unique_node(node_int order, node_int range, wcomplex* p_we
 }
 
 const Node* Node::duplicate(const Node* p_node, int order_shift) {
-	auto duplicate_cache = dict::duplicate_table();
-	return Node::duplicate_iterate(p_node, order_shift, duplicate_cache);
+	return Node::duplicate_iterate(p_node, order_shift, dict::global_duplicate_cache);
 }
 
 const Node* Node::shift_multiple(const Node* p_node, int length, const int* p_new_order) {
-	dict::duplicate_table shift_cache = dict::duplicate_table();
-	return Node::shift_multiple_iterate(p_node, length, p_new_order, shift_cache);
+	return Node::shift_multiple_iterate(p_node, length, p_new_order, dict::global_shift_cache);
 }
 
 

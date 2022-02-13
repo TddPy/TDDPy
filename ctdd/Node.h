@@ -40,6 +40,9 @@ namespace dict {
 
 	// the type for duplicate cache
 	typedef boost::unordered_map<int, const node::Node*> duplicate_table;
+
+	extern duplicate_table global_duplicate_cache;
+	extern duplicate_table global_shift_cache;
 }
 
 namespace node {
