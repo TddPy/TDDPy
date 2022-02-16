@@ -1,7 +1,6 @@
 #pragma once
 #include "stdafx.h"
 #include "weighted_node.h"
-#include "Node.h"
 
 namespace tdd {
 
@@ -493,7 +492,7 @@ namespace tdd {
 	TDD<W> TDD<W>::sum(const TDD<W>& a, const TDD<W>& b) {
 		// check whether they are in the same shape
 		//...
-		auto res_wnode = wnode::sum(a.m_wnode, b.m_wnode, &dict::global_sum_cache_w);
+		auto res_wnode = wnode::sum(a.m_wnode, b.m_wnode, &cache::Global_Cache<W>::sum_cache);
 		TDD&& res = a.clone();
 		res.m_wnode = res_wnode;
 		return res;

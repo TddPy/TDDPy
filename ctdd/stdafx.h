@@ -9,11 +9,13 @@
 #include <boost/container_hash/hash_fwd.hpp>
 #include <vector>
 #include <algorithm>
+#include <type_traits>
 
 #include <torch/script.h>
 #include <torch/torch.h>
 #include <torch/python.h>
 
+
+#include "simpletools.h"
 #include "config.h"
 #include "CUDAcpl.h"
-#include "simpletools.h"

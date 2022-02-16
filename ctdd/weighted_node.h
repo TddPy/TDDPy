@@ -3,198 +3,6 @@
 #include "Node.h"
 
 
-namespace wnode {
-	template <class W>
-	struct weightednode;
-}
-
-namespace dict {
-
-	// the type for CUDAcpl cache
-	template <class W>
-	using CUDAcpl_table = boost::unordered_map<int, CUDAcpl::Tensor>;
-
-	extern CUDAcpl_table<wcomplex> global_CUDAcpl_cache_w;
-
-	// the type for summation cache
-	template <class  W>
-	struct sum_key {
-		int id_1;
-		int nweight1_real;
-		int nweight1_imag;
-		int id_2;
-		int nweight2_real;
-		int nweight2_imag;
-
-		/// <summary>
-		/// Construct the key. Note that id_1 will be set as the smaller one.
-		/// </summary>
-		/// <param name="id_a"></param>
-		/// <param name="weight_a"></param>
-		/// <param name="id_b"></param>
-		/// <param name="weight_b"></param>
-		sum_key(int id_a, wcomplex weight_a, int id_b, wcomplex weight_b);
-	};
-	bool operator == (const sum_key<wcomplex>& a, const sum_key<wcomplex>& b);
-
-	std::size_t hash_value(const sum_key<wcomplex>& key_struct);
-
-	template <class W>
-	using sum_table = boost::unordered_map<sum_key<W>, wnode::weightednode<wcomplex>>;
-
-	extern sum_table<wcomplex> global_sum_cache_w;
-
-	// the type for contraction cache
-	template <class W>
-	struct cont_key {
-		int id;
-		int num_remained;
-		int* p_r_i1;
-		int* p_r_i2;
-		int num_waiting;
-		int* p_w_i;
-		int* p_w_v;
-
-		/// <summary>
-		/// Note: all pointer ownership borrowed.
-		/// </summary>
-		/// <param name="_id"></param>
-		/// <param name="_num_remained"></param>
-		/// <param name="_p_r_i1"></param>
-		/// <param name="_p_r_i2"></param>
-		/// <param name="_num_waiting"></param>
-		/// <param name="_p_w_i"></param>
-		/// <param name="_p_w_v"></param>
-		cont_key(int _id, int _num_remained, const int* _p_r_i1, const int* _p_r_i2,
-			int _num_waiting, const int* _p_w_i, const int* _p_w_v);
-		cont_key(const cont_key& other);
-		cont_key<W>& operator =(const cont_key<W>& other);
-		~cont_key();
-	};
-
-	template <class W>
-	bool operator == (const cont_key<W>& a, const cont_key<W>& b);
-
-	template <class W>
-	std::size_t hash_value(const cont_key<W>& key_struct);
-
-	template <class W>
-	using cont_table = boost::unordered_map<cont_key<W>, wnode::weightednode<W>>;
-
-	extern cont_table<wcomplex> global_cont_cache_w;
-
-
-
-	/*Implementation below*/
-
-	template <class W>
-	dict::cont_key<W>::cont_key(int _id, int _num_remained, const int* _p_r_i1, const int* _p_r_i2,
-		int _num_waiting, const int* _p_w_i, const int* _p_w_v) {
-		id = _id;
-		num_remained = _num_remained;
-		p_r_i1 = array_clone(_p_r_i1, num_remained);
-		p_r_i2 = array_clone(_p_r_i2, num_remained);
-		num_waiting = _num_waiting;
-		p_w_i = array_clone(_p_w_i, num_waiting);
-		p_w_v = array_clone(_p_w_v, num_waiting);
-	}
-
-	template <class W>
-	dict::cont_key<W>::cont_key(const cont_key<W>& other) {
-		id = other.id;
-		num_remained = other.num_remained;
-		p_r_i1 = array_clone(other.p_r_i1, num_remained);
-		p_r_i2 = array_clone(other.p_r_i2, num_remained);
-		num_waiting = other.num_waiting;
-		p_w_i = array_clone(other.p_w_i, num_waiting);
-		p_w_v = array_clone(other.p_w_v, num_waiting);
-	}
-
-	template <class W>
-	dict::cont_key<W>& dict::cont_key<W>::operator =(const cont_key<W>& other) {
-		id = other.id;
-		if (num_remained != other.num_remained) {
-			num_remained = other.num_remained;
-			free(p_r_i1);
-			free(p_r_i2);
-			p_r_i1 = (int*)malloc(sizeof(int) * num_remained);
-			p_r_i2 = (int*)malloc(sizeof(int) * num_remained);
-		}
-		if (num_waiting != other.num_waiting) {
-			num_waiting = other.num_waiting;
-			free(p_w_i);
-			free(p_w_v);
-			p_w_i = (int*)malloc(sizeof(int) * num_waiting);
-			p_w_v = (int*)malloc(sizeof(int) * num_waiting);
-		}
-		for (int i = 0; i < num_remained; i++) {
-			p_r_i1[i] = other.p_r_i1[i];
-			p_r_i2[i] = other.p_r_i2[i];
-		}
-		for (int i = 0; i < num_waiting; i++) {
-			p_w_i[i] = other.p_w_i[i];
-			p_w_v[i] = other.p_w_v[i];
-		}
-		return *this;
-	}
-
-	template <class W>
-	dict::cont_key<W>::~cont_key() {
-#ifdef DECONSTRUCTOR_DEBUG
-		if (p_r_i1 == nullptr || p_r_i2 == nullptr ||
-			p_w_i == nullptr || p_w_v == nullptr) {
-			std::std::cout << "cont_key repeat deconstruction" << std::std::endl;
-		}
-		free(p_r_i1);
-		p_r_i1 = nullptr;
-		free(p_r_i2);
-		p_r_i2 = nullptr;
-		free(p_w_i);
-		p_w_i = nullptr;
-		free(p_w_v);
-		p_w_v = nullptr;
-#else
-		free(p_r_i1);
-		free(p_r_i2);
-		free(p_w_i);
-		free(p_w_v);
-#endif
-	}
-
-	template <class W>
-	bool operator == (const cont_key<W>& a, const cont_key<W>& b) {
-		if (a.id != b.id || a.num_remained != b.num_remained || a.num_waiting != b.num_waiting) {
-			return false;
-		}
-		for (int i = 0; i < a.num_remained; i++) {
-			if (a.p_r_i1[i] != b.p_r_i1[i] || a.p_r_i2[i] != b.p_r_i2[i]) {
-				return false;
-			}
-		}
-		for (int i = 0; i < a.num_waiting; i++) {
-			if (a.p_w_i[i] != b.p_w_i[i] || a.p_w_v[i] != b.p_w_v[i]) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	template <class W>
-	std::size_t hash_value(const cont_key<W>& key_struct) {
-		std::size_t seed = 0;
-		boost::hash_combine(seed, key_struct.id);
-		for (int i = 0; i < key_struct.num_remained; i++) {
-			boost::hash_combine(seed, key_struct.p_r_i1[i]);
-			boost::hash_combine(seed, key_struct.p_r_i2[i]);
-		}
-		for (int i = 0; i < key_struct.num_waiting; i++) {
-			boost::hash_combine(seed, key_struct.p_w_i[i]);
-			boost::hash_combine(seed, key_struct.p_w_v[i]);
-		}
-		return seed;
-	}
-
-}
 
 namespace wnode {
 
@@ -257,7 +65,7 @@ namespace wnode {
 	/// <param name="tensor_cache">caches the corresponding tensor of this node (weights = 1)</param>
 	/// <returns></returns>
 	template <class W>
-	CUDAcpl::Tensor to_CUDAcpl_iterate(weightednode<W> w_node, int dim_data, int64_t* p_data_shape, dict::CUDAcpl_table<W>& tensor_cache);
+	CUDAcpl::Tensor to_CUDAcpl_iterate(weightednode<W> w_node, int dim_data, int64_t* p_data_shape, cache::CUDAcpl_table<W>& tensor_cache);
 
 	/// <summary>
 	/// Get the CUDAcpl_Tensor determined from this node and the weights.
@@ -305,7 +113,7 @@ namespace wnode {
 	/// <param name="sum_cache"></param>
 	/// <returns></returns>
 	template <class W>
-	weightednode<W> sum_iterate(weightednode<W> w_node1, weightednode<W> w_node2, W renorm_coef, dict::sum_table<W> sum_cache);
+	weightednode<W> sum_iterate(weightednode<W> w_node1, weightednode<W> w_node2, W renorm_coef, cache::sum_table<W> sum_cache);
 
 	/// <summary>
 	/// sum two weighted nodes.
@@ -315,14 +123,14 @@ namespace wnode {
 	/// <param name="p_sum_cache">[borrowed] used to cache the results. If nullptr, then a local cache will be used.</param>
 	/// <returns></returns>
 	template <class W>
-	weightednode<W> sum(weightednode<W> w_node1, weightednode<W> w_node2, dict::sum_table<W>* p_sum_cache);
+	weightednode<W> sum(weightednode<W> w_node1, weightednode<W> w_node2, cache::sum_table<W>* p_sum_cache);
 
 
 	/// <summary>
 	///	Note that :
 	///	1. For remained_ils, we require smaller indices to be in the first list p_r_i1,
 	///	and the corresponding larger one in the second p_r_i2.
-	///	2. p_w_i must be sorted in the asscending order to keep the dict key unique.
+	///	2. p_w_i must be sorted in the asscending order to keep the cache key unique.
 	///	3. The returning weighted nodes are NOT shifted. (node.order not adjusted)
 	/// </summary>
 	/// <param name="w_node"></param>
@@ -340,7 +148,7 @@ namespace wnode {
 	template <class W>
 	weightednode<W> contract_iterate(weightednode<W> w_node, int dim_data, const int64_t* p_data_shape,
 		int num_remained, const int* p_r_i1, const int* p_r_i2,
-		int num_waiting, const int* p_w_i, const int* p_w_v, dict::sum_table<W>& sum_cache, dict::cont_table<W>& cont_cache);
+		int num_waiting, const int* p_w_i, const int* p_w_v, cache::sum_table<W>& sum_cache, cache::cont_table<W>& cont_cache);
 
 	/// <summary>
 	/// Trace the weighted node according to the specified data_indices. Return the reduced result.
@@ -438,7 +246,7 @@ namespace wnode {
 		auto wnode_0 = weightednode<W>{ weights[0], successors[0] };
 		for (int i = 1; i < range; i++) {
 			auto wnode_i = weightednode<W>{ weights[i], successors[i] };
-			if (!is_equal<W>(wnode_0, wnode_i)) {
+			if (!is_equal(wnode_0, wnode_i)) {
 				all_equal = false;
 				break;
 			}
@@ -486,7 +294,7 @@ namespace wnode {
 	}
 
 	template <class W>
-	CUDAcpl::Tensor to_CUDAcpl_iterate(weightednode<W> w_node, int dim_data, int64_t* p_data_shape, dict::CUDAcpl_table<W>& tensor_cache) {
+	CUDAcpl::Tensor to_CUDAcpl_iterate(weightednode<W> w_node, int dim_data, int64_t* p_data_shape, cache::CUDAcpl_table<W>& tensor_cache) {
 		// w_node.p_node is guaranteed not to be the TERMINAL_NODE
 
 		node_int current_order = w_node.p_node->get_order();
@@ -559,12 +367,12 @@ namespace wnode {
 	CUDAcpl::Tensor to_CUDAcpl(weightednode<W> w_node, int dim_data, int64_t* p_inner_data_shape) {
 		CUDAcpl::Tensor res;
 		int n_extra_one = 0;
-		dict::CUDAcpl_table<W> tensor_dict;
+		cache::CUDAcpl_table<W> tensor_dict;
 		if (w_node.p_node == node::TERMINAL_NODE) {
 			res = CUDAcpl::mul_element_wise(CUDAcpl::ones({}), w_node.weight);
 		}
 		else {
-			tensor_dict = dict::CUDAcpl_table<W>();
+			tensor_dict = cache::CUDAcpl_table<W>();
 			res = to_CUDAcpl_iterate<W>(w_node, dim_data, p_inner_data_shape, tensor_dict);
 			n_extra_one = w_node.p_node->get_order();
 		}
@@ -618,14 +426,14 @@ namespace wnode {
 
 
 	template <class W>
-	weightednode<W> sum_iterate(weightednode<W> w_node1, weightednode<W> w_node2, W renorm_coef, dict::sum_table<W> sum_cache) {
+	weightednode<W> sum_iterate(weightednode<W> w_node1, weightednode<W> w_node2, W renorm_coef, cache::sum_table<W> sum_cache) {
 		if (w_node1.p_node == node::TERMINAL_NODE && w_node2.p_node == node::TERMINAL_NODE) {
 			weightednode<W> res = weightednode<W>{ (w_node1.weight + w_node2.weight) * renorm_coef, (const node::Node<W>*)node::TERMINAL_NODE };
 			return res;
 		}
 
 		// produce the unique key and look up in the dictionary
-		auto key = dict::sum_key<W>(node::Node<W>::get_id_all(w_node1.p_node), w_node1.weight,
+		auto key = cache::sum_key<W>(node::Node<W>::get_id_all(w_node1.p_node), w_node1.weight,
 			node::Node<W>::get_id_all(w_node2.p_node), w_node2.weight);
 
 		auto p_find_res = sum_cache.find(key);
@@ -718,9 +526,9 @@ namespace wnode {
 	}
 
 	template <class W>
-	weightednode<W> sum(weightednode<W> w_node1, weightednode<W> w_node2, dict::sum_table<W>* p_sum_cache) {
+	weightednode<W> sum(weightednode<W> w_node1, weightednode<W> w_node2, cache::sum_table<W>* p_sum_cache) {
 		if (p_sum_cache == nullptr) {
-			p_sum_cache = &dict::global_sum_cache_w;
+			p_sum_cache = &cache::Global_Cache<W>::sum_cache;
 		}
 		// normalize as a whole
 		auto renorm_res = sum_weights_normalize(w_node1.weight, w_node2.weight);
@@ -733,7 +541,7 @@ namespace wnode {
 	template <class W>
 	weightednode<W> contract_iterate(weightednode<W> w_node, int dim_data, const int64_t* p_data_shape,
 		int num_remained, const int* p_r_i1, const int* p_r_i2,
-		int num_waiting, const int* p_w_i, const int* p_w_v, dict::sum_table<W>& sum_cache, dict::cont_table<W>& cont_cache) {
+		int num_waiting, const int* p_w_i, const int* p_w_v, cache::sum_table<W>& sum_cache, cache::cont_table<W>& cont_cache) {
 
 		auto p_node = w_node.p_node;
 		if (p_node == node::TERMINAL_NODE) {
@@ -750,7 +558,7 @@ namespace wnode {
 
 
 		// first look up in the dictionary
-		dict::cont_key<W> key = dict::cont_key<W>(p_node->get_id(), num_remained, p_r_i1, p_r_i2, num_waiting, p_w_i, p_w_v);
+		cache::cont_key<W> key = cache::cont_key<W>(p_node->get_id(), num_remained, p_r_i1, p_r_i2, num_waiting, p_w_i, p_w_v);
 		auto p_find_res = cont_cache.find(key);
 		if (p_find_res != cont_cache.end()) {
 			res = p_find_res->second;
@@ -966,7 +774,7 @@ namespace wnode {
 		int num_pair, const int* p_i1, const int* p_i2) {
 
 		auto&& res = contract_iterate(w_node, dim_data, p_data_shape, num_pair, p_i1, p_i2, 0, nullptr, nullptr,
-			dict::global_sum_cache_w, dict::global_cont_cache_w);
+			cache::Global_Cache<W>::sum_cache, cache::Global_Cache<W>::cont_cache);
 
 		// shift the nodes at a time
 

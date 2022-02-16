@@ -48,6 +48,9 @@
     <ClCompile Include="simpletools.cpp">
       <Filter>dependency</Filter>
     </ClCompile>
+    <ClCompile Include="cache.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Node.h">
@@ -73,6 +76,9 @@
     </ClInclude>
     <ClInclude Include="simpletools.h">
       <Filter>dependency</Filter>
+    </ClInclude>
+    <ClInclude Include="cache.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

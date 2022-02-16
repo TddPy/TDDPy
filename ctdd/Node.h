@@ -1,104 +1,9 @@
 #pragma once
 #include "stdafx.h"
-#include "config.h"
-#include "weights.h"
-
-
-namespace node {
-	template <class W>
-	class Node;
-}
-
-
-namespace dict {
-
-	// the type for unique table
-	template <class W>
-	struct unique_table_key {
-		node_int order;
-		node_int range;
-		int* p_weights_real;
-		int* p_weights_imag;
-		//note that p_nodes will always be borrowed.
-		const node::Node<W>** p_nodes;
-
-		/// <summary>
-		/// Construction of a unique_table key
-		/// </summary>
-		/// <param name="_order"></param>
-		/// <param name="_range"></param>
-		/// <param name="_p_weights">[borrowed]</param>
-		/// <param name="_p_nodes">[borrowed</param>
-		unique_table_key(node_int _order, node_int _range,
-			const wcomplex* _p_weights, const node::Node<wcomplex>** _p_nodes);
-		unique_table_key(const unique_table_key& other);
-		unique_table_key& operator =(const unique_table_key& other);
-		~unique_table_key();
-	};
-
-	bool operator == (const unique_table_key<wcomplex>& a, const unique_table_key<wcomplex>& b);
-
-	std::size_t hash_value(const unique_table_key<wcomplex>& key_struct);
-
-	template <typename W>
-	using unique_table = boost::unordered_map<unique_table_key<W>, const node::Node<W>*>;
-
-	// the type for duplicate cache
-	template <typename W>
-	using duplicate_table = boost::unordered_map<int, const node::Node<W>*>;
-
-	extern duplicate_table<wcomplex> global_duplicate_cache_w;
-	extern duplicate_table<wcomplex> global_shift_cache_w;
+#include "cache.h"
 
 
 
-	/*Implementation below
-	*/
-
-	template <class W>
-	unique_table_key<W>::unique_table_key(const unique_table_key<W>& other) {
-		order = other.order;
-		range = other.range;
-		p_weights_real = array_clone(other.p_weights_real, range);
-		p_weights_imag = array_clone(other.p_weights_imag, range);
-		p_nodes = other.p_nodes;
-	}
-
-	template <class W>
-	unique_table_key<W>& unique_table_key<W>::operator =(const unique_table_key<W>& other) {
-		if (range != other.range) {
-			range = other.range;
-			free(p_weights_real);
-			free(p_weights_imag);
-			p_weights_real = (int*)malloc(sizeof(int) * range);
-			p_weights_imag = (int*)malloc(sizeof(int) * range);
-		}
-		order = other.order;
-		p_nodes = other.p_nodes;
-		for (int i = 0; i < range; i++) {
-			p_weights_real[i] = other.p_weights_real[i];
-			p_weights_imag[i] = other.p_weights_imag[i];
-		}
-		return *this;
-	}
-
-	template <class W>
-	unique_table_key<W>::~unique_table_key() {
-#ifdef DECONSTRUCTOR_DEBUG
-		if (p_weights_real == nullptr || p_weights_imag == nullptr) {
-			std::std::cout << "unique_table_key repeat deconstruction" << std::std::endl;
-		}
-		free(p_weights_real);
-		p_weights_real = nullptr;
-		free(p_weights_imag);
-		p_weights_imag = nullptr;
-#else
-		free(p_weights_real);
-		free(p_weights_imag);
-#endif
-	}
-
-}
 
 namespace node {
 
@@ -112,7 +17,7 @@ namespace node {
 		static int m_global_id;
 
 		// The unique_table to store all the node instances used in tdd.
-		static dict::unique_table<W> m_unique_table;
+		static cache::unique_table<W> m_unique_table;
 
 		int m_id;
 
@@ -136,10 +41,13 @@ namespace node {
 		/// <param name="p_id"> the memory to store all the ids (it is a borrowed pointer) </param>
 		void node_search(std::vector<node_int>& id_ls) const;
 
-		static const Node<W>* duplicate_iterate(const Node<W>* p_node, int order_shift, dict::duplicate_table<W>& duplicate_cache);
+		static const Node<W>* duplicate_iterate(const node::Node<W>* p_node, int order_shift,
+			int dim_para_shape, const int64_t* p_parallel_shape,
+			int dim_shape_front, const int64_t* p_shape_front,
+			int dim_shape_back, const int64_t* p_shape_back, cache::duplicate_table<W>& duplicate_cache);
 
 
-		static const Node<W>* shift_multiple_iterate(const Node<W>* p_node, int length, const int* p_new_order, dict::duplicate_table<W>& shift_cache);
+		static const Node<W>* shift_multiple_iterate(const Node<W>* p_node, int length, const int* p_new_order, cache::duplicate_table<W>& shift_cache);
 
 
 		/// <summary>
@@ -152,11 +60,6 @@ namespace node {
 	public:
 		// Reset the dictionary caches.
 		static void reset();
-
-		// This function takes in the weight (tensor) and generates the integer key for unique_table.
-		inline static int get_int_key(double weight) {
-			return (int)round(weight / weights::EPS);
-		}
 
 		/// <summary>
 		/// Constructor for new nodes (inner use only, otherwise refer to unique_table)
@@ -187,7 +90,7 @@ namespace node {
 		/// Get the corresponding key structure of this node.
 		/// </summary>
 		/// <returns></returns>
-		dict::unique_table_key<W> get_key_struct() const;
+		cache::unique_table_key<W> get_key_struct() const;
 
 		/// <summary>
 		/// Calculate and return the Hash value of the node (can be nullptr).
@@ -222,7 +125,10 @@ namespace node {
 		/// <param name="p_node"></param>
 		/// <param name="order_shift"></param>
 		/// <returns></returns>
-		static const Node<W>* duplicate(const Node<W>* p_node, int order_shift);
+		static const Node<W>* duplicate(const node::Node<W>* p_node, int order_shift,
+			int dim_para_shape, const int64_t* p_parallel_shape,
+			int dim_shape_front, const int64_t* p_shape_front,
+			int dim_shape_back, const int64_t* p_shape_back);
 
 		/// <summary>
 		/// Shift the order of node, Return the result.
@@ -280,7 +186,10 @@ namespace node {
 	}
 
 	template <class W>
-	const node::Node<W>* node::Node<W>::duplicate_iterate(const node::Node<W>* p_node, int order_shift, dict::duplicate_table<W>& duplicate_cache) {
+	const node::Node<W>* node::Node<W>::duplicate_iterate(const node::Node<W>* p_node, int order_shift, 
+		int dim_para_shape, const int64_t* p_parallel_shape,
+		int dim_shape_front, const int64_t* p_shape_front,
+		int dim_shape_back, const int64_t* p_shape_back, cache::duplicate_table<W>& duplicate_cache) {
 		if (p_node == (const node::Node<W>*)TERMINAL_NODE) {
 			return (const node::Node<W>*)TERMINAL_NODE;
 		}
@@ -292,11 +201,41 @@ namespace node {
 			return p_find_res->second;
 		}
 		else {
-			//broadcast to contain the extra shape
-			//...
-
-
 			W* p_weights = array_clone<W>(p_node->mp_weights, p_node->m_range);
+
+			//for CUDAcpl Tensor representatoin, broadcast to contain the extra shape
+			if (std::is_same<W, CUDAcpl::Tensor>::value) {
+				auto len = dim_para_shape + dim_shape_front + dim_shape_back;
+				auto p_temp_shape = (int64_t*)malloc(sizeof(int64_t) * (len + 1));
+				p_temp_shape[len] = 2;
+				//unsqueeze
+				for (int i = 0; i < dim_shape_front; i++) {
+					p_temp_shape[i] = 1;
+				}
+				for (int i = 0; i < dim_para_shape; i++) {
+					p_temp_shape[i + dim_shape_front] = p_parallel_shape[i];
+				}
+				for (int i = 0; i < dim_shape_back; i++) {
+					p_temp_shape[i + dim_shape_front + dim_para_shape] = 1;
+				}
+				c10::IntArrayRef temp_shape = c10::IntArrayRef(p_temp_shape, len + 1);
+				for (int i = 0; i < m_range; i++) {
+					p_weights[i] = p_weights[i].view(temp_shape);
+				}
+				//expand
+				for (int i = 0; i < dim_shape_front; i++) {
+					p_temp_shape[i] = p_shape_front[i];
+				}
+				for (int i = 0; i < dim_shape_back; i++) {
+					p_temp_shape[i + dim_shape_front + dim_para_shape] = p_shape_back[i];
+				}
+				temp_shape = c10::IntArrayRef(p_temp_shape, len + 1);
+				for (int i = 0; i < m_range; i++) {
+					p_weights[i] = p_weights[i].expand(temp_shape);
+				}
+				free(p_temp_shape);
+			}
+
 			const node::Node<W>** p_successors = (const node::Node<W>**)malloc(sizeof(const node::Node<W>*) * p_node->m_range);
 			for (int i = 0; i < p_node->m_range; i++) {
 				p_successors[i] = node::Node<W>::duplicate_iterate(p_node->mp_successors[i], order_shift, duplicate_cache);
@@ -309,7 +248,7 @@ namespace node {
 	}
 
 	template <class W>
-	const node::Node<W>* node::Node<W>::shift_multiple_iterate(const node::Node<W>* p_node, int length, const int* p_new_order, dict::duplicate_table<W>& shift_cache) {
+	const node::Node<W>* node::Node<W>::shift_multiple_iterate(const node::Node<W>* p_node, int length, const int* p_new_order, cache::duplicate_table<W>& shift_cache) {
 		if (p_node == (const node::Node<W>*)TERMINAL_NODE) {
 			return (const node::Node<W>*)TERMINAL_NODE;
 		}
@@ -349,7 +288,7 @@ namespace node {
 
 	template <class W>
 	void Node<W>::reset() {
-		m_unique_table = dict::unique_table<W>();
+		m_unique_table = cache::unique_table<W>();
 		m_global_id = 0;
 	}
 
@@ -411,8 +350,8 @@ namespace node {
 	}
 
 	template <class W>
-	dict::unique_table_key<W> node::Node<W>::get_key_struct() const {
-		auto* p_key_struct = new dict::unique_table_key(m_order, m_range, mp_weights, mp_successors);
+	cache::unique_table_key<W> node::Node<W>::get_key_struct() const {
+		auto* p_key_struct = new cache::unique_table_key(m_order, m_range, mp_weights, mp_successors);
 		return *p_key_struct;
 	}
 
@@ -422,7 +361,7 @@ namespace node {
 			return 0;
 		}
 		std::size_t seed = 0;
-		return dict::hash_value(p_node->get_key_struct());
+		return cache::hash_value(p_node->get_key_struct());
 	}
 
 	template <class W>
@@ -437,7 +376,7 @@ namespace node {
 
 	template <class W>
 	const Node<W>* Node<W>::get_unique_node(node_int order, node_int range, W* p_weights, const Node<W>** p_successors) {
-		auto key_struct = dict::unique_table_key<W>(order, range, p_weights, p_successors);
+		auto key_struct = cache::unique_table_key<W>(order, range, p_weights, p_successors);
 		auto p_res = m_unique_table.find(key_struct);
 		if (p_res != m_unique_table.end()) {
 			free(p_weights);
@@ -452,13 +391,19 @@ namespace node {
 	}
 
 	template <class W>
-	const Node<W>* node::Node<W>::duplicate(const Node<W>* p_node, int order_shift) {
-		return node::Node<W>::duplicate_iterate(p_node, order_shift, dict::global_duplicate_cache_w);
+	const Node<W>* node::Node<W>::duplicate(const node::Node<W>* p_node, int order_shift,
+		int dim_para_shape, const int64_t* p_parallel_shape,
+		int dim_shape_front, const int64_t* p_shape_front,
+		int dim_shape_back, const int64_t* p_shape_back) {
+		return node::Node<W>::duplicate_iterate(p_node, order_shift,
+			dim_para_shape, p_parallel_shape,
+			dim_shape_front, p_shape_front,
+			dim_shape_back, p_shape_back, cache::Global_Cache<W>::duplicate_cache);
 	}
 
 	template <class W>
 	const Node<W>* node::Node<W>::shift_multiple(const Node<W>* p_node, int length, const int* p_new_order) {
-		return node::Node<W>::shift_multiple_iterate(p_node, length, p_new_order, dict::global_shift_cache_w);
+		return node::Node<W>::shift_multiple_iterate(p_node, length, p_new_order, cache::Global_Cache<W>::shift_cache);
 	}
 
 

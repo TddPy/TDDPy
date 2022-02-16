@@ -1,8 +1,13 @@
 #pragma once
 #include "stdafx.h"
-#include "config.h"
 
 namespace weights {
+	/*
+		The precision for comparing two float numbers.
+		It also decides the precision of weights stored in unique_table.
+	*/
+	extern double EPS;
+
 	/// <summary>
 	/// Check whether two weights a and b are equal with respect to eps.
 	/// </summary>
@@ -14,9 +19,10 @@ namespace weights {
 		return abs(a.real() - b.real()) < eps && abs(a.imag() - b.imag()) < eps;
 	}
 
-	/*
-		The precision for comparing two float numbers.
-		It also decides the precision of weights stored in unique_table.
-	*/
-	extern double EPS;
+	// This function takes in the weight (tensor) and generates the integer key for unique_table.
+	inline int get_int_key(double weight) {
+		return (int)round(weight / EPS);
+	}
+
+
 }

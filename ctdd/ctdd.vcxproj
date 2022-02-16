@@ -287,6 +287,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="cache.cpp" />
     <ClCompile Include="ctddmodule.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">false</ExcludedFromBuild>
@@ -304,6 +305,7 @@
     <ClCompile Include="weights.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="CUDAcpl.h" />
     <ClInclude Include="simpletools.h" />
