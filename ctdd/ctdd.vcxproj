@@ -297,21 +297,22 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="Node.cpp" />
+    <ClCompile Include="old_files\ctddmodule.cpp" />
+    <ClCompile Include="old_files\main_test.cpp" />
+    <ClCompile Include="old_files\Node.cpp" />
+    <ClCompile Include="old_files\tdd.cpp" />
+    <ClCompile Include="old_files\weighted_node.cpp" />
+    <ClCompile Include="old_files\weights.cpp" />
     <ClCompile Include="simpletools.cpp" />
-    <ClCompile Include="tdd.cpp" />
-    <ClCompile Include="weighted_node.cpp" />
-    <ClCompile Include="weights.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="config.h" />
     <ClInclude Include="CUDAcpl.h" />
+    <ClInclude Include="old_files\Node.h" />
+    <ClInclude Include="old_files\stdafx.h" />
+    <ClInclude Include="old_files\tdd.h" />
+    <ClInclude Include="old_files\weighted_node.h" />
+    <ClInclude Include="old_files\weights.h" />
     <ClInclude Include="simpletools.h" />
-    <ClInclude Include="Node.h" />
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="tdd.h" />
-    <ClInclude Include="weighted_node.h" />
-    <ClInclude Include="weights.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
