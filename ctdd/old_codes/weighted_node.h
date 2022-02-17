@@ -386,6 +386,7 @@ namespace wnode {
 			p_full_data_shape[i] = 1;
 		}
 		for (int i = n_extra_one; i < dim_data; i++) {
+			//BUG here
 			p_full_data_shape[i] = cur_data_shape[i];
 		}
 		auto full_data_shape = c10::IntArrayRef(p_full_data_shape, dim_data + 1);

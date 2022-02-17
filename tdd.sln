@@ -7,6 +7,8 @@ Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "pytdd", "pytdd\pytdd.pyproj
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ctdd", "ctdd\ctdd.vcxproj", "{809258FC-9607-4DE8-A5D9-1E3151A61FB6}"
 EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "TensorNetwork", "..\TensorNetwork\TensorNetwork.pyproj", "{DAC09AED-7A7A-4C26-995E-95D30C60DE21}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		build|Any CPU = build|Any CPU
@@ -59,6 +61,18 @@ Global
 		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.Release|x64.Build.0 = Release|x64
 		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.Release|x86.ActiveCfg = Release|Win32
 		{809258FC-9607-4DE8-A5D9-1E3151A61FB6}.Release|x86.Build.0 = Release|Win32
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.build|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.build|x64.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.build|x86.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Inner|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Inner|x64.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Inner|x86.ActiveCfg = Debug|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Release|x64.ActiveCfg = Release|Any CPU
+		{DAC09AED-7A7A-4C26-995E-95D30C60DE21}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

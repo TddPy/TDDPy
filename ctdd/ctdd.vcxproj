@@ -298,22 +298,19 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="Node.cpp" />
-    <ClCompile Include="simpletools.cpp" />
     <ClCompile Include="tdd.cpp" />
-    <ClCompile Include="weighted_node.cpp" />
-    <ClCompile Include="weights.cpp" />
+    <ClCompile Include="weight.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cache.h" />
+    <ClInclude Include="cache.hpp" />
     <ClInclude Include="config.h" />
     <ClInclude Include="CUDAcpl.h" />
-    <ClInclude Include="simpletools.h" />
-    <ClInclude Include="Node.h" />
+    <ClInclude Include="node.hpp" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="tdd.h" />
-    <ClInclude Include="weighted_node.h" />
-    <ClInclude Include="weights.h" />
+    <ClInclude Include="succ_ls.hpp" />
+    <ClInclude Include="tdd.hpp" />
+    <ClInclude Include="weight.h" />
+    <ClInclude Include="wnode.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

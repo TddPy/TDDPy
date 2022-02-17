@@ -1,14 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="源文件">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="头文件">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="资源文件">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -22,20 +14,16 @@
     <Filter Include="dependency\CUDAcpl">
       <UniqueIdentifier>{b8ad2fdc-5dce-42b3-93d0-0db986d82369}</UniqueIdentifier>
     </Filter>
+    <Filter Include="templates &amp; headers">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="sources">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Node.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="weighted_node.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="weights.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="tdd.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="CUDAcpl.cpp">
       <Filter>dependency\CUDAcpl</Filter>
     </ClCompile>
@@ -45,40 +33,43 @@
     <ClCompile Include="main_test.cpp">
       <Filter>interface</Filter>
     </ClCompile>
-    <ClCompile Include="simpletools.cpp">
-      <Filter>dependency</Filter>
+    <ClCompile Include="weight.cpp">
+      <Filter>sources</Filter>
     </ClCompile>
     <ClCompile Include="cache.cpp">
-      <Filter>源文件</Filter>
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="tdd.cpp">
+      <Filter>sources</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Node.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="config.h">
-      <Filter>头文件</Filter>
+      <Filter>templates &amp; headers</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="weighted_node.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="weights.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="tdd.h">
-      <Filter>头文件</Filter>
+      <Filter>templates &amp; headers</Filter>
     </ClInclude>
     <ClInclude Include="CUDAcpl.h">
       <Filter>dependency\CUDAcpl</Filter>
     </ClInclude>
-    <ClInclude Include="simpletools.h">
-      <Filter>dependency</Filter>
+    <ClInclude Include="weight.h">
+      <Filter>templates &amp; headers</Filter>
     </ClInclude>
-    <ClInclude Include="cache.h">
-      <Filter>头文件</Filter>
+    <ClInclude Include="node.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="cache.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="succ_ls.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="wnode.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="tdd.hpp">
+      <Filter>templates &amp; headers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
