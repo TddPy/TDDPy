@@ -51,8 +51,8 @@ namespace node {
 		}
 
 		static const Node<W>* duplicate_iterate(const node::Node<W>* p_node, int order_shift,
-			const std::vector<int64_t>& parallel_shape, 
-			const std::vector<int64_t>& shape_front, 
+			const std::vector<int64_t>& parallel_shape,
+			const std::vector<int64_t>& shape_front,
 			const std::vector<int64_t>& shape_back) {
 			if (p_node == nullptr) {
 				return nullptr;
@@ -62,8 +62,8 @@ namespace node {
 
 			// p_node is guaranteed not to be null
 			auto key = p_node->m_id;
-			auto p_find_res = cache::Global_Cache<W>::p_duplicate_cache.find(key);
-			if (p_find_res != cache::Global_Cache<W>::p_duplicate_cache.end()) {
+			auto p_find_res = cache::Global_Cache<W>::p_duplicate_cache->find(key);
+			if (p_find_res != cache::Global_Cache<W>::p_duplicate_cache->end()) {
 				return p_find_res->second;
 			}
 			else {
@@ -126,6 +126,11 @@ namespace node {
 		}
 
 	public:
+
+		inline static const cache::unique_table<W>& get_unique_table() {
+			return m_unique_table;
+		}
+
 		/// <summary>
 		/// Note: the memory of successors will be transfered to this node, therefore a right value is needed.
 		/// </summary>
@@ -245,8 +250,8 @@ namespace node {
 		/// <param name="order_shift"></param>
 		/// <returns></returns>
 		inline static const Node<W>* duplicate(const Node* p_node, int order_shift,
-			const std::vector<int64_t>& parallel_shape, 
-			const std::vector<int64_t>& shape_front, 
+			const std::vector<int64_t>& parallel_shape,
+			const std::vector<int64_t>& shape_front,
 			const std::vector<int64_t>& shape_back) {
 			return duplicate_iterate(p_node, order_shift, parallel_shape, shape_front, shape_back);
 		}
@@ -256,7 +261,7 @@ namespace node {
 		/// order of new node is p_new_order[node.order]
 		/// </summary>
 		/// <returns></returns>
-		inline static const Node<W>* shift_multiple(const Node<W>* p_node, const std::vector<int>& new_order_ls){
+		inline static const Node<W>* shift_multiple(const Node<W>* p_node, const std::vector<int>& new_order_ls) {
 			return shift_multiple_iterate(p_node, new_order_ls);
 		}
 
@@ -272,9 +277,13 @@ namespace node {
 		/// <param name="p_b"></param>
 		/// <param name="parallel_tensor"></param>
 		/// <returns></returns>
-		static const Node<W>* append(const Node<W>* p_a, int a_depth, const Node<W>* p_b, bool parallel_tensor = false) {
+		static const Node<W>* append(const Node<W>* p_a, int a_depth, const Node<W>* p_b,
+			const std::vector<int64_t>& parallel_shape,
+			const std::vector<int64_t>& shape_front,
+			const std::vector<int64_t>& shape_back,
+			bool parallel_tensor = false) {
 			if (!parallel_tensor) {
-				auto modified_node = node::Node<W>::duplicate(p_b, a_depth);
+				auto modified_node = node::Node<W>::duplicate(p_b, a_depth, parallel_shape, shape_front, shape_back);
 				return node::Node<W>::append_iterate(p_a, modified_node);
 			}
 			else {

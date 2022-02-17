@@ -41,7 +41,7 @@ namespace tdd {
 		}
 
 		void calculate_inner_data_shape() {
-			
+
 			auto temp = std::vector<int64_t>(m_index_order.size() + 1);
 			temp[m_index_order.size()] = 2;
 			for (int i = 0; i < m_index_order.size(); i++) {
@@ -77,6 +77,9 @@ namespace tdd {
 			cache::Global_Cache<W>::p_cont_cache->clear();
 		}
 
+		inline int64_t dim_data()const {
+			return m_index_order.size();
+		}
 
 		/// <summary>
 		/// Construct a tdd tensor with the given direct representation.
@@ -130,6 +133,45 @@ namespace tdd {
 			return res;
 		}
 
+
+		/// <summary>
+		/// Return the direct product : a tensor b.The index order is the connection of that of a and b.
+		/// </summary>
+		/// <param name="a"></param>
+		/// <param name="b"></param>
+		/// <param name="parallel_tensor">
+		/// whether to tensor on the parallel indices. False : parallel index of aand b must be the same, and their shapes are :
+		///	a: [(? ), (s_a), 2] tensor b : [(? ), (s_b), 2] ->[(? ), (s_a), (s_b), 2]
+		/// True : tensor on the parallel indices too.Their shapes are :
+		/// a: [(? a), (s_a), 2] tensor b : [(? b), (s_b), 2] ->[(? a), (? b), (s_a), (s_b), 2]
+		/// </param>
+		/// <returns></returns>
+		static TDD<W> direct_product(const TDD& a, const TDD& b, bool parallel_tensor = false) {
+			if (parallel_tensor) {
+				throw - 10;
+			}
+			auto w_node = wnode<W>::direct_product(a.m_wnode, a.dim_data(), b.m_wnode,
+				a.m_para_shape, std::vector<int64_t>(), std::vector<int64_t>(), parallel_tensor);
+			// adjust the data shape and index order
+			auto new_index_order = std::vector<int64_t>(a.dim_data() + b.dim_data());
+			for (int i = 0; i < a.dim_data(); i++) {
+				new_index_order[i] = a.m_index_order[i];
+			}
+			for (int i = 0; i < b.dim_data(); i++) {
+				new_index_order[i + a.dim_data()] = b.m_index_order[i] + a.dim_data();
+			}
+
+			auto new_data_shape = std::vector<int64_t>(a.dim_data() + b.dim_data() + 1);
+			new_data_shape[a.dim_data() + b.dim_data()] = 2;
+			for (int i = 0; i < a.dim_data(); i++) {
+				new_data_shape[i] = a.m_data_shape[i];
+			}
+			for (int i = 0; i < b.dim_data(); i++) {
+				new_data_shape[i + a.dim_data()] = b.m_data_shape[i];
+			}
+			auto new_para_shape = std::vector<int64_t>(a.m_para_shape);
+			return TDD(std::move(w_node), std::move(new_para_shape), std::move(new_data_shape), std::move(new_index_order));
+		}
 
 		/// <summary>
 		/// Sum up tdd a and b, and return the reduced result.

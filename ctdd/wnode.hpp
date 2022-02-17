@@ -222,7 +222,11 @@ public:
 
 
 	static node::weightednode<W> direct_product(const node::weightednode<W>& a, int a_depth,
-		const node::weightednode<W>& b, bool parallel_tensor) {
+		const node::weightednode<W>& b,
+		const std::vector<int64_t>& parallel_shape,
+		const std::vector<int64_t>& shape_front,
+		const std::vector<int64_t>& shape_back,
+		bool parallel_tensor) {
 		wcomplex weight;
 		if (parallel_tensor) {
 			// not implemented yet
@@ -231,7 +235,7 @@ public:
 		else {
 			weight = a.weight * b.weight;
 		}
-		auto p_res_node = node::Node<W>::append(a.node, a_depth, b.node, parallel_tensor);
+		auto p_res_node = node::Node<W>::append(a.node, a_depth, b.node, parallel_shape, shape_front, shape_back, parallel_tensor);
 		return node::weightednode<W>(std::move(weight), p_res_node);
 	}
 

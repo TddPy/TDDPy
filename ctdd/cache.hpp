@@ -96,6 +96,20 @@ namespace cache {
 		}
 	};
 
+
+	template <class W>
+	inline bool operator ==(const append_table_key<W>& a, const append_table_key<W>& b) {
+		return a.id_a == b.id_a && a.id_b == b.id_b;
+	}
+
+	template <class W>
+	inline std::size_t hash_value(const append_table_key<W>& key) {
+		std::size_t seed = 0;
+		boost::hash_combine(seed, key.id_a);
+		boost::hash_combine(seed, key.id_b);
+		return seed;
+	}
+
 	// the type for append cache
 	template <typename W>
 	using append_table = boost::unordered_map<append_table_key<W>, const node::Node<W>*>;
