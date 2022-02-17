@@ -129,5 +129,21 @@ namespace tdd {
 			res = res.permute(m_global_order);
 			return res;
 		}
+
+
+		/// <summary>
+		/// Sum up tdd a and b, and return the reduced result.
+		/// This method will NOT check whether a and b are of the same shape.
+		/// </summary>
+		/// <param name="a"></param>
+		/// <param name="b"></param>
+		/// <returns></returns>
+		inline static TDD<W> sum(const TDD<W>& a, const TDD<W>& b) {
+			auto res_wnode = wnode<W>::sum(a.m_wnode, b.m_wnode);
+			return TDD(std::move(res_wnode),
+				std::vector<int64_t>(a.m_para_shape),
+				std::vector<int64_t>(a.m_data_shape),
+				std::vector<int64_t>(a.m_index_order));
+		}
 	};
 }

@@ -9,7 +9,9 @@ namespace node {
 	template <class W>
 	class Node {
 	private:
-		// record the size of m_unique_table
+		/* record the size of m_unique_table
+		*  Note: id = 0 is reserved for terminal node (null).
+		*/
 		static int m_global_id;
 
 		// The unique_table to store all the node instances used in tdd.
@@ -68,12 +70,12 @@ namespace node {
 				//broadcast the dims for tensor weight
 				//...
 
-				auto p_new_successors = succ_ls<W>(p_node->m_successors);
-				for (auto i = p_new_successors.begin(); i != p_new_successors.end(); i++) {
+				auto new_successors = succ_ls<W>(p_node->m_successors);
+				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
 					i->node = Node::duplicate_iterate(i->node, order_shift, parallel_shape, shape_front, shape_back);
 				}
-				auto p_res = Node<W>::get_unique_node(order, p_new_successors);
-				cache::Global_Cache<W>::p_duplicate_cache->insert(std::make_pair(key, p_res));
+				auto p_res = Node<W>::get_unique_node(order, new_successors);
+				cache::Global_Cache<W>::p_duplicate_cache->insert(std::make_pair(std::move(key), p_res));
 				return p_res;
 			}
 		}
@@ -92,12 +94,12 @@ namespace node {
 				return p_find_res->second;
 			}
 			else {
-				auto p_new_successors = succ_ls<W>(p_node->m_successors);
-				for (auto i = p_new_successors.begin(); i != p_new_successors.end(); i++) {
+				auto new_successors = succ_ls<W>(p_node->m_successors);
+				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
 					i->node = shift_multiple_iterate(i->node, new_order_ls);
 				}
-				auto p_res = Node<W>::get_unique_node(order, p_new_successors);
-				cache::Global_Cache<W>::p_shift_cache->insert(std::make_pair(key, p_res));
+				auto p_res = Node<W>::get_unique_node(order, new_successors);
+				cache::Global_Cache<W>::p_shift_cache->insert(std::make_pair(std::move(key), p_res));
 				return p_res;
 			}
 		}
@@ -113,12 +115,12 @@ namespace node {
 				return p_res_find->second;
 			}
 			else {
-				auto p_new_successors = succ_ls<W>(p_nodea->m_successors);
-				for (auto i = p_new_successors.begin(); i != p_new_successors.end(); i++) {
+				auto new_successors = succ_ls<W>(p_nodea->m_successors);
+				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
 					i->node = append_iterate(i->node, p_nodeb);
 				}
-				auto p_res = Node<W>::get_unique_node(p_nodea->m_order, p_new_successors);
-				cache::Global_Cache<W>::p_append_cache->insert(std::make_pair(key, p_res));
+				auto p_res = Node<W>::get_unique_node(p_nodea->m_order, new_successors);
+				cache::Global_Cache<W>::p_append_cache->insert(std::make_pair(std::move(key), p_res));
 				return p_res;
 			}
 		}
@@ -130,8 +132,8 @@ namespace node {
 		/// <param name="order"></param>
 		/// <param name="successors"></param>
 		Node(int order, succ_ls<W>&& successors) {
-			m_id = m_global_id;
 			m_global_id += 1;
+			m_id = m_global_id;
 			m_order = order;
 			m_successors = std::move(successors);
 		}
@@ -157,7 +159,7 @@ namespace node {
 			}
 
 			node::Node<W>* p_node = new node::Node<W>(order, succ_ls<W>(successors));
-			m_unique_table.insert(std::make_pair(key, p_node));
+			m_unique_table.insert(std::make_pair(std::move(key), p_node));
 			return p_node;
 		}
 
@@ -177,10 +179,16 @@ namespace node {
 			}
 
 			node::Node<W>* p_node = new node::Node<W>(order, std::move(successors));
-			m_unique_table.insert(std::make_pair(key, p_node));
+			m_unique_table.insert(std::make_pair(std::move(key), p_node));
 			return p_node;
 		}
 
+		inline static int get_id_all(const Node* p_node) {
+			if (p_node == nullptr) {
+				return 0;
+			}
+			return p_node->m_id;
+		}
 
 		inline int get_id() const {
 			return m_id;

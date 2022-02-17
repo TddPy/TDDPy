@@ -15,4 +15,17 @@ namespace weight {
 	inline bool is_zero(wcomplex a) {
 		return abs(a.real()) < EPS && abs(a.imag()) < EPS;
 	}
+
+	/// <summary>
+	/// structure of normalized sum weights
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
+	template <class W>
+	struct sum_nweights {
+		W nweight1;
+		W nweight2;
+		W renorm_coef;
+
+		sum_nweights(W&& _nweight1, W&& _nweight2, W&& _renorm_coef);
+	};
 }

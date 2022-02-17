@@ -108,19 +108,20 @@ namespace cache {
 	using CUDAcpl_table = boost::unordered_map<int, CUDAcpl::Tensor>;
 
 
-	// the type for summation cache
+	/// <summary>
+	/// the type for summation cache
+	/// code1: real for wcomplex, data for tensor
+	/// code2: imag for wcomplex, shape for tensor
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
 	template <class  W>
 	struct sum_key {
 		int id_1;
-		int nweight1_real;
-		int nweight1_imag;
-		std::vector<int> nweight1_real_tensor;
-		std::vector<int> nweight1_imag_tensor;
+		std::vector<int> nweight1_code1;
+		std::vector<int> nweight1_code2;
 		int id_2;
-		int nweight2_real;
-		int nweight2_imag;
-		std::vector<int> nweight2_real_tensor;
-		std::vector<int> nweight2_imag_tensor;
+		std::vector<int> nweight2_code1;
+		std::vector<int> nweight2_code2;
 
 		/// <summary>
 		/// Construct the key. Note that id_1 will be set as the smaller one.
@@ -131,24 +132,58 @@ namespace cache {
 		/// <param name="weight_b"></param>
 		sum_key(int id_a, const W& weight_a, int id_b, const W& weight_b);
 		
+		sum_key(const sum_key& other) {
+			id_1 = other.id_1;
+			nweight1_code1 = other.nweight1_code1;
+			nweight1_code2 = other.nweight1_code2;
+			id_2 = other.id_2;
+			nweight2_code1 = other.nweight2_code1;
+			nweight2_code2 = other.nweight2_code2;
+		}
+
 		sum_key& operator =(sum_key&& other) {
 			id_1 = other.id_1;
-			nweight1_real = other.nweight1_real;
-			nweight1_imag = other.nweight1_imag;
-			nweight1_real_tensor = std::move(other.nweight1_real_tensor);
-			nweight1_imag_tensor = std::move(other.nweight1_imag_tensor);
+			nweight1_code1 = std::move(other.nweight1_code1);
+			nweight1_code2 = std::move(other.nweight1_code2);
 			id_2 = other.id_2;
-			nweight2_real = other.nweight2_real;
-			nweight2_imag = other.nweight2_imag;
-			nweight2_real_tensor = std::move(other.nweight2_real_tensor);
-			nweight2_imag_tensor = std::move(other.nweight2_imag_tensor);
+			nweight2_code1 = std::move(other.nweight2_code1);
+			nweight2_code2 = std::move(other.nweight2_code2);
 			return *this;
 		}
 	};
 
-	bool operator == (const sum_key<wcomplex>& a, const sum_key<wcomplex>& b);
+	template <class W>
+	inline bool operator == (const sum_key<W>& a, const sum_key<W>& b) {
+		return a.id_1 == b.id_1 && a.id_2 == b.id_2 &&
+			a.nweight1_code1 == b.nweight1_code1 &&
+			a.nweight1_code2 == b.nweight1_code2 &&
+			a.nweight2_code1 == b.nweight2_code1 &&
+			a.nweight2_code2 == b.nweight2_code2;
+	}
 
-	std::size_t hash_value(const sum_key<wcomplex>& key_struct);
+	template <class W>
+	inline std::size_t hash_value(const sum_key<W>& key) {
+		std::size_t seed = 0;
+		boost::hash_combine(seed, key.id_1);
+		boost::hash_combine(seed, key.id_2);
+		for (auto i = key.nweight1_code1.begin();
+			i != key.nweight1_code1.end(); i++) {
+			boost::hash_combine(seed, *i);
+		}
+		for (auto i = key.nweight1_code2.begin();
+			i != key.nweight1_code2.end(); i++) {
+			boost::hash_combine(seed, *i);
+		}
+		for (auto i = key.nweight2_code1.begin();
+			i != key.nweight2_code1.end(); i++) {
+			boost::hash_combine(seed, *i);
+		}
+		for (auto i = key.nweight2_code2.begin();
+			i != key.nweight2_code2.end(); i++) {
+			boost::hash_combine(seed, *i);
+		}
+		return seed;
+	}
 
 	template <class W>
 	using sum_table = boost::unordered_map<sum_key<W>, node::weightednode<W>>;
