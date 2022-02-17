@@ -4,8 +4,10 @@
 namespace weight {
 	extern double EPS;
 
-	inline int get_int_key(double weight) {
-		return (int)round(weight / EPS);
+	typedef long long WCode;
+
+	inline WCode get_int_key(double weight) {
+		return (WCode)round(weight / EPS);
 	}
 
 	inline bool is_equal(wcomplex a, wcomplex b) {

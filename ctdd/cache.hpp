@@ -17,9 +17,9 @@ namespace cache {
 	struct unique_table_key {
 		int order;
 		// real for <weight>, data for <tensor> (encode  in sequence)
-		std::vector<int> code1;
+		std::vector<weight::WCode> code1;
 		// imag for <weight>, shape for <tensor>
-		std::vector<int> code2;
+		std::vector<weight::WCode> code2;
 		std::vector<const node::Node<W>*> nodes;
 
 		/// <summary>
@@ -33,9 +33,9 @@ namespace cache {
 
 		unique_table_key(const unique_table_key& other) {
 			order = other.order;
-			code1 = std::vector<int>(other.code1);
-			code2 = std::vector<int>(other.code2);
-			nodes = std::vector<const node::Node<W>*>(other.nodes);
+			code1 = other.code1;
+			code2 = other.code2;
+			nodes = other.nodes;
 		}
 
 		unique_table_key& operator =(unique_table_key&& other) {
@@ -117,11 +117,11 @@ namespace cache {
 	template <class  W>
 	struct sum_key {
 		int id_1;
-		std::vector<int> nweight1_code1;
-		std::vector<int> nweight1_code2;
+		std::vector<weight::WCode> nweight1_code1;
+		std::vector<weight::WCode> nweight1_code2;
 		int id_2;
-		std::vector<int> nweight2_code1;
-		std::vector<int> nweight2_code2;
+		std::vector<weight::WCode> nweight2_code1;
+		std::vector<weight::WCode> nweight2_code2;
 
 		/// <summary>
 		/// Construct the key. Note that id_1 will be set as the smaller one.
