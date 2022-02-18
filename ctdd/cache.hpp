@@ -59,6 +59,9 @@ namespace cache {
 		if (a.code1 != b.code1) {
 			return false;
 		}
+		if (a.nodes != b.nodes) {
+			return false;
+		}
 		return true;
 	}
 
@@ -81,9 +84,11 @@ namespace cache {
 	template <typename W>
 	using unique_table = boost::unordered_map<unique_table_key<W>, const node::Node<W>*>;
 
-	// the type for duplicate cache
+	/* the type for duplicate cache
+	*  first: id, second: order_shift
+	*/
 	template <typename W>
-	using duplicate_table = boost::unordered_map<int, const node::Node<W>*>;
+	using duplicate_table = boost::unordered_map<std::pair<int, int>, const node::Node<W>*>;
 
 
 	template <class W>
@@ -117,9 +122,53 @@ namespace cache {
 
 
 
+	template <class W>
+	struct CUDAcpl_table_key {
+		int id;
+		std::vector<int64_t> inner_shape;
+
+		/// <summary>
+		/// Construction of a unique_table key (complex version)
+		/// </summary>
+		/// <param name="_order"></param>
+		/// <param name="_range"></param>
+		/// <param name="_p_weights">[borrowed]</param>
+		/// <param name="_p_nodes">[borrowed</param>
+		CUDAcpl_table_key(int _id, const std::vector<int64_t>& _inner_shape) {
+			id = _id;
+			inner_shape = _inner_shape;
+		}
+
+		CUDAcpl_table_key(const CUDAcpl_table_key& other) {
+			id = other.id;
+			inner_shape = other.inner_shape;
+		}
+
+		CUDAcpl_table_key& operator =(CUDAcpl_table_key&& other) {
+			id = other.id;
+			inner_shape = std::move(other.inner_shape);
+			return *this;
+		}
+	};
+
+	template <class W>
+	inline bool operator == (const CUDAcpl_table_key<W>& a, const CUDAcpl_table_key<W>& b) {
+		return a.id == b.id && a.inner_shape == b.inner_shape;
+	}
+
+	template <class W>
+	inline std::size_t hash_value(const CUDAcpl_table_key<W>& key) {
+		std::size_t seed = 0;
+		boost::hash_combine(seed, key.id);
+		for (auto i = key.inner_shape.begin(); i != key.inner_shape.end(); i++) {
+			boost::hash_combine(seed, *i);
+		}
+		return seed;
+	}
+
 	// the type for CUDAcpl cache
 	template <class W>
-	using CUDAcpl_table = boost::unordered_map<int, CUDAcpl::Tensor>;
+	using CUDAcpl_table = boost::unordered_map<CUDAcpl_table_key<W>, CUDAcpl::Tensor>;
 
 
 	/// <summary>
@@ -204,6 +253,7 @@ namespace cache {
 
 
 	typedef std::vector<std::pair<int, int>> cont_cmd;
+
 	// the type for contraction cache
 	template <class W>
 	struct cont_key {
@@ -237,8 +287,8 @@ namespace cache {
 
 		inline cont_key(const cont_key& other) {
 			id = other.id;
-			remained_ls = cont_key(other.remained_ls);
-			waiting_ls = cont_cmd(other.waiting_ls);
+			remained_ls = other.remained_ls;
+			waiting_ls = other.waiting_ls;
 		}
 		inline cont_key& operator =(cont_key&& other) {
 			id = other.id;
@@ -275,7 +325,6 @@ namespace cache {
 	template <class W>
 	struct Global_Cache {
 		static duplicate_table<W>* p_duplicate_cache;
-		static duplicate_table<W>* p_shift_cache;
 		static append_table<W>* p_append_cache;
 		static CUDAcpl_table<W>* p_CUDAcpl_cache;
 		static sum_table<W>* p_sum_cache;

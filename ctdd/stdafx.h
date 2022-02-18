@@ -1,6 +1,10 @@
 #pragma once
 
+#ifdef NDEBUG
 #include <Python.h>
+#include <torch/python.h>
+#endif
+
 #include <cmath>
 #include <iostream>
 #include <complex>
@@ -11,12 +15,12 @@
 #include <algorithm>
 #include <type_traits>
 #include <vector>
+#include <assert.h>
 
 #include <torch/script.h>
 #include <torch/torch.h>
-#include <torch/python.h>
 
 
-//#include "simpletools.h"
+#include "simpletools.h"
 #include "config.h"
 #include "CUDAcpl.h"

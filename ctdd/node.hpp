@@ -61,7 +61,7 @@ namespace node {
 			auto order = p_node->m_order + order_shift;
 
 			// p_node is guaranteed not to be null
-			auto key = p_node->m_id;
+			auto key = std::make_pair(p_node->m_id, order_shift);
 			auto p_find_res = cache::Global_Cache<W>::p_duplicate_cache->find(key);
 			if (p_find_res != cache::Global_Cache<W>::p_duplicate_cache->end()) {
 				return p_find_res->second;
@@ -74,14 +74,15 @@ namespace node {
 				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
 					i->node = Node::duplicate_iterate(i->node, order_shift, parallel_shape, shape_front, shape_back);
 				}
-				auto p_res = Node<W>::get_unique_node(order, new_successors);
+				auto p_res = Node<W>::get_unique_node(order, std::move(new_successors));
 				cache::Global_Cache<W>::p_duplicate_cache->insert(std::make_pair(std::move(key), p_res));
 				return p_res;
 			}
 		}
 
 
-		static const Node<W>* shift_multiple_iterate(const Node<W>* p_node, const std::vector<int>& new_order_ls) {
+		static const Node<W>* shift_multiple_iterate(const Node<W>* p_node, const std::vector<int64_t>& new_order_ls,
+			boost::unordered_map<int, const Node<W>*>& local_shift_cache) {
 			if (p_node == nullptr) {
 				return nullptr;
 			}
@@ -89,17 +90,17 @@ namespace node {
 			// p_node is guaranteed not to be null
 			auto order = new_order_ls[p_node->m_order];
 			auto key = p_node->m_id;
-			auto p_find_res = cache::Global_Cache<W>::p_shift_cache->find(key);
-			if (p_find_res != cache::Global_Cache<W>::p_shift_cache->end()) {
+			auto p_find_res = local_shift_cache.find(key);
+			if (p_find_res != local_shift_cache.end()) {
 				return p_find_res->second;
 			}
 			else {
 				auto new_successors = succ_ls<W>(p_node->m_successors);
 				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
-					i->node = shift_multiple_iterate(i->node, new_order_ls);
+					i->node = shift_multiple_iterate(i->node, new_order_ls, local_shift_cache);
 				}
 				auto p_res = Node<W>::get_unique_node(order, new_successors);
-				cache::Global_Cache<W>::p_shift_cache->insert(std::make_pair(std::move(key), p_res));
+				local_shift_cache.insert(std::make_pair(std::move(key), p_res));
 				return p_res;
 			}
 		}
@@ -109,7 +110,7 @@ namespace node {
 				return p_nodeb;
 			}
 
-			auto key = cache::append_table_key<W>(p_nodea->m_id, p_nodeb->m_id);
+			auto key = cache::append_table_key<W>(p_nodea->m_id, node::Node<W>::get_id_all(p_nodeb));
 			auto p_res_find = cache::Global_Cache<W>::p_append_cache->find(key);
 			if (p_res_find != cache::Global_Cache<W>::p_append_cache->end()) {
 				return p_res_find->second;
@@ -119,7 +120,7 @@ namespace node {
 				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
 					i->node = append_iterate(i->node, p_nodeb);
 				}
-				auto p_res = Node<W>::get_unique_node(p_nodea->m_order, new_successors);
+				auto p_res = Node<W>::get_unique_node(p_nodea->m_order, std::move(new_successors));
 				cache::Global_Cache<W>::p_append_cache->insert(std::make_pair(std::move(key), p_res));
 				return p_res;
 			}
@@ -145,6 +146,9 @@ namespace node {
 
 		static void reset() {
 			m_global_id = 0;
+			for (auto i : m_unique_table) {
+				delete i.second;
+			}
 			m_unique_table.clear();
 		}
 
@@ -207,6 +211,49 @@ namespace node {
 			return m_successors.size();
 		}
 
+		void print() const {
+			for (int i = 0; i < m_order; i++) {
+				std::cout << "-";
+			}
+			std::cout << "=======" << std::endl;
+			for (int i = 0; i < m_order; i++) {
+				std::cout << " ";
+			}
+			std::cout << "|node: " << this << std::endl;
+
+			for (int i = 0; i < m_order; i++) {
+				std::cout << " ";
+			}
+			std::cout << "|id: " << m_id << std::endl;
+
+			for (int i = 0; i < m_order; i++) {
+				std::cout << " ";
+			}
+			std::cout << "|order: " << m_order << std::endl;
+
+			for (int i = 0; i < m_order; i++) {
+				std::cout << " ";
+			}
+			std::cout << "|successors: " << std::endl;
+
+			for (int j = 0; j < m_successors.size(); j++) {
+				for (int i = 0; i < m_order; i++) {
+					std::cout << " ";
+				}
+				std::cout << "|  " << j << " " << "weight: " << m_successors[j].weight << std::endl;
+				for (int i = 0; i < m_order; i++) {
+					std::cout << " ";
+				}
+				std::cout << "|  " << j << " " << "node: " << m_successors[j].node << std::endl;
+			}
+
+			for (auto p = m_successors.begin(); p != m_successors.end(); p++) {
+				if (p->node != nullptr) {
+					p->node->print();
+				}
+			}
+		}
+
 		inline const succ_ls<W>& get_successors() const {
 			return m_successors;
 		}
@@ -261,8 +308,12 @@ namespace node {
 		/// order of new node is p_new_order[node.order]
 		/// </summary>
 		/// <returns></returns>
-		inline static const Node<W>* shift_multiple(const Node<W>* p_node, const std::vector<int>& new_order_ls) {
-			return shift_multiple_iterate(p_node, new_order_ls);
+		inline static const Node<W>* shift_multiple(const Node<W>* p_node, const std::vector<int64_t>& new_order_ls) {
+
+			// note that the local cache need the 'node.id' as key only, so as to balance the key structure complexity.
+			// however, therefore this cache only works in one invocation
+			auto local_shift_cache = boost::unordered_map<int, const Node<W>*>();
+			return shift_multiple_iterate(p_node, new_order_ls, local_shift_cache);
 		}
 
 

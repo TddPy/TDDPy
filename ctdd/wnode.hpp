@@ -4,6 +4,10 @@
 
 template <class W>
 class wnode {
+private:
+	inline static bool cmd_smaller(const std::pair<int, int>& a, const std::pair<int, int>& b) {
+		return a.first < b.first;
+	}
 public:
 	inline static bool is_equal(const node::weightednode<W>& a, const node::weightednode<W>& b) {
 		return (a.node == b.node && weight::is_equal(a.weight, b.weight));
@@ -34,12 +38,16 @@ public:
 
 
 		int split_pos = index_order[depth];
-		auto split_tensor = t.split(1, t.dim() - dim_data + split_pos - 1);
-		// -1 is because the extra inner dim for real and imag
+		int axe_pos = t.dim() - dim_data + split_pos - 1;
+
+		//note: torch::chunk does not work here
 
 		auto new_successors = std::vector<node::weightednode<W>>(data_shape[split_pos]);
 		for (int i = 0; i < data_shape[split_pos]; i++) {
-			new_successors[i] = as_tensor_iterate(split_tensor[i], parallel_shape, data_shape, index_order, depth + 1);
+			new_successors[i] = as_tensor_iterate(
+				// -1 is because the extra inner dim for real and imag
+				t.select(axe_pos, i).unsqueeze(axe_pos),
+				parallel_shape, data_shape, index_order, depth + 1);
 		}
 		auto&& temp_node = node::Node<W>(depth, std::move(new_successors));
 		// normalize this depth
@@ -126,25 +134,24 @@ public:
 
 		auto dim_data = data_shape.size() - 1;
 
-		// The temp shape for adjustment.
-		auto new_len = dim_data - current_order;
-		auto p_temp_shape = std::vector<int64_t>(new_len);
-		p_temp_shape[new_len - 1] = 2;
+		// The temp shape for adjustment.(shape of the successors of this node)
+		auto p_temp_shape = std::vector<int64_t>(dim_data - current_order);
+		p_temp_shape[dim_data - current_order - 1] = 2;
 
 
 		CUDAcpl::Tensor temp_tensor;
 		CUDAcpl::Tensor uniform_tensor;
 		int next_order = 0;
 		auto i_par = par_tensor.begin();
-		for (auto i = successors.begin(); i != successors.end(); i++) {
+		for (auto i = successors.begin(); i != successors.end(); i++, i_par++) {
 			// detect terminal nodes, or iterate on the next node
 			if (i->node == nullptr) {
-				temp_tensor = std::move(CUDAcpl::from_complex(i->weight));
+				temp_tensor = CUDAcpl::from_complex(i->weight);
 				next_order = dim_data;
 			}
 			else {
 				// first look up in the dictionary
-				auto key = i->node->get_id();
+				auto key = cache::CUDAcpl_table_key<W>(i->node->get_id(), data_shape);
 				auto p_find_res = cache::Global_Cache<W>::p_CUDAcpl_cache->find(key);
 				if (p_find_res != cache::Global_Cache<W>::p_CUDAcpl_cache->end()) {
 					uniform_tensor = p_find_res->second;
@@ -176,7 +183,6 @@ public:
 				temp_tensor = temp_tensor.expand(c10::IntArrayRef(p_temp_shape));
 			}
 			*i_par = std::move(temp_tensor);
-			i_par++;
 		}
 		auto&& res = torch::stack(par_tensor, 0);
 		// multiply the dangling weight and return
@@ -303,8 +309,15 @@ public:
 			// ensure w_node1.node to be the node of smaller order, through swaping
 			///////////////////////////////////////////////////////////////////////
 			const node::weightednode<W>* p_wnode_1, * p_wnode_2;
-			if (w_node1.node == nullptr ||
-				w_node1.node->get_order() > w_node2.node->get_order()) {
+			if (w_node1.node == nullptr) {
+				p_wnode_1 = &w_node2;
+				p_wnode_2 = &w_node1;
+			}
+			else if (w_node2.node == nullptr) {
+				p_wnode_1 = &w_node1;
+				p_wnode_2 = &w_node2;
+			}
+			else if (w_node1.node->get_order() > w_node2.node->get_order()) {
 				p_wnode_1 = &w_node2;
 				p_wnode_2 = &w_node1;
 			}
@@ -314,23 +327,27 @@ public:
 			}
 
 			auto new_successors = std::vector<node::weightednode<W>>(p_wnode_1->node->get_range());
-			if (p_wnode_2->node != nullptr &&
-				p_wnode_1->node->get_order() == p_wnode_2->node->get_order()) {
-				// node1 and node2 are assumed to have the same shape
-				auto&& successors_1 = p_wnode_1->node->get_successors();
-				auto&& successors_2 = p_wnode_2->node->get_successors();
-				auto i_1 = successors_1.begin();
-				auto i_2 = successors_2.begin();
-				auto i_new = new_successors.begin();
-				for (; i_1 != successors_1.end(); i_1++, i_2++, i_new++) {
-					// normalize as a whole
-					auto&& renorm_res = sum_weights_normalize(p_wnode_1->weight * i_1->weight, p_wnode_2->weight * i_2->weight);
-					auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
-					auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->node);
-					*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef);
+
+			bool not_operated = true;
+			if (p_wnode_2->node != nullptr) {
+				if (p_wnode_1->node->get_order() == p_wnode_2->node->get_order()) {
+					// node1 and node2 are assumed to have the same shape
+					auto&& successors_1 = p_wnode_1->node->get_successors();
+					auto&& successors_2 = p_wnode_2->node->get_successors();
+					auto i_1 = successors_1.begin();
+					auto i_2 = successors_2.begin();
+					auto i_new = new_successors.begin();
+					for (; i_1 != successors_1.end(); i_1++, i_2++, i_new++) {
+						// normalize as a whole
+						auto&& renorm_res = sum_weights_normalize(p_wnode_1->weight * i_1->weight, p_wnode_2->weight * i_2->weight);
+						auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
+						auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->node);
+						*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef);
+					}
+					not_operated = false;
 				}
 			}
-			else {
+			if (not_operated) {
 				/*
 					There are three cases following, corresponding to the same procedure:
 					1. node1 == None, node2 != None
@@ -369,11 +386,223 @@ public:
 	/// <param name="w_node1"></param>
 	/// <param name="w_node2"></param>
 	/// <returns></returns>
-	static node::weightednode<W> sum(const node::weightednode<W> w_node1, const node::weightednode<W> w_node2) {
+	static node::weightednode<W> sum(const node::weightednode<W>& w_node1, const node::weightednode<W>& w_node2) {
 		// normalize as a whole
 		auto&& renorm_res = sum_weights_normalize(w_node1.weight, w_node2.weight);
 		auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), w_node1.node);
 		auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), w_node2.node);
 		return sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef);
 	}
+
+	/// <summary>
+	///	Note that :
+	///	1. For remained_ls, we require smaller indices to be in the first place,
+	///	and the corresponding larger one in the second place.
+	///	2. indices in waiting_ls must be sorted in the asscending order to keep the cache key unique.
+	///	3. The returning weighted nodes are NOT shifted. (node.order not adjusted)
+	/// </summary>
+	/// <returns></returns>
+	static node::weightednode<W> contract_iterate(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
+		const cache::cont_cmd& remained_ls, const cache::cont_cmd& waiting_ls) {
+
+		if (w_node.node == nullptr) {
+			// close all the unprocessed indices
+			double scale = 1.;
+			for (auto i = waiting_ls.begin(); i != waiting_ls.end(); i++) {
+				scale *= data_shape[i->first];
+			}
+			return node::weightednode<W>(w_node.weight * scale, nullptr);
+		}
+
+		node::weightednode<W> res;
+
+		// first look up in the dictionary
+		auto key = cache::cont_key<W>(w_node.node->get_id(), remained_ls, waiting_ls);
+		auto p_find_res = cache::Global_Cache<W>::p_cont_cache->find(key);
+		if (p_find_res != cache::Global_Cache<W>::p_cont_cache->end()) {
+			res = p_find_res->second;
+			res.weight = res.weight * w_node.weight;
+			return res;
+		}
+		else {
+			auto order = w_node.node->get_order();
+
+			// store the scaling number due to skipped remained indices
+			double scale = 1.;
+
+			// process the skipped remained indices (situations only first index skipped will be processed afterwards)
+			auto remained_ls_pd = cache::cont_cmd();
+			for (auto i = remained_ls.begin(); i != remained_ls.end(); i++) {
+				if (i->second >= order) {
+					remained_ls_pd.push_back(*i);
+				}
+				else {
+					scale *= data_shape[i->first];
+				}
+			}
+			auto waiting_ls_pd = cache::cont_cmd();
+			for (auto i = waiting_ls.begin(); i != waiting_ls.end(); i++) {
+				if (i->first >= order) {
+					waiting_ls_pd.push_back(*i);
+				}
+			}
+
+			// the flag for no operation performed
+			bool not_operated = true;
+
+			auto&& successors = w_node.node->get_successors();
+
+			// check whether all operations have already taken place
+			if (remained_ls_pd.empty() && waiting_ls_pd.empty()) {
+				res = node::weightednode<W>(wcomplex(1., 0.) * scale, w_node.node);
+				not_operated = false;
+			}
+			else if (!waiting_ls_pd.empty()) {
+				/*
+				*   waiting_ils is not empty in this case
+				*	If multiple waiting indices have been skipped, we will resolve with iteration, one by one.
+				*/
+
+				// next_to_close: <pos in waiting_ls_pd, min in waiting_ls_pd>
+				auto next_to_close = min_iv(waiting_ls_pd, &cmd_smaller);
+
+				// note that next_i_to_close >= node.order is guaranteed here
+				if (order == next_to_close.second.first) {
+					auto index_val = waiting_ls_pd[next_to_close.first].second;
+					// close the waiting index
+					auto next_waiting_ls = removed<std::pair<int, int>>(waiting_ls_pd, next_to_close.first);
+					res = contract_iterate(successors[index_val], data_shape, remained_ls_pd, next_waiting_ls);
+					res.weight = res.weight * scale;
+					not_operated = false;
+				}
+			}
+			if (!remained_ls_pd.empty() && not_operated) {
+				/*
+				*	Check the remained indices to start tracing.
+				*	If multiple (smaller ones of) remained indices have been skipped, we will resolve with iteration, one by one.
+				*/
+				auto next_to_open = min_iv(remained_ls_pd, &cmd_smaller);
+				if (order >= next_to_open.second.first) {
+					// open the index and finally sum up
+
+					auto next_remained_ls = removed(remained_ls_pd, next_to_open.first);
+
+					// find the right insert place in waiting_ls
+					int insert_pos = 0;
+					for (; insert_pos < waiting_ls_pd.size(); insert_pos++) {
+						if (waiting_ls_pd[insert_pos].first < next_to_open.second.first) {
+							continue;
+						}
+						else {
+							break;
+						}
+					}
+
+					// get the index range
+					int range = data_shape[next_to_open.second.first];
+
+					// produce the sorted new index lists
+					auto next_waiting_ls = inserted(waiting_ls_pd, insert_pos, std::make_pair(
+						remained_ls_pd[next_to_open.first].second, 0)
+					);
+
+					auto new_successors = std::vector<node::weightednode<W>>(range);
+					if (order == next_to_open.second.first) {
+						int index_val = 0;
+						auto i_new = new_successors.begin();
+						for (auto i = successors.begin(); i != successors.end(); i++, i_new++, index_val++) {
+							if (i->node == nullptr) {
+								i_new->node = nullptr;
+								i_new->weight = i->weight;
+							}
+							else {
+								// adjust the new index value
+								next_waiting_ls[insert_pos].second = index_val;
+								*i_new = contract_iterate(*i, data_shape, next_remained_ls, next_waiting_ls);
+							}
+						}
+					}
+					else {
+						// this node skipped the index next_i_to_open in this case
+						int index_val = 0;
+						auto i_new = new_successors.begin();
+						for (auto i = successors.begin(); i != successors.end(); i++, i_new++, index_val++) {
+							next_waiting_ls[insert_pos].second = index_val;
+							*i_new = contract_iterate(w_node, data_shape, next_remained_ls, next_waiting_ls);
+						}
+					}
+
+					// however the subnode outcomes are calculated, sum them over.
+					res = new_successors[0];
+					for (auto i = new_successors.begin() + 1; i != new_successors.end(); i++) {
+						res = sum(res, *i);
+					}
+					res.weight = res.weight * scale;
+					not_operated = false;
+				}
+			}
+
+			if (not_operated) {
+				// in this case, no operation can be performed on this node, so we move on the the following nodes.
+				auto new_successors = std::vector<node::weightednode<W>>(w_node.node->get_range());
+				auto i_new = new_successors.begin();
+				for (auto i = successors.begin(); i != successors.end(); i++, i_new++) {
+					if (i->node == nullptr) {
+						i_new->node = nullptr;
+						i_new->weight = i->weight;
+					}
+					else {
+						*i_new = contract_iterate(*i, data_shape, remained_ls_pd, waiting_ls_pd);
+					}
+				}
+				auto&& temp_node = node::Node<W>(order, std::move(new_successors));
+				res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
+			}
+
+			// add to the cache
+			cache::Global_Cache<W>::p_cont_cache->insert(std::make_pair(std::move(key), res));
+			res.weight = res.weight * w_node.weight;
+			return res;
+		}
+	}
+
+
+	/// <summary>
+	/// Trace the weighted node according to the specified data_indices. Return the reduced result.
+	///	e.g. ([a, b, c], [d, e, f]) means tracing indices a - d, b - e, c - f(of course two lists should be in the same size)
+	/// </summary>
+	/// <param name="w_node"></param>
+	/// <param name="dim_data"></param>
+	/// <param name="data_shape">correponds to data_indices</param>
+	/// <param name="remained_ls">data_indices should be counted in the data indices only.(smaller indices are required to be in the first place.)</param>
+	/// <param name="reduced_indices"> must be sorted </param>
+	/// <returns></returns>
+	static node::weightednode<W> contract(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
+		const cache::cont_cmd& remained_ls, const std::vector<int64_t> reduced_indices) {
+
+		auto res = contract_iterate(w_node, data_shape, remained_ls, cache::cont_cmd());
+
+		// shift the nodes at a time
+		auto num_pair = remained_ls.size();
+
+		////////////////////////////////
+		// prepare the new index order
+		auto new_order = std::vector<int64_t>(data_shape.size() - 1);
+		for (int i = 0; i < reduced_indices[0]; i++) {
+			new_order[i] = i;
+		}
+		for (int i = 0; i < num_pair * 2 - 1; i++) {
+			for (int j = reduced_indices[i] + 1; j < reduced_indices[i + 1]; j++) {
+				new_order[j] = j - i - 1;
+			}
+		}
+		for (int j = reduced_indices[num_pair * 2 - 1] + 1; j < data_shape.size() - 1; j++) {
+			new_order[j] = j - 2 * num_pair;
+		}
+		////////////////////////////////
+
+		res.node = node::Node<W>::shift_multiple(res.node, new_order);
+		return res;
+	}
+
 };

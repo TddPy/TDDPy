@@ -549,6 +549,7 @@ namespace wnode {
 			// close all the unprocessed indices
 			double scale = 1.;
 			for (int i = 0; i < num_remained; i++) {
+				//BUG here
 				scale *= p_data_shape[i];
 			}
 			weightednode<W> res = weightednode<W>{ w_node.weight * scale, (const node::Node<W>*)node::TERMINAL_NODE };

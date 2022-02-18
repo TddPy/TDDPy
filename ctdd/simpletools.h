@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <vector>
 #include <stdlib.h>
 #include <utility>
 
@@ -28,64 +29,67 @@ inline T* array_concat(const T* p_a, int size_a, const T* p_b, int size_b) {
 /// <summary>
 /// p should contain at least one element
 /// </summary>
-/// <typeparam name="T"></typeparam>
-/// <param name="p"></param>
-/// <param name="size"></param>
 /// <returns></returns>
 template <typename T>
-inline std::pair<int, T> min(const T* p, int size) {
-	int index = 0;
-	T value = p[0];
-	for (int i = 1; i < size; i++) {
-		if (p[i] < value) {
-			value = p[i];
-			index = i;
+inline std::pair<int, T> min_iv(const std::vector<T>& vec, bool (*pred)(const T&, const T&)) {
+	int i_max = 0;
+	T v_max = vec[0];
+	for (int i = 0; i < vec.size(); i++) {
+		if (!pred(vec[i], v_max)) {
+			i_max = i;
+			v_max = vec[i];
 		}
 	}
-	return std::make_pair(index, value);
+	return std::make_pair(i_max, std::move(v_max));
+}
+
+template <typename T>
+inline std::pair<int, T> min_iv(const std::vector<T>& vec) {
+	int i_max = 0;
+	T v_max = vec[0];
+	for (int i = 0; i < vec.size(); i++) {
+		if (!(vec[i] < v_max)) {
+			i_max = i;
+			v_max = vec[i];
+		}
+	}
+	return std::make_pair(i_max, std::move(v_max));
 }
 
 /// <summary>
 /// return the newly created memory, with element at pos removed.
 /// </summary>
-/// <typeparam name="T"></typeparam>
-/// <param name="p"></param>
-/// <param name="size"></param>
-/// <param name="pos"></param>
 /// <returns></returns>
 template <typename T>
-inline T* removed(const T* p, int size, int pos) {
-	T* p_res = (T*)malloc(sizeof(T) * (size - 1));
+inline std::vector<T> removed(const std::vector<T>& vec, int pos) {
+	std::vector<T> res = std::vector<T>(vec.size() - 1);
 	for (int i = 0; i < pos; i++) {
-		p_res[i] = p[i];
+		res[i] = vec[i];
 	}
-	for (int i = pos + 1; i < size; i++) {
-		p_res[i - 1] = p[i];
+	for (int i = pos + 1; i < vec.size(); i++) {
+		res[i - 1] = vec[i];
 	}
-	return p_res;
+	return std::move(res);
 }
+
 
 /// <summary>
 /// return the newly created memory, with element val inserted at pos.
 /// </summary>
-/// <typeparam name="T"></typeparam>
-/// <param name="p"></param>
-/// <param name="size"></param>
-/// <param name="pos"></param>
-/// <param name="val"></param>
 /// <returns></returns>
 template <typename T>
-inline T* inserted(const T* p, int size, int pos, const T& val) {
-	T* p_res = (T*)malloc(sizeof(T) * (size + 1));
+inline std::vector<T> inserted(const std::vector<T>& vec, int pos, const T& val) {
+	std::vector<T> res = std::vector<T>(vec.size() + 1);
 	for (int i = 0; i < pos; i++) {
-		p_res[i] = p[i];
+		res[i] = vec[i];
 	}
-	p_res[pos] = val;
-	for (int i = pos + 1; i < size + 1; i++) {
-		p_res[i] = p[i - 1];
+	res[pos] = val;
+	for (int i = pos + 1; i < vec.size() + 1; i++) {
+		res[i] = vec[i - 1];
 	}
-	return p_res;
+	return std::move(res);
 }
+
 
 /// <summary>
 /// print the list

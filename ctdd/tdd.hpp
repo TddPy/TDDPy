@@ -25,6 +25,10 @@ namespace tdd {
 		// The real index label of each inner data index.
 		std::vector<int64_t> m_index_order;
 
+		// The "inversion" of index order of this tdd
+		// (can be understood as the inverse in the permutation group)
+		std::vector<int64_t> m_inversed_order;
+
 		// The order of all indices it represents, including the extra inner dim (2).
 		std::vector<int64_t> m_global_order;
 
@@ -37,6 +41,7 @@ namespace tdd {
 			m_data_shape = std::move(data_shape);
 			m_index_order = std::move(index_order);
 			calculate_inner_data_shape();
+			calculate_inversed_order();
 			calculate_global_order();
 		}
 
@@ -48,6 +53,14 @@ namespace tdd {
 				temp[i] = m_data_shape[m_index_order[i]];
 			}
 			m_inner_data_shape = std::move(temp);
+		}
+
+		void calculate_inversed_order() {
+			auto temp = std::vector<int64_t>(m_index_order.size());
+			for (int i = 0; i < m_index_order.size(); i++) {
+				temp[m_index_order[i]] = i;
+			}
+			m_inversed_order = std::move(temp);
 		}
 
 		void calculate_global_order() {
@@ -64,13 +77,50 @@ namespace tdd {
 			m_global_order = std::move(temp);
 		}
 
+		/// <summary>
+		/// Return the data shape and index_order after the reduction of specified indices.
+		/// Note : Indices are counted in data indices only.
+		/// </summary>
+		/// <param name="indices_reduced">corresponds to inner data indices, not the indices of tensor it represents.</param>
+		/// <returns>first: data shape, second: orders (not inner)</returns>
+		std::pair<std::vector<int64_t>, std::vector<int64_t>> index_reduced_info(const std::vector<int64_t>& inner_indices_reduced) {
+			auto length = inner_indices_reduced.size();
+			std::vector<int64_t> orders(dim_data() - length);
+			std::vector<int64_t> data_shapes(dim_data() + 1 - length);
+			data_shapes[dim_data() - length] = 2;
 
+			int new_count = 0;
+			for (int i = 0; i < dim_data(); i++) {
+				if (std::find(inner_indices_reduced.begin(), inner_indices_reduced.end(), i) == inner_indices_reduced.end()) {
+					data_shapes[new_count] = m_inner_data_shape[i];
+					orders[new_count] = m_index_order[i];
+					new_count++;
+				}
+			}
+
+			std::vector<int64_t> orders_res(dim_data() - length);
+			for (int i = 0; i < dim_data() - length; i++) {
+				orders_res[i] = i;
+			}
+			std::sort(orders_res.begin(), orders_res.end(),
+				[orders](int64_t a, int64_t b) {
+					return (orders[a] < orders[b]);
+				});
+
+			std::vector<int64_t> shapes_res(data_shapes);
+			// sort the data_shape
+			for (int i = 0; i < dim_data() - length; i++) {
+				shapes_res[i] = data_shapes[orders_res[i]];
+			}
+
+			return std::make_pair(std::move(shapes_res), std::move(orders_res));
+		}
 	public:
 
 
-		void reset() {
+		static void reset() {
+			node::Node<W>::reset();
 			cache::Global_Cache<W>::p_duplicate_cache->clear();
-			cache::Global_Cache<W>::p_shift_cache->clear();
 			cache::Global_Cache<W>::p_append_cache->clear();
 			cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
 			cache::Global_Cache<W>::p_sum_cache->clear();
@@ -79,6 +129,36 @@ namespace tdd {
 
 		inline int64_t dim_data()const {
 			return m_index_order.size();
+		}
+
+
+		/// <summary>
+		/// print the informaton of this tdd. DEBUG usage.
+		/// </summary>
+		inline void print() const {
+			std::cout << "weight: " << m_wnode.weight << std::endl;
+			std::cout << "node: " << m_wnode.node << std::endl;
+			std::cout << "parallel shape: (" << m_para_shape << ")\n";
+			std::cout << "data shape: (" << m_data_shape << ")\n";
+			std::cout << "index order: (" << m_index_order << ")\n";
+			//std::cout << "size: " << get_size() << std::endl;
+		}
+
+		inline void print_nodes() const {
+			if (m_wnode.node != nullptr) {
+				m_wnode.node->print();
+			}
+			else {
+				std::cout << ">node: " << nullptr << std::endl;
+			}
+		}
+
+
+		inline TDD<W> clone() const {
+			return TDD(node::weightednode<W>(m_wnode),
+				std::vector<int64_t>(m_para_shape),
+				std::vector<int64_t>(m_data_shape),
+				std::vector<int64_t>(m_index_order));
 		}
 
 		/// <summary>
@@ -186,6 +266,64 @@ namespace tdd {
 				std::vector<int64_t>(a.m_para_shape),
 				std::vector<int64_t>(a.m_data_shape),
 				std::vector<int64_t>(a.m_index_order));
+		}
+
+
+
+		/// <summary>
+		/// Contract the tdd according to the specified data_indices. Return the reduced result.
+		/// data_indices should be counted in the data indices only.
+		/// </summary>
+		/// <param name="indices">first less than second should hold for every pair</param>
+		/// <returns></returns>
+		TDD<W> contract(const cache::cont_cmd& indices) {
+			if (indices.empty()) {
+				return clone();
+			}
+			else {
+				// transform to inner indices
+				cache::cont_cmd inner_indices_cmd(indices.size());
+				for (int i = 0; i < indices.size(); i++) {
+					inner_indices_cmd[i].first = m_inversed_order[indices[i].first];
+					inner_indices_cmd[i].second = m_inversed_order[indices[i].second];
+
+				}
+
+				std::vector<int64_t> inner_i_reduced(indices.size() * 2);
+				for (int i = 0; i < indices.size(); i++) {
+					inner_i_reduced[2 * i] = inner_indices_cmd[i].first;
+					inner_i_reduced[2 * i + 1] = inner_indices_cmd[i].second;
+				}
+				std::sort(inner_i_reduced.begin(), inner_i_reduced.end());
+
+				//note that inner_indices.first < innier_indices.second should hold for every i
+				auto res_wnode = wnode<W>::contract(m_wnode, m_inner_data_shape, inner_indices_cmd, inner_i_reduced);
+
+				auto reduced_info = index_reduced_info(inner_i_reduced);
+
+				return TDD(std::move(res_wnode), std::vector<int64_t>(m_para_shape),
+					std::move(reduced_info.first), std::move(reduced_info.second));
+			}
+		}
+
+
+		/// <summary>
+		/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.
+		/// Whether to tensor on the parallel indices.
+		/// </summary>
+		/// <typeparam name="W"></typeparam>
+		inline static TDD<W> tensordot(const TDD<W>& a, const TDD<W>& b,
+			const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b, bool parallel_tensor = false) {
+
+			auto temp_tdd = direct_product(a, b, parallel_tensor);
+
+			cache::cont_cmd i_cmd(ils_a.size());
+
+			for (int i = 0; i < ils_a.size(); i++) {
+				i_cmd[i].first = ils_a[i];
+				i_cmd[i].second = ils_b[i] + a.dim_data();
+			}
+			return temp_tdd.contract(i_cmd);
 		}
 	};
 }

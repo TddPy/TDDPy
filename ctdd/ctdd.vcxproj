@@ -234,16 +234,16 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(libtorch)\include;$(libtorch)\include\torch\csrc\api\include;$(Boost);$(PythonPath)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(PythonPath)\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>D:\anaconda3\libs\python39.lib;D:\anaconda3\Lib\site-packages\torch\lib\caffe2_nvrtc.lib;D:\anaconda3\Lib\site-packages\torch\lib\torch_python.lib;$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(libtorch)\lib\asmjit.lib;$(libtorch)\lib\c10.lib;$(libtorch)\lib\c10_cuda.lib;$(libtorch)\lib\caffe2_detectron_ops_gpu.lib;$(libtorch)\lib\caffe2_module_test_dynamic.lib;$(libtorch)\lib\caffe2_nvrtc.lib;$(libtorch)\lib\Caffe2_perfkernels_avx.lib;$(libtorch)\lib\Caffe2_perfkernels_avx2.lib;$(libtorch)\lib\Caffe2_perfkernels_avx512.lib;$(libtorch)\lib\clog.lib;$(libtorch)\lib\cpuinfo.lib;$(libtorch)\lib\dnnl.lib;$(libtorch)\lib\fbgemm.lib;$(libtorch)\lib\fbjni.lib;$(libtorch)\lib\kineto.lib;$(libtorch)\lib\libprotobuf.lib;$(libtorch)\lib\libprotobuf-lite.lib;$(libtorch)\lib\libprotoc.lib;$(libtorch)\lib\mkldnn.lib;$(libtorch)\lib\pthreadpool.lib;$(libtorch)\lib\pytorch_jni.lib;$(libtorch)\lib\torch.lib;$(libtorch)\lib\torch_cpu.lib;$(libtorch)\lib\torch_cuda.lib;$(libtorch)\lib\torch_cuda_cpp.lib;$(libtorch)\lib\torch_cuda_cu.lib;$(libtorch)\lib\XNNPACK.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -298,6 +298,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="simpletools.cpp" />
     <ClCompile Include="tdd.cpp" />
     <ClCompile Include="weight.cpp" />
   </ItemGroup>
@@ -306,6 +307,7 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="CUDAcpl.h" />
     <ClInclude Include="node.hpp" />
+    <ClInclude Include="simpletools.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="succ_ls.hpp" />
     <ClInclude Include="tdd.hpp" />
