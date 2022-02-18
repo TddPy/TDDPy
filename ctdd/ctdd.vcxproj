@@ -311,6 +311,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="succ_ls.hpp" />
     <ClInclude Include="tdd.hpp" />
+    <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="weight.h" />
     <ClInclude Include="wnode.hpp" />
   </ItemGroup>

@@ -74,8 +74,8 @@ public:
 
 		// node reduction check (reduce when all equal)
 		bool all_equal = true;
-		for (auto i = successors.begin() + 1; i != successors.end(); i++) {
-			if (!is_equal(successors[0], *i)) {
+		for (const auto& succ : successors) {
+			if (!is_equal(successors[0], succ)) {
 				all_equal = false;
 				break;
 			}
@@ -89,8 +89,8 @@ public:
 
 		// check whether all successor weights are zero, and redirect to terminal node if so
 		bool all_zero = true;
-		for (auto i = successors.begin(); i != successors.end(); i++) {
-			if (!weight::is_zero(i->weight)) {
+		for (const auto& succ : successors) {
+			if (!weight::is_zero(succ.weight)) {
 				all_zero = false;
 				break;
 			}
@@ -112,8 +112,8 @@ public:
 		}
 		wcomplex weig_max = successors[i_max].weight;
 		auto&& new_successors = std::vector<node::weightednode<W>>(successors);
-		for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
-			i->weight = i->weight / weig_max;
+		for (auto&& succ : new_successors) {
+			succ.weight = succ.weight / weig_max;
 		}
 		auto new_node = node::Node<W>::get_unique_node(w_node.node->get_order(), new_successors);
 		return node::weightednode<W>{ weig_max* w_node.weight, new_node };
@@ -142,8 +142,8 @@ public:
 		CUDAcpl::Tensor temp_tensor;
 		CUDAcpl::Tensor uniform_tensor;
 		int next_order = 0;
-		auto i_par = par_tensor.begin();
-		for (auto i = successors.begin(); i != successors.end(); i++, i_par++) {
+		auto&& i_par = par_tensor.begin();
+		for (auto i = successors.cbegin(); i != successors.cend(); i++, i_par++) {
 			// detect terminal nodes, or iterate on the next node
 			if (i->node == nullptr) {
 				temp_tensor = CUDAcpl::from_complex(i->weight);
@@ -408,8 +408,8 @@ public:
 		if (w_node.node == nullptr) {
 			// close all the unprocessed indices
 			double scale = 1.;
-			for (auto i = waiting_ls.begin(); i != waiting_ls.end(); i++) {
-				scale *= data_shape[i->first];
+			for (const auto& cmd : waiting_ls) {
+				scale *= data_shape[cmd.first];
 			}
 			return node::weightednode<W>(w_node.weight * scale, nullptr);
 		}
@@ -431,19 +431,19 @@ public:
 			double scale = 1.;
 
 			// process the skipped remained indices (situations only first index skipped will be processed afterwards)
-			auto remained_ls_pd = cache::cont_cmd();
-			for (auto i = remained_ls.begin(); i != remained_ls.end(); i++) {
-				if (i->second >= order) {
-					remained_ls_pd.push_back(*i);
+			auto&& remained_ls_pd = cache::cont_cmd();
+			for (const auto& cmd : remained_ls) {
+				if (cmd.second >= order) {
+					remained_ls_pd.push_back(cmd);
 				}
 				else {
-					scale *= data_shape[i->first];
+					scale *= data_shape[cmd.first];
 				}
 			}
-			auto waiting_ls_pd = cache::cont_cmd();
-			for (auto i = waiting_ls.begin(); i != waiting_ls.end(); i++) {
-				if (i->first >= order) {
-					waiting_ls_pd.push_back(*i);
+			auto&& waiting_ls_pd = cache::cont_cmd();
+			for (const auto& cmd : waiting_ls) {
+				if (cmd.first >= order) {
+					waiting_ls_pd.push_back(cmd);
 				}
 			}
 

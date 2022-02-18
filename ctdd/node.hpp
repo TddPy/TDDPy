@@ -36,14 +36,12 @@ namespace node {
 		/// <param name="id_ls"> the vector to store all the ids</param>
 		void node_search(const std::vector<int>& id_ls) const {
 			// check whether it is in p_id already
-			for (auto i = id_ls.begin(); i != id_ls.end(); i++) {
-				if (*i == m_id) {
-					return;
-				}
+			if (std::find(id_ls.cbegin(), id_ls.cend(), m_id) != id_ls.cend()) {
+				return;
 			}
 			// it is not counted yet in this case
 			id_ls.push_back(m_id);
-			for (auto i = m_successors.begin(); i != m_successors.end(); i++) {
+			for (const auto& i : m_successors) {
 				if (!i->isterminal()) {
 					i->node->node_search(id_ls);
 				}
@@ -70,9 +68,9 @@ namespace node {
 				//broadcast the dims for tensor weight
 				//...
 
-				auto new_successors = succ_ls<W>(p_node->m_successors);
-				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
-					i->node = Node::duplicate_iterate(i->node, order_shift, parallel_shape, shape_front, shape_back);
+				auto&& new_successors = succ_ls<W>(p_node->m_successors);
+				for (auto&& succ : new_successors) {
+					succ.node = Node::duplicate_iterate(succ.node, order_shift, parallel_shape, shape_front, shape_back);
 				}
 				auto p_res = Node<W>::get_unique_node(order, std::move(new_successors));
 				cache::Global_Cache<W>::p_duplicate_cache->insert(std::make_pair(std::move(key), p_res));
@@ -96,8 +94,8 @@ namespace node {
 			}
 			else {
 				auto new_successors = succ_ls<W>(p_node->m_successors);
-				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
-					i->node = shift_multiple_iterate(i->node, new_order_ls, local_shift_cache);
+				for (auto&& succ : new_successors) {
+					succ.node = shift_multiple_iterate(succ.node, new_order_ls, local_shift_cache);
 				}
 				auto p_res = Node<W>::get_unique_node(order, new_successors);
 				local_shift_cache.insert(std::make_pair(std::move(key), p_res));
@@ -117,8 +115,8 @@ namespace node {
 			}
 			else {
 				auto new_successors = succ_ls<W>(p_nodea->m_successors);
-				for (auto i = new_successors.begin(); i != new_successors.end(); i++) {
-					i->node = append_iterate(i->node, p_nodeb);
+				for (auto&& succ : new_successors) {
+					succ.node = append_iterate(succ.node, p_nodeb);
 				}
 				auto p_res = Node<W>::get_unique_node(p_nodea->m_order, std::move(new_successors));
 				cache::Global_Cache<W>::p_append_cache->insert(std::make_pair(std::move(key), p_res));
@@ -146,7 +144,7 @@ namespace node {
 
 		static void reset() {
 			m_global_id = 0;
-			for (auto i : m_unique_table) {
+			for (auto&& i : m_unique_table) {
 				delete i.second;
 			}
 			m_unique_table.clear();
@@ -247,7 +245,7 @@ namespace node {
 				std::cout << "|  " << j << " " << "node: " << m_successors[j].node << std::endl;
 			}
 
-			for (auto p = m_successors.begin(); p != m_successors.end(); p++) {
+			for (const auto& p : m_successors) {
 				if (p->node != nullptr) {
 					p->node->print();
 				}

@@ -69,14 +69,14 @@ namespace cache {
 	inline std::size_t hash_value(const unique_table_key<W>& key) {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.order);
-		for (auto i = key.code1.begin(); i != key.code1.end(); i++) {
-			boost::hash_combine(seed, *i);
+		for (const auto& code : key.code1) {
+			boost::hash_combine(seed, code);
 		}
-		for (auto i = key.code2.begin(); i != key.code2.end(); i++) {
-			boost::hash_combine(seed, *i);
+		for (const auto& code : key.code2) {
+			boost::hash_combine(seed, code);
 		}
-		for (auto i = key.nodes.begin(); i != key.nodes.end(); i++) {
-			boost::hash_combine(seed, *i);
+		for (const auto& code : key.nodes) {
+			boost::hash_combine(seed, code);
 		}
 		return seed;
 	}
@@ -160,8 +160,8 @@ namespace cache {
 	inline std::size_t hash_value(const CUDAcpl_table_key<W>& key) {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.id);
-		for (auto i = key.inner_shape.begin(); i != key.inner_shape.end(); i++) {
-			boost::hash_combine(seed, *i);
+		for (const auto& code : key.inner_shape) {
+			boost::hash_combine(seed, code);
 		}
 		return seed;
 	}
@@ -229,21 +229,17 @@ namespace cache {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.id_1);
 		boost::hash_combine(seed, key.id_2);
-		for (auto i = key.nweight1_code1.begin();
-			i != key.nweight1_code1.end(); i++) {
-			boost::hash_combine(seed, *i);
+		for (const auto& code : key.nweight1_code1) {
+			boost::hash_combine(seed, code);
 		}
-		for (auto i = key.nweight1_code2.begin();
-			i != key.nweight1_code2.end(); i++) {
-			boost::hash_combine(seed, *i);
+		for (const auto& code : key.nweight1_code2) {
+			boost::hash_combine(seed, code);
 		}
-		for (auto i = key.nweight2_code1.begin();
-			i != key.nweight2_code1.end(); i++) {
-			boost::hash_combine(seed, *i);
+		for (const auto& code : key.nweight2_code1) {
+			boost::hash_combine(seed, code);
 		}
-		for (auto i = key.nweight2_code2.begin();
-			i != key.nweight2_code2.end(); i++) {
-			boost::hash_combine(seed, *i);
+		for (const auto& code : key.nweight2_code2) {
+			boost::hash_combine(seed, code);
 		}
 		return seed;
 	}
@@ -307,13 +303,13 @@ namespace cache {
 	inline std::size_t hash_value(const cont_key<W>& key) {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.id);
-		for (auto i = key.remained_ls.begin(); i != key.remained_ls.end(); i++) {
-			boost::hash_combine(seed, i->first);
-			boost::hash_combine(seed, i->second);
+		for (const auto& cmd : key.remained_ls) {
+			boost::hash_combine(seed, cmd.first);
+			boost::hash_combine(seed, cmd.second);
 		}
-		for (auto i = key.waiting_ls.begin(); i != key.waiting_ls.end(); i++) {
-			boost::hash_combine(seed, i->first);
-			boost::hash_combine(seed, i->second);
+		for (const auto& cmd : key.waiting_ls) {
+			boost::hash_combine(seed, cmd.first);
+			boost::hash_combine(seed, cmd.second);
 		}
 		return seed;
 	}

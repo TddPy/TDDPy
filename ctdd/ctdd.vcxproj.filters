@@ -77,5 +77,8 @@
     <ClInclude Include="simpletools.h">
       <Filter>dependency</Filter>
     </ClInclude>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>dependency</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

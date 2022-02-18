@@ -5,6 +5,7 @@
 #include <torch/python.h>
 #endif
 
+
 #include <cmath>
 #include <iostream>
 #include <complex>
@@ -24,3 +25,4 @@
 #include "simpletools.h"
 #include "config.h"
 #include "CUDAcpl.h"
+#include "ThreadPool.h"
