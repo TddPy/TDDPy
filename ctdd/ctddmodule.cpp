@@ -20,11 +20,11 @@ as_tensor(PyObject* self, PyObject* args)
 	int dim_parallel;
 	if (!PyArg_ParseTuple(args, "OiO", &p_tensor, &dim_parallel, &p_index_order_ls))
 		return NULL;
-	auto t = THPVariable_Unpack(p_tensor);
+	auto&& t = THPVariable_Unpack(p_tensor);
 
 	TDD<W>* p_res;
 	//prepare the index_order array
-	auto size = PyList_GET_SIZE(p_index_order_ls);
+	auto&& size = PyList_GET_SIZE(p_index_order_ls);
 	if (size == 0) {
 		p_res = new TDD<W>(TDD<W>::as_tensor(t, dim_parallel, nullptr));
 	}
@@ -82,7 +82,7 @@ tensordot_num(PyObject* self, PyObject* args) {
 	}
 	TDD<W>* p_tdda = (TDD<W>*)code_a;
 	TDD<W>* p_tddb = (TDD<W>*)code_b;
-	auto p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, dim));
+	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, dim));
 	// convert to long long
 	int64_t code = (int64_t)p_res;
 	return Py_BuildValue("L", code);
@@ -105,14 +105,14 @@ tensordot_ls(PyObject* self, PyObject* args) {
 	TDD<W>* p_tdda = (TDD<W>*)code_a;
 	TDD<W>* p_tddb = (TDD<W>*)code_b;
 
-	auto size = PyList_GET_SIZE(p_i1_pyo);
+	auto&& size = PyList_GET_SIZE(p_i1_pyo);
 	int* p_i1 = (int*)malloc(sizeof(int) * size);
 	int* p_i2 = (int*)malloc(sizeof(int) * size);
 	for (int i = 0; i < size; i++) {
 		p_i1[i] = _PyLong_AsInt(PyList_GetItem(p_i1_pyo, i));
 		p_i2[i] = _PyLong_AsInt(PyList_GetItem(p_i2_pyo, i));
 	}
-	auto p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, size, p_i1, p_i2));
+	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, size, p_i1, p_i2));
 
 	free(p_i1);
 	free(p_i2);
@@ -137,26 +137,26 @@ get_tdd_info(PyObject* self, PyObject* args) {
 	}
 	TDD<W>* p_tdd = (TDD<W>*)code;
 
-	auto tdd_weight = p_tdd->wnode().weight;
-	auto tdd_node = p_tdd->wnode().p_node;
-	auto tdd_dim_parallel = p_tdd->dim_parallel();
-	auto tdd_dim_data = p_tdd->dim_data();
-	auto tdd_p_parallel_shape = p_tdd->parallel_shape();
-	auto tdd_p_data_shape = p_tdd->data_shape();
-	auto tdd_p_index_order = p_tdd->index_order();
-	auto tdd_size = p_tdd->get_size();
+	auto&& tdd_weight = p_tdd->wnode().weight;
+	auto&& tdd_node = p_tdd->wnode().p_node;
+	auto&& tdd_dim_parallel = p_tdd->dim_parallel();
+	auto&& tdd_dim_data = p_tdd->dim_data();
+	auto&& tdd_p_parallel_shape = p_tdd->parallel_shape();
+	auto&& tdd_p_data_shape = p_tdd->data_shape();
+	auto&& tdd_p_index_order = p_tdd->index_order();
+	auto&& tdd_size = p_tdd->get_size();
 
 	// prepare the objects
-	auto py_weight = THPVariable_Wrap(CUDAcpl::from_complex(tdd_weight));
-	auto py_parallel_shape = PyTuple_New(tdd_dim_parallel);
+	auto&& py_weight = THPVariable_Wrap(CUDAcpl::from_complex(tdd_weight));
+	auto&& py_parallel_shape = PyTuple_New(tdd_dim_parallel);
 	for (int i = 0; i < tdd_dim_parallel; i++) {
 		PyTuple_SetItem(py_parallel_shape, i, PyLong_FromLongLong(tdd_p_parallel_shape[i]));
 	}
-	auto py_data_shape = PyTuple_New(tdd_dim_data);
+	auto&& py_data_shape = PyTuple_New(tdd_dim_data);
 	for (int i = 0; i < tdd_dim_data; i++) {
 		PyTuple_SetItem(py_data_shape, i, PyLong_FromLongLong(tdd_p_data_shape[i]));
 	}
-	auto py_index_order = PyTuple_New(tdd_dim_data);
+	auto&& py_index_order = PyTuple_New(tdd_dim_data);
 	for (int i = 0; i < tdd_dim_data; i++) {
 		PyTuple_SetItem(py_index_order, i, PyLong_FromLong(tdd_p_index_order[i]));
 	}
@@ -190,14 +190,14 @@ get_node_info(PyObject* self, PyObject* args) {
 	}
 	const Node<W>* p_node = (const Node<W>*)code;
 
-	auto node_id = p_node->get_id();
-	auto node_order = p_node->get_order();
-	auto node_range = p_node->get_range();
-	auto node_p_weights = p_node->get_weights();
-	auto node_p_successors = p_node->get_successors();
+	auto&& node_id = p_node->get_id();
+	auto&& node_order = p_node->get_order();
+	auto&& node_range = p_node->get_range();
+	auto&& node_p_weights = p_node->get_weights();
+	auto&& node_p_successors = p_node->get_successors();
 
-	auto py_weights = PyTuple_New(node_range);
-	auto py_successors = PyTuple_New(node_range);
+	auto&& py_weights = PyTuple_New(node_range);
+	auto&& py_successors = PyTuple_New(node_range);
 	for (int i = 0; i < node_range; i++) {
 		PyTuple_SetItem(py_weights, i, THPVariable_Wrap(CUDAcpl::from_complex(node_p_weights[i])));
 		PyTuple_SetItem(py_successors, i, PyLong_FromLongLong((int64_t)node_p_successors[i]));

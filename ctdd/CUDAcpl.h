@@ -14,7 +14,7 @@ namespace CUDAcpl {
 	typedef torch::Tensor Tensor;
 
 	inline Tensor from_complex(Complex cpl) {
-		auto res = torch::empty({ 2 });
+		auto&& res = torch::empty({ 2 });
 		res[0] = cpl.real();
 		res[1] = cpl.imag();
 		return res;
@@ -26,8 +26,8 @@ namespace CUDAcpl {
 	}
 
 	inline Tensor ones(c10::IntArrayRef size) {
-		auto real = torch::ones(size);
-		auto imag = torch::zeros(size);
+		auto&& real = torch::ones(size);
+		auto&& imag = torch::zeros(size);
 		return torch::stack({ real, imag }, size.size());
 	}
 

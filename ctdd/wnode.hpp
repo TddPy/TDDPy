@@ -24,7 +24,7 @@ public:
 
 		node::weightednode<W> res;
 		// checks whether the tensor is reduced to the [[...[val]...]] form
-		auto dim_data = data_shape.size() - 1;
+		auto&& dim_data = data_shape.size() - 1;
 		if (depth == dim_data) {
 			if (dim_data == 0) {
 				res.weight = CUDAcpl::item(t);
@@ -42,7 +42,7 @@ public:
 
 		//note: torch::chunk does not work here
 
-		auto new_successors = std::vector<node::weightednode<W>>(data_shape[split_pos]);
+		auto&& new_successors = std::vector<node::weightednode<W>>(data_shape[split_pos]);
 		for (int i = 0; i < data_shape[split_pos]; i++) {
 			new_successors[i] = as_tensor_iterate(
 				// -1 is because the extra inner dim for real and imag
@@ -115,7 +115,7 @@ public:
 		for (auto&& succ : new_successors) {
 			succ.weight = succ.weight / weig_max;
 		}
-		auto new_node = node::Node<W>::get_unique_node(w_node.node->get_order(), new_successors);
+		auto&& new_node = node::Node<W>::get_unique_node(w_node.node->get_order(), new_successors);
 		return node::weightednode<W>{ weig_max* w_node.weight, new_node };
 	}
 
@@ -127,15 +127,15 @@ public:
 	static CUDAcpl::Tensor to_CUDAcpl_iterate(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape) {
 		// w_node.node is guaranteed not to be null
 
-		auto current_order = w_node.node->get_order();
+		auto&& current_order = w_node.node->get_order();
 
-		auto par_tensor = std::vector<CUDAcpl::Tensor>(w_node.node->get_range());
+		auto&& par_tensor = std::vector<CUDAcpl::Tensor>(w_node.node->get_range());
 		auto&& successors = w_node.node->get_successors();
 
-		auto dim_data = data_shape.size() - 1;
+		auto&& dim_data = data_shape.size() - 1;
 
 		// The temp shape for adjustment.(shape of the successors of this node)
-		auto p_temp_shape = std::vector<int64_t>(dim_data - current_order);
+		auto&& p_temp_shape = std::vector<int64_t>(dim_data - current_order);
 		p_temp_shape[dim_data - current_order - 1] = 2;
 
 
@@ -143,7 +143,7 @@ public:
 		CUDAcpl::Tensor uniform_tensor;
 		int next_order = 0;
 		auto&& i_par = par_tensor.begin();
-		for (auto i = successors.cbegin(); i != successors.cend(); i++, i_par++) {
+		for (auto&& i = successors.cbegin(); i != successors.cend(); i++, i_par++) {
 			// detect terminal nodes, or iterate on the next node
 			if (i->node == nullptr) {
 				temp_tensor = CUDAcpl::from_complex(i->weight);
@@ -151,8 +151,8 @@ public:
 			}
 			else {
 				// first look up in the dictionary
-				auto key = cache::CUDAcpl_table_key<W>(i->node->get_id(), data_shape);
-				auto p_find_res = cache::Global_Cache<W>::p_CUDAcpl_cache->find(key);
+				auto&& key = cache::CUDAcpl_table_key<W>(i->node->get_id(), data_shape);
+				auto&& p_find_res = cache::Global_Cache<W>::p_CUDAcpl_cache->find(key);
 				if (p_find_res != cache::Global_Cache<W>::p_CUDAcpl_cache->end()) {
 					uniform_tensor = p_find_res->second;
 				}
@@ -199,7 +199,7 @@ public:
 	/// <returns></returns>
 	static CUDAcpl::Tensor to_CUDAcpl(const node::weightednode<W>& w_node, const std::vector<int64_t>& inner_data_shape) {
 		int n_extra_one = 0;
-		auto dim_data = inner_data_shape.size() - 1;
+		auto&& dim_data = inner_data_shape.size() - 1;
 		CUDAcpl::Tensor res;
 		if (w_node.node == nullptr) {
 			res = CUDAcpl::mul_element_wise(CUDAcpl::ones({}), w_node.weight);
@@ -211,7 +211,7 @@ public:
 		}
 		// this extra layer is for adding the reduced dimensions at the front
 		// prepare the real data shape
-		auto full_data_shape = std::vector<int64_t>(dim_data + 1);
+		auto&& full_data_shape = std::vector<int64_t>(dim_data + 1);
 		full_data_shape[dim_data] = 2;
 		// res.dim() == dim_data + 1 - n_extra_one should hold
 		auto&& cur_data_shape = res.sizes();
@@ -241,7 +241,7 @@ public:
 		else {
 			weight = a.weight * b.weight;
 		}
-		auto p_res_node = node::Node<W>::append(a.node, a_depth, b.node, parallel_shape, shape_front, shape_back, parallel_tensor);
+		auto&& p_res_node = node::Node<W>::append(a.node, a_depth, b.node, parallel_shape, shape_front, shape_back, parallel_tensor);
 		return node::weightednode<W>(std::move(weight), p_res_node);
 	}
 
@@ -260,8 +260,8 @@ public:
 	inline static weight::sum_nweights<W> sum_weights_normalize(const W& weight1, const W& weight2) {
 		wcomplex renorm_coef = (norm(weight1) > norm(weight2)) ? weight1 : weight2;
 
-		auto nweight1 = wcomplex(0., 0.);
-		auto nweight2 = wcomplex(0., 0.);
+		auto&& nweight1 = wcomplex(0., 0.);
+		auto&& nweight2 = wcomplex(0., 0.);
 		if (norm(renorm_coef) > weight::EPS) {
 			nweight1 = weight1 / renorm_coef;
 			nweight2 = weight2 / renorm_coef;
@@ -294,11 +294,11 @@ public:
 		}
 
 		// produce the unique key and look up in the cache
-		auto key = cache::sum_key<W>(
+		auto&& key = cache::sum_key<W>(
 			node::Node<W>::get_id_all(w_node1.node), w_node1.weight,
 			node::Node<W>::get_id_all(w_node2.node), w_node2.weight);
 
-		auto p_find_res = cache::Global_Cache<W>::p_sum_cache->find(key);
+		auto&& p_find_res = cache::Global_Cache<W>::p_sum_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_sum_cache->end()) {
 			node::weightednode<W> res = p_find_res->second;
 			res.weight = res.weight * renorm_coef;
@@ -326,7 +326,7 @@ public:
 				p_wnode_2 = &w_node2;
 			}
 
-			auto new_successors = std::vector<node::weightednode<W>>(p_wnode_1->node->get_range());
+			auto&& new_successors = std::vector<node::weightednode<W>>(p_wnode_1->node->get_range());
 
 			bool not_operated = true;
 			if (p_wnode_2->node != nullptr) {
@@ -334,9 +334,9 @@ public:
 					// node1 and node2 are assumed to have the same shape
 					auto&& successors_1 = p_wnode_1->node->get_successors();
 					auto&& successors_2 = p_wnode_2->node->get_successors();
-					auto i_1 = successors_1.begin();
-					auto i_2 = successors_2.begin();
-					auto i_new = new_successors.begin();
+					auto&& i_1 = successors_1.begin();
+					auto&& i_2 = successors_2.begin();
+					auto&& i_new = new_successors.begin();
 					for (; i_1 != successors_1.end(); i_1++, i_2++, i_new++) {
 						// normalize as a whole
 						auto&& renorm_res = sum_weights_normalize(p_wnode_1->weight * i_1->weight, p_wnode_2->weight * i_2->weight);
@@ -358,8 +358,8 @@ public:
 				*/
 
 				auto&& successors = p_wnode_1->node->get_successors();
-				auto i_1 = successors.begin();
-				auto i_new = new_successors.begin();
+				auto&& i_1 = successors.begin();
+				auto&& i_new = new_successors.begin();
 				for (; i_1 != successors.end(); i_1++, i_new++) {
 					auto&& renorm_res = sum_weights_normalize(p_wnode_1->weight * i_1->weight, p_wnode_2->weight);
 					auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
@@ -417,15 +417,15 @@ public:
 		node::weightednode<W> res;
 
 		// first look up in the dictionary
-		auto key = cache::cont_key<W>(w_node.node->get_id(), remained_ls, waiting_ls);
-		auto p_find_res = cache::Global_Cache<W>::p_cont_cache->find(key);
+		auto&& key = cache::cont_key<W>(w_node.node->get_id(), remained_ls, waiting_ls);
+		auto&& p_find_res = cache::Global_Cache<W>::p_cont_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_cont_cache->end()) {
 			res = p_find_res->second;
 			res.weight = res.weight * w_node.weight;
 			return res;
 		}
 		else {
-			auto order = w_node.node->get_order();
+			auto&& order = w_node.node->get_order();
 
 			// store the scaling number due to skipped remained indices
 			double scale = 1.;
@@ -464,13 +464,13 @@ public:
 				*/
 
 				// next_to_close: <pos in waiting_ls_pd, min in waiting_ls_pd>
-				auto next_to_close = min_iv(waiting_ls_pd, &cmd_smaller);
+				auto&& next_to_close = min_iv(waiting_ls_pd, &cmd_smaller);
 
 				// note that next_i_to_close >= node.order is guaranteed here
 				if (order == next_to_close.second.first) {
-					auto index_val = waiting_ls_pd[next_to_close.first].second;
+					auto&& index_val = waiting_ls_pd[next_to_close.first].second;
 					// close the waiting index
-					auto next_waiting_ls = removed<std::pair<int, int>>(waiting_ls_pd, next_to_close.first);
+					auto&& next_waiting_ls = removed<std::pair<int, int>>(waiting_ls_pd, next_to_close.first);
 					res = contract_iterate(successors[index_val], data_shape, remained_ls_pd, next_waiting_ls);
 					res.weight = res.weight * scale;
 					not_operated = false;
@@ -481,11 +481,11 @@ public:
 				*	Check the remained indices to start tracing.
 				*	If multiple (smaller ones of) remained indices have been skipped, we will resolve with iteration, one by one.
 				*/
-				auto next_to_open = min_iv(remained_ls_pd, &cmd_smaller);
+				auto&& next_to_open = min_iv(remained_ls_pd, &cmd_smaller);
 				if (order >= next_to_open.second.first) {
 					// open the index and finally sum up
 
-					auto next_remained_ls = removed(remained_ls_pd, next_to_open.first);
+					auto&& next_remained_ls = removed(remained_ls_pd, next_to_open.first);
 
 					// find the right insert place in waiting_ls
 					int insert_pos = 0;
@@ -502,15 +502,15 @@ public:
 					int range = data_shape[next_to_open.second.first];
 
 					// produce the sorted new index lists
-					auto next_waiting_ls = inserted(waiting_ls_pd, insert_pos, std::make_pair(
+					auto&& next_waiting_ls = inserted(waiting_ls_pd, insert_pos, std::make_pair(
 						remained_ls_pd[next_to_open.first].second, 0)
 					);
 
-					auto new_successors = std::vector<node::weightednode<W>>(range);
+					auto&& new_successors = std::vector<node::weightednode<W>>(range);
 					if (order == next_to_open.second.first) {
 						int index_val = 0;
-						auto i_new = new_successors.begin();
-						for (auto i = successors.begin(); i != successors.end(); i++, i_new++, index_val++) {
+						auto&& i_new = new_successors.begin();
+						for (auto&& i = successors.begin(); i != successors.end(); i++, i_new++, index_val++) {
 							if (i->node == nullptr) {
 								i_new->node = nullptr;
 								i_new->weight = i->weight;
@@ -525,16 +525,17 @@ public:
 					else {
 						// this node skipped the index next_i_to_open in this case
 						int index_val = 0;
-						auto i_new = new_successors.begin();
-						for (auto i = successors.begin(); i != successors.end(); i++, i_new++, index_val++) {
+						for (auto&& succ_new : new_successors) {
 							next_waiting_ls[insert_pos].second = index_val;
-							*i_new = contract_iterate(w_node, data_shape, next_remained_ls, next_waiting_ls);
+							succ_new = contract_iterate(node::weightednode<W>(wcomplex(1., 0.), w_node.node),
+								data_shape, next_remained_ls, next_waiting_ls);
+							index_val++;
 						}
 					}
 
 					// however the subnode outcomes are calculated, sum them over.
 					res = new_successors[0];
-					for (auto i = new_successors.begin() + 1; i != new_successors.end(); i++) {
+					for (auto&& i = new_successors.begin() + 1; i != new_successors.end(); i++) {
 						res = sum(res, *i);
 					}
 					res.weight = res.weight * scale;
@@ -544,9 +545,9 @@ public:
 
 			if (not_operated) {
 				// in this case, no operation can be performed on this node, so we move on the the following nodes.
-				auto new_successors = std::vector<node::weightednode<W>>(w_node.node->get_range());
-				auto i_new = new_successors.begin();
-				for (auto i = successors.begin(); i != successors.end(); i++, i_new++) {
+				auto&& new_successors = std::vector<node::weightednode<W>>(w_node.node->get_range());
+				auto&& i_new = new_successors.begin();
+				for (auto&& i = successors.begin(); i != successors.end(); i++, i_new++) {
 					if (i->node == nullptr) {
 						i_new->node = nullptr;
 						i_new->weight = i->weight;
@@ -580,14 +581,14 @@ public:
 	static node::weightednode<W> contract(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
 		const cache::cont_cmd& remained_ls, const std::vector<int64_t> reduced_indices) {
 
-		auto res = contract_iterate(w_node, data_shape, remained_ls, cache::cont_cmd());
+		auto&& res = contract_iterate(w_node, data_shape, remained_ls, cache::cont_cmd());
 
 		// shift the nodes at a time
-		auto num_pair = remained_ls.size();
+		auto&& num_pair = remained_ls.size();
 
 		////////////////////////////////
 		// prepare the new index order
-		auto new_order = std::vector<int64_t>(data_shape.size() - 1);
+		auto&& new_order = std::vector<int64_t>(data_shape.size() - 1);
 		for (int i = 0; i < reduced_indices[0]; i++) {
 			new_order[i] = i;
 		}

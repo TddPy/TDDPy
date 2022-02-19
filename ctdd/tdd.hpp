@@ -47,7 +47,7 @@ namespace tdd {
 
 		void calculate_inner_data_shape() {
 
-			auto temp = std::vector<int64_t>(m_index_order.size() + 1);
+			auto&& temp = std::vector<int64_t>(m_index_order.size() + 1);
 			temp[m_index_order.size()] = 2;
 			for (int i = 0; i < m_index_order.size(); i++) {
 				temp[i] = m_data_shape[m_index_order[i]];
@@ -56,7 +56,7 @@ namespace tdd {
 		}
 
 		void calculate_inversed_order() {
-			auto temp = std::vector<int64_t>(m_index_order.size());
+			auto&& temp = std::vector<int64_t>(m_index_order.size());
 			for (int i = 0; i < m_index_order.size(); i++) {
 				temp[m_index_order[i]] = i;
 			}
@@ -64,9 +64,9 @@ namespace tdd {
 		}
 
 		void calculate_global_order() {
-			auto dim_para = m_para_shape.size();
-			auto dim_data = m_index_order.size();
-			auto temp = std::vector<int64_t>(dim_para + dim_data + 1);
+			auto&& dim_para = m_para_shape.size();
+			auto&& dim_data = m_index_order.size();
+			auto&& temp = std::vector<int64_t>(dim_para + dim_data + 1);
 			temp[dim_para + dim_data] = dim_para + dim_data;
 			for (int i = 0; i < dim_para; i++) {
 				temp[i] = i;
@@ -84,7 +84,7 @@ namespace tdd {
 		/// <param name="indices_reduced">corresponds to inner data indices, not the indices of tensor it represents.</param>
 		/// <returns>first: data shape, second: orders (not inner)</returns>
 		std::pair<std::vector<int64_t>, std::vector<int64_t>> index_reduced_info(const std::vector<int64_t>& inner_indices_reduced) {
-			auto length = inner_indices_reduced.size();
+			auto&& length = inner_indices_reduced.size();
 			std::vector<int64_t> orders(dim_data() - length);
 			std::vector<int64_t> data_shapes(dim_data() + 1 - length);
 			data_shapes[dim_data() - length] = 2;
@@ -171,8 +171,8 @@ namespace tdd {
 		/// If empty order is put in, the trival order will be taken.</param>
 		/// <returns>The tdd created.</returns>
 		static TDD<W> as_tensor(const CUDAcpl::Tensor& t, int dim_parallel, const std::vector<int64_t>& index_order) {
-			auto dim_total = t.dim() - 1;
-			auto dim_data = dim_total - dim_parallel;
+			auto&& dim_total = t.dim() - 1;
+			auto&& dim_data = dim_total - dim_parallel;
 			auto&& index_order_pd = std::vector<int64_t>(dim_data);
 			if (index_order.empty()) {
 				for (int i = 0; i < dim_data; i++) {
@@ -185,17 +185,17 @@ namespace tdd {
 				}
 			}
 			// prepare the data_parallel
-			auto temp_para = std::vector<int64_t>(dim_parallel);
+			auto&& temp_para = std::vector<int64_t>(dim_parallel);
 			for (int i = 0; i < dim_parallel; i++) {
 				temp_para[i] = t.size(i);
 			}
 			// prepare the data_shape
-			auto temp_data = std::vector<int64_t>(dim_data + 1);
+			auto&& temp_data = std::vector<int64_t>(dim_data + 1);
 			temp_data[dim_data] = 2;
 			for (int i = 0; i < dim_data; i++) {
 				temp_data[i] = t.size(i + dim_parallel);
 			}
-			auto w_node = wnode<W>::as_tensor_iterate(t, temp_para, temp_data, index_order_pd, 0);
+			auto&& w_node = wnode<W>::as_tensor_iterate(t, temp_para, temp_data, index_order_pd, 0);
 			return TDD(std::move(w_node), std::move(temp_para), std::move(temp_data), std::move(index_order_pd));
 		}
 
@@ -206,7 +206,7 @@ namespace tdd {
 		/// </summary>
 		/// <returns></returns>
 		CUDAcpl::Tensor CUDAcpl() const {
-			auto res = wnode<W>::to_CUDAcpl(m_wnode, m_inner_data_shape);
+			auto&& res = wnode<W>::to_CUDAcpl(m_wnode, m_inner_data_shape);
 
 			// permute to the right index order
 			res = res.permute(m_global_order);
@@ -230,10 +230,10 @@ namespace tdd {
 			if (parallel_tensor) {
 				throw - 10;
 			}
-			auto w_node = wnode<W>::direct_product(a.m_wnode, a.dim_data(), b.m_wnode,
+			auto&& w_node = wnode<W>::direct_product(a.m_wnode, a.dim_data(), b.m_wnode,
 				a.m_para_shape, std::vector<int64_t>(), std::vector<int64_t>(), parallel_tensor);
 			// adjust the data shape and index order
-			auto new_index_order = std::vector<int64_t>(a.dim_data() + b.dim_data());
+			auto&& new_index_order = std::vector<int64_t>(a.dim_data() + b.dim_data());
 			for (int i = 0; i < a.dim_data(); i++) {
 				new_index_order[i] = a.m_index_order[i];
 			}
@@ -241,7 +241,7 @@ namespace tdd {
 				new_index_order[i + a.dim_data()] = b.m_index_order[i] + a.dim_data();
 			}
 
-			auto new_data_shape = std::vector<int64_t>(a.dim_data() + b.dim_data() + 1);
+			auto&& new_data_shape = std::vector<int64_t>(a.dim_data() + b.dim_data() + 1);
 			new_data_shape[a.dim_data() + b.dim_data()] = 2;
 			for (int i = 0; i < a.dim_data(); i++) {
 				new_data_shape[i] = a.m_data_shape[i];
@@ -249,7 +249,7 @@ namespace tdd {
 			for (int i = 0; i < b.dim_data(); i++) {
 				new_data_shape[i + a.dim_data()] = b.m_data_shape[i];
 			}
-			auto new_para_shape = std::vector<int64_t>(a.m_para_shape);
+			auto&& new_para_shape = std::vector<int64_t>(a.m_para_shape);
 			return TDD(std::move(w_node), std::move(new_para_shape), std::move(new_data_shape), std::move(new_index_order));
 		}
 
@@ -261,7 +261,7 @@ namespace tdd {
 		/// <param name="b"></param>
 		/// <returns></returns>
 		inline static TDD<W> sum(const TDD<W>& a, const TDD<W>& b) {
-			auto res_wnode = wnode<W>::sum(a.m_wnode, b.m_wnode);
+			auto&& res_wnode = wnode<W>::sum(a.m_wnode, b.m_wnode);
 			return TDD(std::move(res_wnode),
 				std::vector<int64_t>(a.m_para_shape),
 				std::vector<int64_t>(a.m_data_shape),
@@ -297,9 +297,9 @@ namespace tdd {
 				std::sort(inner_i_reduced.begin(), inner_i_reduced.end());
 
 				//note that inner_indices.first < innier_indices.second should hold for every i
-				auto res_wnode = wnode<W>::contract(m_wnode, m_inner_data_shape, inner_indices_cmd, inner_i_reduced);
+				auto&& res_wnode = wnode<W>::contract(m_wnode, m_inner_data_shape, inner_indices_cmd, inner_i_reduced);
 
-				auto reduced_info = index_reduced_info(inner_i_reduced);
+				auto&& reduced_info = index_reduced_info(inner_i_reduced);
 
 				return TDD(std::move(res_wnode), std::vector<int64_t>(m_para_shape),
 					std::move(reduced_info.first), std::move(reduced_info.second));
@@ -315,7 +315,7 @@ namespace tdd {
 		inline static TDD<W> tensordot(const TDD<W>& a, const TDD<W>& b,
 			const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b, bool parallel_tensor = false) {
 
-			auto temp_tdd = direct_product(a, b, parallel_tensor);
+			auto&& temp_tdd = direct_product(a, b, parallel_tensor);
 
 			cache::cont_cmd i_cmd(ils_a.size());
 
@@ -324,6 +324,24 @@ namespace tdd {
 				i_cmd[i].second = ils_b[i] + a.dim_data();
 			}
 			return temp_tdd.contract(i_cmd);
+		}
+
+		/// <summary>
+		/// permute the order of indices, and return the view.
+		/// </summary>
+		/// <param name="new_index_order"></param>
+		/// <returns></returns>
+		inline TDD<W> permute(const std::vector<int64_t>& permutation) {
+			std::vector<int64_t> new_order(m_index_order.size());
+			std::vector<int64_t> new_data_shape(m_index_order.size() + 1);
+			new_data_shape[m_index_order.size()] = 2;
+			for (int i = 0; i < m_index_order.size(); i++) {
+				new_data_shape[i] = m_data_shape[permutation[i]];
+				new_order[permutation[i]] = m_index_order[i];
+			}
+			return TDD(node::weightednode<W>(m_wnode), std::vector<int64_t>(m_para_shape),
+				std::move(new_data_shape), std::move(new_order));
+
 		}
 	};
 }
