@@ -48,20 +48,20 @@ class Node:
         dot.node(id_str, label, fontname="helvetica",shape="circle",color="red")
 
         if self.pointer != 0:
-            node_out_weights = node_info["out weights"]
+            node_successors = node_info["successors"]
             for k in range(node_info["range"]):
                 #if there is no parallel index, directly demonstrate the edge values
-                if list(node_out_weights[0].shape) == [2]:
-                    label1=str(complex(round(node_out_weights[k][0].cpu().item(),precision),
-                                        round(node_out_weights[k][1].cpu().item(),precision)))
+                if list(node_successors[0]["weight"].shape) == [2]:
+                    label1=str(complex(round(node_successors[k]["weight"][0].cpu().item(),precision),
+                                        round(node_successors[k]["weight"][1].cpu().item(),precision)))
                 #otherwise, demonstrate the parallel index shape
                 else:
                     if full_output:
-                        label1 = str(CUDAcpl2np(node_out_weights[k]))
+                        label1 = str(CUDAcpl2np(node_successors[k]["weight"]))
                     else:
                         label1 = str(parallel_shape)
                 
-                temp_node = Node(node_info["successors"][k])
+                temp_node = Node(node_successors[k]["node"])
                 if (temp_node.pointer == 0):
                     id_str = str(TERMINAL_ID)
                 else:
@@ -138,7 +138,7 @@ def as_tensor(data : TDD|CUDAcpl_Tensor|np.ndarray|
 
     # pre-process
     if isinstance(data,TDD):
-        raise Exception('not implemented')
+        ctdd.as_tensor_clone(data.pointer);
 
     if isinstance(data,Tuple):
         tensor,parallel_i_num,index_order = data
@@ -200,3 +200,6 @@ def get_tdd_info(tensor: TDD) -> Dict:
 
 def get_node_info(node: Node) -> Dict:
     return ctdd.get_node_info(node.pointer)
+
+def permute(tensor: TDD, perm: Sequence[int]) -> TDD:
+    return TDD(ctdd.permute(tensor.pointer, list(perm)));

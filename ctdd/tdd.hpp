@@ -127,8 +127,54 @@ namespace tdd {
 			cache::Global_Cache<W>::p_cont_cache->clear();
 		}
 
+
+		TDD(TDD&& other) {
+			m_data_shape = std::move(other.m_data_shape);
+			m_global_order = std::move(other.m_global_order);
+			m_index_order = std::move(other.m_index_order);
+			m_inner_data_shape = std::move(other.m_inner_data_shape);
+			m_inversed_order = std::move(other.m_inversed_order);
+			m_para_shape = std::move(other.m_para_shape);
+			m_wnode = std::move(other.m_wnode);
+		}
+
+		TDD(const TDD& other) {
+			m_data_shape = other.m_data_shape;
+			m_global_order = other.m_global_order;
+			m_index_order = other.m_index_order;
+			m_inner_data_shape = other.m_inner_data_shape;
+			m_inversed_order = other.m_inversed_order;
+			m_para_shape = other.m_para_shape;
+			m_wnode = other.m_wnode;
+		}
+
+		inline const node::weightednode<W>& w_node() const {
+			return m_wnode;
+		}
+
+		inline const std::vector<int64_t>& parallel_shape()const {
+			return m_para_shape;
+		}
+
 		inline int64_t dim_data()const {
 			return m_index_order.size();
+		}
+
+		inline const std::vector<int64_t>& data_shape() const {
+			return m_data_shape;
+		}
+
+		inline const std::vector<int64_t>& index_order() const {
+			return m_index_order;
+		}
+
+		inline int size() const {
+			if (m_wnode.node == nullptr) {
+				return 0;
+			}
+			else {
+				return m_wnode.node->get_size();
+			}
 		}
 
 
@@ -324,6 +370,24 @@ namespace tdd {
 				i_cmd[i].second = ils_b[i] + a.dim_data();
 			}
 			return temp_tdd.contract(i_cmd);
+		}
+
+		/// <summary>
+		/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.
+		/// </summary>
+		/// <param name="a"></param>
+		/// <param name="b"></param>
+		/// <param name="num_indices">contract the last num_indices indices of a and first of b</param>
+		/// <param name="parallel_tensor"></param>
+		/// <returns></returns>
+		inline static TDD<W> tensordot(const TDD<W>& a, const TDD<W>& b, int num_indices, bool parallel_tensor = false) {
+			std::vector<int64_t> ia(num_indices);
+			std::vector<int64_t> ib(num_indices);
+			for (int i = 0; i < num_indices; i++) {
+				ia[i] = a.dim_data() - num_indices + i;
+				ib[i] = i;
+			}
+			return tensordot(a, b, ia, ib, parallel_tensor);
 		}
 
 		/// <summary>

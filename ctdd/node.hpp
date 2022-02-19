@@ -34,16 +34,16 @@ namespace node {
 		/// Count all the nodes starting from this node.
 		/// </summary>
 		/// <param name="id_ls"> the vector to store all the ids</param>
-		void node_search(const std::vector<int>& id_ls) const {
+		void node_search(std::vector<int>& id_ls) const {
 			// check whether it is in p_id already
 			if (std::find(id_ls.cbegin(), id_ls.cend(), m_id) != id_ls.cend()) {
 				return;
 			}
 			// it is not counted yet in this case
 			id_ls.push_back(m_id);
-			for (const auto& i : m_successors) {
-				if (!i->isterminal()) {
-					i->node->node_search(id_ls);
+			for (const auto& succ : m_successors) {
+				if (!succ.isterminal()) {
+					succ.node->node_search(id_ls);
 				}
 			}
 		}

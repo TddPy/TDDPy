@@ -24,10 +24,10 @@ int main() {
 		*/
 
 		auto&& t1 = torch::zeros({ 2,3,2 });
-		//t1[0][0][0] = 1;
-		//t1[0][1][0] = 1;
-		//t1[1][0][0] = 1;
-		//t1[1][1][0] = -1;
+		t1[0][0][0] = 1;
+		t1[0][1][0] = 1;
+		t1[1][0][0] = 1;
+		t1[1][1][0] = -1;
 
 		auto&& t2 = torch::rand({ 3,2,2 });
 		//t2[0][0][0] = 1;
@@ -37,19 +37,19 @@ int main() {
 
 
 
-		//auto temp_t2 = t2.permute({ 1,0,2 });
-		auto&& res_direct = CUDAcpl::tensordot(t1, t2, { 0 }, { 1 });
+		auto temp_t2 = t2.permute({ 1,0,2 });
+		auto&& res_direct = CUDAcpl::tensordot(t1, temp_t2, { 0 }, { 0 });
 		//auto res_direct = t1 + t2;
 		//std::cout << res_direct << std::endl;
 
 
 		auto&& t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {1,0});
 		auto&& t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
-		//auto temp_t2_tdd = t2_tdd.permute({ 1,0 });
+		auto temp_t2_tdd = t2_tdd.permute({ 1,0 });
 
 
 		//auto res_tdd = TDD<wcomplex>::sum(t1_tdd, t2_tdd);
-		auto&& res_tdd = TDD<wcomplex>::tensordot(t1_tdd, t2_tdd, { 0 }, { 1 });
+		auto&& res_tdd = TDD<wcomplex>::tensordot(t1_tdd, temp_t2_tdd, { 0 }, { 0 });
 
 		std::cout << "direct" << std::endl;
 		std::cout << res_direct << std::endl;

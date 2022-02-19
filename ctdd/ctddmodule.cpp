@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "tdd.h"
+#include "tdd.hpp"
 
 using namespace std;
 using namespace node;
@@ -22,26 +22,43 @@ as_tensor(PyObject* self, PyObject* args)
 		return NULL;
 	auto&& t = THPVariable_Unpack(p_tensor);
 
-	TDD<W>* p_res;
 	//prepare the index_order array
 	auto&& size = PyList_GET_SIZE(p_index_order_ls);
-	if (size == 0) {
-		p_res = new TDD<W>(TDD<W>::as_tensor(t, dim_parallel, nullptr));
+	std::vector<int64_t> index_order(size);
+	for (int i = 0; i < size; i++) {
+		index_order[i] = PyLong_AsLongLong(PyList_GetItem(p_index_order_ls, i));
 	}
-	else {
-		int* p_index_order = (int*)malloc(sizeof(int) * size);
-		for (int i = 0; i < size; i++) {
-			p_index_order[i] = _PyLong_AsInt(PyList_GetItem(p_index_order_ls, i));
-		}
 
-		//construct the tdd
-		p_res = new TDD<W>(TDD<W>::as_tensor(t, dim_parallel, p_index_order));
-		free(p_index_order);
-	}
+	//construct the tdd
+	auto&& p_res = new TDD<W>(TDD<W>::as_tensor(t, dim_parallel, index_order));
 
 	// convert to long long
 	int64_t code = (int64_t)p_res;
 	return Py_BuildValue("L", code);
+}
+
+/// <summary>
+/// Return the cloned tdd.
+/// </summary>
+/// <param name="self"></param>
+/// <param name="args">for index_order, put in [] from python to indicate the trival order.</param>
+/// <returns>the pointer to the tdd</returns>
+template <class W>
+static PyObject*
+as_tensor_clone(PyObject* self, PyObject* args)
+{
+	int64_t code;
+	if (!PyArg_ParseTuple(args, "L", &code))
+		return NULL;
+
+	TDD<W>* p_tdd = (TDD<W>*)code;
+
+	//construct the tdd
+	auto&& p_res = new TDD<W>(*p_tdd);
+
+	// convert to long long
+	int64_t res_code = (int64_t)p_res;
+	return Py_BuildValue("L", res_code);
 }
 
 /// <summary>
@@ -106,20 +123,52 @@ tensordot_ls(PyObject* self, PyObject* args) {
 	TDD<W>* p_tddb = (TDD<W>*)code_b;
 
 	auto&& size = PyList_GET_SIZE(p_i1_pyo);
-	int* p_i1 = (int*)malloc(sizeof(int) * size);
-	int* p_i2 = (int*)malloc(sizeof(int) * size);
+	std::vector<int64_t> i1(size);
+	std::vector<int64_t> i2(size);
 	for (int i = 0; i < size; i++) {
-		p_i1[i] = _PyLong_AsInt(PyList_GetItem(p_i1_pyo, i));
-		p_i2[i] = _PyLong_AsInt(PyList_GetItem(p_i2_pyo, i));
+		i1[i] = PyLong_AsLongLong(PyList_GetItem(p_i1_pyo, i));
+		i2[i] = PyLong_AsLongLong(PyList_GetItem(p_i2_pyo, i));
 	}
-	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, size, p_i1, p_i2));
+	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, i1, i2));
 
-	free(p_i1);
-	free(p_i2);
 	// convert to long long
 	int64_t code = (int64_t)p_res;
 	return Py_BuildValue("L", code);
 }
+
+
+/// <summary>
+/// return the permuted tdd.
+/// </summary>
+/// <typeparam name="W"></typeparam>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+template <class W>
+static PyObject*
+permute(PyObject* self, PyObject* args) {
+	int64_t code;
+	PyObject* p_new_order_ls;
+	if (!PyArg_ParseTuple(args, "LO", &code, &p_new_order_ls)) {
+		return NULL;
+	}
+	TDD<W>* p_tdd = (TDD<W>*)code;
+	auto&& size = PyList_GET_SIZE(p_new_order_ls);
+	std::vector<int64_t> new_order(size);
+	for (int i = 0; i < size; i++) {
+		new_order[i] = PyLong_AsLongLong(PyList_GetItem(p_new_order_ls, i));
+	}
+
+	auto&& p_res = new TDD<W>(p_tdd->permute(new_order));
+
+	// convert to long long
+	int64_t res_code = (int64_t)p_res;
+	return Py_BuildValue("L", res_code);
+
+}
+
+
+
 
 /// <summary>
 /// Get the information of a tdd. Return a dictionary.
@@ -137,14 +186,14 @@ get_tdd_info(PyObject* self, PyObject* args) {
 	}
 	TDD<W>* p_tdd = (TDD<W>*)code;
 
-	auto&& tdd_weight = p_tdd->wnode().weight;
-	auto&& tdd_node = p_tdd->wnode().p_node;
-	auto&& tdd_dim_parallel = p_tdd->dim_parallel();
+	auto&& tdd_weight = p_tdd->w_node().weight;
+	auto&& tdd_node = p_tdd->w_node().node;
+	auto&& tdd_dim_parallel = p_tdd->parallel_shape().size();
 	auto&& tdd_dim_data = p_tdd->dim_data();
 	auto&& tdd_p_parallel_shape = p_tdd->parallel_shape();
 	auto&& tdd_p_data_shape = p_tdd->data_shape();
 	auto&& tdd_p_index_order = p_tdd->index_order();
-	auto&& tdd_size = p_tdd->get_size();
+	auto&& tdd_size = p_tdd->size();
 
 	// prepare the objects
 	auto&& py_weight = THPVariable_Wrap(CUDAcpl::from_complex(tdd_weight));
@@ -193,21 +242,22 @@ get_node_info(PyObject* self, PyObject* args) {
 	auto&& node_id = p_node->get_id();
 	auto&& node_order = p_node->get_order();
 	auto&& node_range = p_node->get_range();
-	auto&& node_p_weights = p_node->get_weights();
-	auto&& node_p_successors = p_node->get_successors();
 
-	auto&& py_weights = PyTuple_New(node_range);
+	auto&& node_successors = p_node->get_successors();
+
 	auto&& py_successors = PyTuple_New(node_range);
 	for (int i = 0; i < node_range; i++) {
-		PyTuple_SetItem(py_weights, i, THPVariable_Wrap(CUDAcpl::from_complex(node_p_weights[i])));
-		PyTuple_SetItem(py_successors, i, PyLong_FromLongLong((int64_t)node_p_successors[i]));
+		auto&& temp_succ = Py_BuildValue("{sOsO}",
+			"weight", THPVariable_Wrap(CUDAcpl::from_complex(node_successors[i].weight)),
+			"node", PyLong_FromLongLong((int64_t)node_successors[i].node));
+		
+		PyTuple_SetItem(py_successors, i, temp_succ);
 	}
 
-	return Py_BuildValue({ "{sisisisOsO}" },
+	return Py_BuildValue("{sisisisO}",
 		"id", node_id,
 		"order", node_order,
 		"range", node_range,
-		"out weights", py_weights,
 		"successors", py_successors
 	);
 }
@@ -217,16 +267,18 @@ get_node_info(PyObject* self, PyObject* args) {
 
 static PyMethodDef ctdd_methods[] = {
 	{ "as_tensor", (PyCFunction)as_tensor<wcomplex>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },
+	{ "as_tensor_clone", (PyCFunction)as_tensor_clone<wcomplex>, METH_VARARGS, "Return the cloned tdd." },
 	{ "to_CUDAcpl", (PyCFunction)to_CUDAcpl<wcomplex>, METH_VARARGS, "Return the python torch tensor of the given tdd." },
 	{ "tensordot_num", (PyCFunction)tensordot_num<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
 	{ "tensordot_ls", (PyCFunction)tensordot_ls<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "return the permuted tdd." },
 	{ "get_tdd_info", (PyCFunction)get_tdd_info<wcomplex>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },
 	{ "get_node_info", (PyCFunction)get_node_info<wcomplex>, METH_VARARGS, "Get the information of a node. Return a dictionary." },
 	// Terminate the array with an object containing nulls.
 	{ nullptr, nullptr, 0, nullptr }
 };
 
-static PyModuleDef superfastcode_module = {
+static PyModuleDef ctdd = {
 	PyModuleDef_HEAD_INIT,
 	"ctdd",                        // Module name to use with Python import statements
 	"The C++ backend of tdd.",  // Module description
@@ -235,6 +287,5 @@ static PyModuleDef superfastcode_module = {
 };
 
 PyMODINIT_FUNC PyInit_ctdd() {
-	tdd::reset();
-	return PyModule_Create(&superfastcode_module);
+	return PyModule_Create(&ctdd);
 }
