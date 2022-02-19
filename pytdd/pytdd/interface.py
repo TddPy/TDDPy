@@ -89,6 +89,13 @@ class TDD:
     def info(self) -> Dict:
         return get_tdd_info(self)
 
+    @property
+    def data_shape(self) -> Tuple:
+        return self.info["data shape"]
+
+    def __str__(self):
+        return str(to_numpy(self))
+
 
     def show(self, path: str='output', full_output: bool=False, precision: int=2):
         '''
@@ -138,7 +145,7 @@ def as_tensor(data : TDD|CUDAcpl_Tensor|np.ndarray|
 
     # pre-process
     if isinstance(data,TDD):
-        ctdd.as_tensor_clone(data.pointer);
+        return TDD(ctdd.as_tensor_clone(data.pointer));
 
     if isinstance(data,Tuple):
         tensor,parallel_i_num,index_order = data
@@ -183,7 +190,6 @@ def tensordot(a: TDD, b: TDD,
         sum_dict_cache: the dictionary cache of former summation calculations.
         parallel_tensor: Whether to tensor on the parallel indices.
     '''
-
     if isinstance(axes, int):
         pointer = ctdd.tensordot_num(a.pointer, b.pointer, axes)
     else:
@@ -192,8 +198,9 @@ def tensordot(a: TDD, b: TDD,
         if len(i1) != len(i2):
             raise Exception("The list of indices provided")
         pointer = ctdd.tensordot_ls(a.pointer, b.pointer, i1, i2)
-
-    return TDD(pointer)
+    
+    res = TDD(pointer)
+    return res
 
 def get_tdd_info(tensor: TDD) -> Dict:
     return ctdd.get_tdd_info(tensor.pointer)

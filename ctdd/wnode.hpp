@@ -408,7 +408,7 @@ public:
 		if (w_node.node == nullptr) {
 			// close all the unprocessed indices
 			double scale = 1.;
-			for (const auto& cmd : waiting_ls) {
+			for (const auto& cmd : remained_ls) {
 				scale *= data_shape[cmd.first];
 			}
 			return node::weightednode<W>(w_node.weight * scale, nullptr);
@@ -454,7 +454,7 @@ public:
 
 			// check whether all operations have already taken place
 			if (remained_ls_pd.empty() && waiting_ls_pd.empty()) {
-				res = node::weightednode<W>(wcomplex(1., 0.) * scale, w_node.node);
+				res = node::weightednode<W>(wcomplex(1., 0.), w_node.node);
 				not_operated = false;
 			}
 			else if (!waiting_ls_pd.empty()) {
@@ -472,7 +472,6 @@ public:
 					// close the waiting index
 					auto&& next_waiting_ls = removed<std::pair<int, int>>(waiting_ls_pd, next_to_close.first);
 					res = contract_iterate(successors[index_val], data_shape, remained_ls_pd, next_waiting_ls);
-					res.weight = res.weight * scale;
 					not_operated = false;
 				}
 			}
@@ -538,7 +537,6 @@ public:
 					for (auto&& i = new_successors.begin() + 1; i != new_successors.end(); i++) {
 						res = sum(res, *i);
 					}
-					res.weight = res.weight * scale;
 					not_operated = false;
 				}
 			}
@@ -561,6 +559,7 @@ public:
 			}
 
 			// add to the cache
+			res.weight *= scale;
 			cache::Global_Cache<W>::p_cont_cache->insert(std::make_pair(std::move(key), res));
 			res.weight = res.weight * w_node.weight;
 			return res;

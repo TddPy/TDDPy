@@ -251,9 +251,9 @@ namespace node {
 				std::cout << "|  " << j << " " << "node: " << m_successors[j].node << std::endl;
 			}
 
-			for (const auto& p : m_successors) {
-				if (p->node != nullptr) {
-					p->node->print();
+			for (const auto& succ : m_successors) {
+				if (succ.node != nullptr) {
+					succ.node->print();
 				}
 			}
 		}

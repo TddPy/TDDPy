@@ -27,33 +27,39 @@ inline T* array_concat(const T* p_a, int size_a, const T* p_b, int size_b) {
 }
 
 /// <summary>
-/// p should contain at least one element
+/// vec should contain at least one element
 /// </summary>
 /// <returns></returns>
 template <typename T>
 inline std::pair<int, T> min_iv(const std::vector<T>& vec, bool (*pred)(const T&, const T&)) {
-	int i_max = 0;
-	T v_max = vec[0];
-	for (int i = 0; i < vec.size(); i++) {
-		if (!pred(vec[i], v_max)) {
-			i_max = i;
-			v_max = vec[i];
+	int i_min = 0;
+	T v_min = vec[0];
+	for (int i = 1; i < vec.size(); i++) {
+		if (pred(vec[i], v_min)) {
+			i_min = i;
+			v_min = vec[i];
 		}
 	}
-	return std::make_pair(i_max, std::move(v_max));
+	return std::make_pair(i_min, std::move(v_min));
 }
 
+/// <summary>
+/// vec should contain at least one element
+/// </summary>
+/// <typeparam name="T"></typeparam>
+/// <param name="vec"></param>
+/// <returns></returns>
 template <typename T>
 inline std::pair<int, T> min_iv(const std::vector<T>& vec) {
-	int i_max = 0;
-	T v_max = vec[0];
-	for (int i = 0; i < vec.size(); i++) {
-		if (!(vec[i] < v_max)) {
-			i_max = i;
-			v_max = vec[i];
+	int i_min = 0;
+	T v_min = vec[0];
+	for (int i = 1; i < vec.size(); i++) {
+		if (vec[i] < v_min) {
+			i_min = i;
+			v_min = vec[i];
 		}
 	}
-	return std::make_pair(i_max, std::move(v_max));
+	return std::make_pair(i_min, std::move(v_min));
 }
 
 /// <summary>
