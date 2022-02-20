@@ -6,6 +6,21 @@ using namespace node;
 using namespace tdd;
 
 
+
+
+/// <summary>
+/// reset the unique table and all the caches
+/// </summary>
+/// <param name="self"></param>
+/// <param name="args">for index_order, put in [] from python to indicate the trival order.</param>
+/// <returns>the pointer to the tdd</returns>
+static PyObject*
+reset(PyObject* self, PyObject* args) {
+	TDD<wcomplex>::reset();
+	return Py_BuildValue("");
+}
+
+
 /// <summary>
 /// Take in the CUDAcpl tensor, transform to TDD and returns the pointer.
 /// </summary>
@@ -284,6 +299,7 @@ get_node_info(PyObject* self, PyObject* args) {
 
 
 static PyMethodDef ctdd_methods[] = {
+	{ "reset", (PyCFunction)reset, METH_NOARGS, "reset the unique table and all the caches" },
 	{ "as_tensor", (PyCFunction)as_tensor<wcomplex>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },
 	{ "as_tensor_clone", (PyCFunction)as_tensor_clone<wcomplex>, METH_VARARGS, "Return the cloned tdd." },
 	{ "to_CUDAcpl", (PyCFunction)to_CUDAcpl<wcomplex>, METH_VARARGS, "Return the python torch tensor of the given tdd." },

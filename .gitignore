@@ -19,3 +19,7 @@ ctdd.exp
 ctdd.lib
 ctdd.pdb
 ctdd.pyd
+
+#experiments
+
+pytdd/experiments

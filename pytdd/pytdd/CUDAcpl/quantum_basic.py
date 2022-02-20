@@ -32,6 +32,7 @@ CZ: CUDAcpl_Tensor = _U_(torch.tensor,
 sigmax: CUDAcpl_Tensor = _U_(torch.tensor,[[[0,0],[1.,0]],[[1.,0],[0,0]]])
 sigmay: CUDAcpl_Tensor = _U_(torch.tensor,[[[0,0],[0,-1.]],[[0,1.],[0,0]]])
 sigmaz: CUDAcpl_Tensor = _U_(torch.tensor,[[[1.,0],[0,0]],[[0,0],[-1.,0]]])
+hadamard : CUDAcpl_Tensor = _U_(torch.tensor, [[[1.,0.],[1.,0.]],[[1.,0.],[-1.,0.]]])/2**0.5
 
 
 
