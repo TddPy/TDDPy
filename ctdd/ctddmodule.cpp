@@ -193,7 +193,6 @@ get_tdd_info(PyObject* self, PyObject* args) {
 	auto&& tdd_p_parallel_shape = p_tdd->parallel_shape();
 	auto&& tdd_p_data_shape = p_tdd->data_shape();
 	auto&& tdd_p_index_order = p_tdd->index_order();
-	auto&& tdd_size = p_tdd->size();
 
 	// prepare the objects
 	auto&& py_weight = THPVariable_Wrap(CUDAcpl::from_complex(tdd_weight));
@@ -210,18 +209,37 @@ get_tdd_info(PyObject* self, PyObject* args) {
 		PyTuple_SetItem(py_index_order, i, PyLong_FromLong(tdd_p_index_order[i]));
 	}
 	int64_t py_node_code = (int64_t)tdd_node;
-	return Py_BuildValue("{sOsLsisOsisOsOsi}",
+	return Py_BuildValue("{sOsLsisOsisOsO}",
 		"weight", py_weight,
 		"node", py_node_code,
 		"dim parallel", tdd_dim_parallel,
 		"parallel shape", py_parallel_shape,
 		"dim data", tdd_dim_data,
 		"data shape", py_data_shape,
-		"index order", py_index_order,
-		"size", tdd_size
+		"index order", py_index_order
 	);
 }
 
+/// <summary>
+/// Get the size (non-terminal nodes) of the tdd.
+/// </summary>
+/// <typeparam name="W"></typeparam>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+template <class W>
+static PyObject*
+get_tdd_size(PyObject* self, PyObject* args) {
+	//convert from long long
+	int64_t code;
+	if (!PyArg_ParseTuple(args, "L", &code)) {
+		return NULL;
+	}
+	TDD<W>* p_tdd = (TDD<W>*)code;
+	auto&& size = p_tdd->size();
+
+	return PyLong_FromLong(size);
+}
 
 /// <summary>
 /// Get the information of a node. Return a dictionary.
@@ -273,6 +291,7 @@ static PyMethodDef ctdd_methods[] = {
 	{ "tensordot_ls", (PyCFunction)tensordot_ls<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
 	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "return the permuted tdd." },
 	{ "get_tdd_info", (PyCFunction)get_tdd_info<wcomplex>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },
+	{ "get_tdd_size", (PyCFunction)get_tdd_size<wcomplex>, METH_VARARGS, "Get the size (non-terminal nodes) of the tdd." },
 	{ "get_node_info", (PyCFunction)get_node_info<wcomplex>, METH_VARARGS, "Get the information of a node. Return a dictionary." },
 	// Terminate the array with an object containing nulls.
 	{ nullptr, nullptr, 0, nullptr }

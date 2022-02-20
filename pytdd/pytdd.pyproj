@@ -36,6 +36,7 @@
     <Compile Include="pytdd\interface.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="pytdd\pytdd_test.py" />
     <Compile Include="pytdd\__init__.py" />
     <Compile Include="tdd\CUDAcpl\config.py" />
     <Compile Include="tdd\CUDAcpl\main.py" />

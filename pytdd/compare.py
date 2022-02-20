@@ -117,7 +117,7 @@ def pytdd_contract():
 
 #count = 1000 # <- recommended value for demonstration
 count = 1
-width = 8
+width = 2
 
 rand_para_1 = torch.tensor(np.random.random((count, width)), device = CUDAcpl.device)
 rand_para_2 = torch.tensor(np.random.random((count, width)), device = CUDAcpl.device)
@@ -149,23 +149,24 @@ print()
 print('===================================================')
 print('PyTorch:')
 timing(PyTorch,1)
-print(str(result)[:200])
-print()
+print(str(result))
+result_pytorch = result
+print(result.shape)
 
 
-
+'''
 print('===================================================')
 print('TDD original, construction:')
 timing(TDD_original_construct, 1)
 print()
-tdd1.show('original_tdd1',real_label = True)
+#tdd1.show('original_tdd1',real_label = True)
 
 print('TDD original, construction and contraction:')
 timing(TDD_original_construct_contract, 1)
 print(str(result.to_array())[:200])
 print()
-result.show('original_result', real_label = True)
-
+#result.show('original_result', real_label = True)
+'''
 
 
 '''
@@ -189,10 +190,12 @@ print('===================================================')
 print('pytdd, construction:')
 timing(pytdd_construct, 1)
 print()
-tdd1.show('ctdd_tdd1')
+#tdd1.show('ctdd_tdd1')
 
 print('pytdd, contraction:')
 timing(pytdd_contract, 1)
-print(str(interface.to_numpy(result))[:200])
+print(str(interface.to_numpy(result)))
 print()
-result.show('ctdd_result')
+#result.show('ctdd_result')
+print(result_pytorch[0] - result.numpy())
+print(np.max(result_pytorch[0] - result.numpy()))

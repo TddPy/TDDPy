@@ -15,7 +15,14 @@ TERMINAL_ID = -1
 
 class Node:
     def __init__(self, _pointer):
-        self.pointer : int = _pointer
+        self.__pointer : int = _pointer
+        if self.pointer != 0:
+            self.__info = get_node_info(self)
+
+
+    @property
+    def pointer(self)->int:
+        return self.__pointer
 
     @property
     def info(self) -> Dict:
@@ -24,7 +31,7 @@ class Node:
         '''
         if self.pointer == 0:
             raise Exception("terminal node should not use this property")
-        return get_node_info(self)
+        return self.__info
 
     def layout(self, parallel_shape: Sequence[int], index_order: Sequence[int],
                  dot=Digraph(), succ: List=[], full_output: bool=False, precision: int = 2):
@@ -40,7 +47,7 @@ class Node:
             id_str = str(TERMINAL_ID)
             label = str(1)
         else:
-            node_info = self.info
+            node_info = self.__info
             id_str = str(node_info["id"])
             label = 'i'+str(node_info["order"])
 
@@ -79,19 +86,34 @@ class Node:
 
 class TDD:
     def __init__(self, _pointer):
-        self.pointer : int = _pointer
+        self.__pointer : int = _pointer
+        self.__info = get_tdd_info(self)
+
+    @property
+    def pointer(self) -> int:
+        return self.__pointer
 
     @property
     def node(self) -> Node:
-        tdd_info = get_tdd_info(self)
-        return Node(tdd_info["node"])
+        return Node(self.__info["node"])
+
     @property
     def info(self) -> Dict:
-        return get_tdd_info(self)
+        return self.__info
 
     @property
     def data_shape(self) -> Tuple:
-        return self.info["data shape"]
+        return self.__info["data shape"]
+    
+    # extremely time costy
+    def size(self) -> int:
+        return ctdd.get_tdd_size(self.__pointer)
+
+    def CUDAcpl(self) -> CUDAcpl_Tensor:
+        return to_CUDAcpl(self)
+
+    def numpy(self) -> np.ndarray:
+        return to_numpy(self)
 
     def __str__(self):
         return str(to_numpy(self))
@@ -204,6 +226,9 @@ def tensordot(a: TDD, b: TDD,
 
 def get_tdd_info(tensor: TDD) -> Dict:
     return ctdd.get_tdd_info(tensor.pointer)
+
+def get_tdd_size(tensor: TDD) -> int:
+    return ctdd.get_tdd_size(tensor.pointer)
 
 def get_node_info(node: Node) -> Dict:
     return ctdd.get_node_info(node.pointer)

@@ -401,7 +401,7 @@ namespace tdd {
 			new_data_shape[m_index_order.size()] = 2;
 			for (int i = 0; i < m_index_order.size(); i++) {
 				new_data_shape[i] = m_data_shape[permutation[i]];
-				new_order[permutation[i]] = m_index_order[i];
+				new_order[i] = permutation[m_index_order[i]];
 			}
 			return TDD(node::weightednode<W>(m_wnode), std::vector<int64_t>(m_para_shape),
 				std::move(new_data_shape), std::move(new_order));
