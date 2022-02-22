@@ -11,3 +11,5 @@ cache::append_table<wcomplex>* cache::Global_Cache<wcomplex>::p_append_cache = n
 cache::CUDAcpl_table<wcomplex>* cache::Global_Cache<wcomplex>::p_CUDAcpl_cache = new cache::CUDAcpl_table<wcomplex>();
 cache::sum_table<wcomplex>* cache::Global_Cache<wcomplex>::p_sum_cache = new cache::sum_table<wcomplex>();
 cache::cont_table<wcomplex>* cache::Global_Cache<wcomplex>::p_cont_cache = new cache::cont_table<wcomplex>();
+
+c10::TensorOptions CUDAcpl::tensor_opt = c10::TensorOptions();

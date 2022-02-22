@@ -6,17 +6,39 @@ using namespace node;
 using namespace tdd;
 
 
+/// <summary>
+/// delete the tdd passed in (garbage collection)
+/// </summary>
+/// <typeparam name="W"></typeparam>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+template <class W>
+static PyObject*
+delete_tdd(PyObject* self, PyObject* args) {
+	//convert from long long
+	int64_t code;
+	if (!PyArg_ParseTuple(args, "L", &code)) {
+		return NULL;
+	}
+	TDD<W>* p_tdd = (TDD<W>*)code;
+	delete p_tdd;
+	return Py_BuildValue("");
+}
 
 
 /// <summary>
-/// reset the unique table and all the caches
+/// reset the unique table and all the caches, designate the device.
 /// </summary>
 /// <param name="self"></param>
 /// <param name="args">for index_order, put in [] from python to indicate the trival order.</param>
 /// <returns>the pointer to the tdd</returns>
 static PyObject*
 reset(PyObject* self, PyObject* args) {
-	TDD<wcomplex>::reset();
+	int device_cuda;
+	if (!PyArg_ParseTuple(args, "i", &device_cuda))
+		return NULL;
+	TDD<wcomplex>::reset(device_cuda);
 	return Py_BuildValue("");
 }
 
@@ -95,6 +117,38 @@ to_CUDAcpl(PyObject* self, PyObject* args) {
 
 	auto&& tensor = p_tdd->CUDAcpl();
 	return THPVariable_Wrap(tensor);
+}
+
+
+/// <summary>
+/// Trace the designated indices of the given tdd.
+/// </summary>
+/// <typeparam name="W"></typeparam>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+template <class W>
+static PyObject*
+trace(PyObject* self, PyObject* args) {
+	int64_t code;
+	PyObject* p_i1_pyo, * p_i2_pyo;
+	if (!PyArg_ParseTuple(args, "LOO", &code, &p_i1_pyo, &p_i2_pyo)) {
+		return NULL;
+	}
+	TDD<W>* p_tdd = (TDD<W>*)code;
+
+	auto&& size = PyList_GET_SIZE(p_i1_pyo);
+	cache::pair_cmd cmd(size);
+	for (int i = 0; i < size; i++) {
+		cmd[i].first = PyLong_AsLong(PyList_GetItem(p_i1_pyo, i));
+		cmd[i].second = PyLong_AsLong(PyList_GetItem(p_i2_pyo, i));
+	}
+
+	auto&& p_res = new TDD<W>(p_tdd->trace(cmd));
+
+	// convert to long long
+	int64_t code_res = (int64_t)p_res;
+	return Py_BuildValue("L", code_res);
 }
 
 
@@ -299,10 +353,12 @@ get_node_info(PyObject* self, PyObject* args) {
 
 
 static PyMethodDef ctdd_methods[] = {
-	{ "reset", (PyCFunction)reset, METH_NOARGS, "reset the unique table and all the caches" },
+	{ "delete_tdd", (PyCFunction)delete_tdd<wcomplex>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
+	{ "reset", (PyCFunction)reset, METH_VARARGS, " reset the unique table and all the caches, designate the device." },
 	{ "as_tensor", (PyCFunction)as_tensor<wcomplex>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },
 	{ "as_tensor_clone", (PyCFunction)as_tensor_clone<wcomplex>, METH_VARARGS, "Return the cloned tdd." },
 	{ "to_CUDAcpl", (PyCFunction)to_CUDAcpl<wcomplex>, METH_VARARGS, "Return the python torch tensor of the given tdd." },
+	{ "trace", (PyCFunction)trace<wcomplex>, METH_VARARGS, "Trace the designated indices of the given tdd." },
 	{ "tensordot_num", (PyCFunction)tensordot_num<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
 	{ "tensordot_ls", (PyCFunction)tensordot_ls<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
 	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "return the permuted tdd." },
@@ -322,5 +378,6 @@ static PyModuleDef ctdd = {
 };
 
 PyMODINIT_FUNC PyInit_ctdd() {
+	TDD<wcomplex>::reset();
 	return PyModule_Create(&ctdd);
 }

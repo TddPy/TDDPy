@@ -402,8 +402,8 @@ public:
 	///	3. The returning weighted nodes are NOT shifted. (node.order not adjusted)
 	/// </summary>
 	/// <returns></returns>
-	static node::weightednode<W> contract_iterate(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
-		const cache::cont_cmd& remained_ls, const cache::cont_cmd& waiting_ls) {
+	static node::weightednode<W> trace_iterate(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
+		const cache::pair_cmd& remained_ls, const cache::pair_cmd& waiting_ls) {
 
 		if (w_node.node == nullptr) {
 			// close all the unprocessed indices
@@ -431,7 +431,7 @@ public:
 			double scale = 1.;
 
 			// process the skipped remained indices (situations only first index skipped will be processed afterwards)
-			auto&& remained_ls_pd = cache::cont_cmd();
+			auto&& remained_ls_pd = cache::pair_cmd();
 			for (const auto& cmd : remained_ls) {
 				if (cmd.second >= order) {
 					remained_ls_pd.push_back(cmd);
@@ -440,7 +440,7 @@ public:
 					scale *= data_shape[cmd.first];
 				}
 			}
-			auto&& waiting_ls_pd = cache::cont_cmd();
+			auto&& waiting_ls_pd = cache::pair_cmd();
 			for (const auto& cmd : waiting_ls) {
 				if (cmd.first >= order) {
 					waiting_ls_pd.push_back(cmd);
@@ -471,7 +471,7 @@ public:
 					auto&& index_val = waiting_ls_pd[next_to_close.first].second;
 					// close the waiting index
 					auto&& next_waiting_ls = removed<std::pair<int, int>>(waiting_ls_pd, next_to_close.first);
-					res = contract_iterate(successors[index_val], data_shape, remained_ls_pd, next_waiting_ls);
+					res = trace_iterate(successors[index_val], data_shape, remained_ls_pd, next_waiting_ls);
 					not_operated = false;
 				}
 			}
@@ -517,7 +517,7 @@ public:
 							else {
 								// adjust the new index value
 								next_waiting_ls[insert_pos].second = index_val;
-								*i_new = contract_iterate(*i, data_shape, next_remained_ls, next_waiting_ls);
+								*i_new = trace_iterate(*i, data_shape, next_remained_ls, next_waiting_ls);
 							}
 						}
 					}
@@ -526,7 +526,7 @@ public:
 						int index_val = 0;
 						for (auto&& succ_new : new_successors) {
 							next_waiting_ls[insert_pos].second = index_val;
-							succ_new = contract_iterate(node::weightednode<W>(wcomplex(1., 0.), w_node.node),
+							succ_new = trace_iterate(node::weightednode<W>(wcomplex(1., 0.), w_node.node),
 								data_shape, next_remained_ls, next_waiting_ls);
 							index_val++;
 						}
@@ -551,7 +551,7 @@ public:
 						i_new->weight = i->weight;
 					}
 					else {
-						*i_new = contract_iterate(*i, data_shape, remained_ls_pd, waiting_ls_pd);
+						*i_new = trace_iterate(*i, data_shape, remained_ls_pd, waiting_ls_pd);
 					}
 				}
 				auto&& temp_node = node::Node<W>(order, std::move(new_successors));
@@ -577,10 +577,10 @@ public:
 	/// <param name="remained_ls">data_indices should be counted in the data indices only.(smaller indices are required to be in the first place.)</param>
 	/// <param name="reduced_indices"> must be sorted </param>
 	/// <returns></returns>
-	static node::weightednode<W> contract(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
-		const cache::cont_cmd& remained_ls, const std::vector<int64_t> reduced_indices) {
+	static node::weightednode<W> trace(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
+		const cache::pair_cmd& remained_ls, const std::vector<int64_t> reduced_indices) {
 
-		auto&& res = contract_iterate(w_node, data_shape, remained_ls, cache::cont_cmd());
+		auto&& res = trace_iterate(w_node, data_shape, remained_ls, cache::pair_cmd());
 
 		// shift the nodes at a time
 		auto&& num_pair = remained_ls.size();

@@ -118,13 +118,17 @@ namespace tdd {
 	public:
 
 
-		static void reset() {
+		static void reset(bool device_cuda = false) {
+			CUDAcpl::reset(device_cuda);
 			node::Node<W>::reset();
 			cache::Global_Cache<W>::p_duplicate_cache->clear();
 			cache::Global_Cache<W>::p_append_cache->clear();
 			cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
 			cache::Global_Cache<W>::p_sum_cache->clear();
 			cache::Global_Cache<W>::p_cont_cache->clear();
+			std::cout << std::endl;
+			std::cout << "# ctdd device: " << CUDAcpl::tensor_opt.dtype() << std::endl;
+			std::cout << "# ctdd scalar: " << CUDAcpl::tensor_opt.device() << std::endl;
 		}
 
 
@@ -317,21 +321,28 @@ namespace tdd {
 
 
 		/// <summary>
-		/// Contract the tdd according to the specified data_indices. Return the reduced result.
+		/// trace the tdd according to the specified data_indices. Return the reduced result.
 		/// data_indices should be counted in the data indices only.
 		/// </summary>
 		/// <param name="indices">first less than second should hold for every pair</param>
 		/// <returns></returns>
-		TDD<W> contract(const cache::cont_cmd& indices) {
+		TDD<W> trace(const cache::pair_cmd& indices) {
 			if (indices.empty()) {
 				return clone();
 			}
 			else {
 				// transform to inner indices
-				cache::cont_cmd inner_indices_cmd(indices.size());
+				cache::pair_cmd inner_indices_cmd(indices.size());
 				for (int i = 0; i < indices.size(); i++) {
-					inner_indices_cmd[i].first = m_inversed_order[indices[i].first];
-					inner_indices_cmd[i].second = m_inversed_order[indices[i].second];
+					// arrange the smaller index at the first
+					if (indices[i].first < indices[i].second) {
+						inner_indices_cmd[i].first = m_inversed_order[indices[i].first];
+						inner_indices_cmd[i].second = m_inversed_order[indices[i].second];
+					}
+					else {
+						inner_indices_cmd[i].first = m_inversed_order[indices[i].second];
+						inner_indices_cmd[i].second = m_inversed_order[indices[i].first];
+					}
 
 				}
 
@@ -343,7 +354,7 @@ namespace tdd {
 				std::sort(inner_i_reduced.begin(), inner_i_reduced.end());
 
 				//note that inner_indices.first < innier_indices.second should hold for every i
-				auto&& res_wnode = wnode<W>::contract(m_wnode, m_inner_data_shape, inner_indices_cmd, inner_i_reduced);
+				auto&& res_wnode = wnode<W>::trace(m_wnode, m_inner_data_shape, inner_indices_cmd, inner_i_reduced);
 
 				auto&& reduced_info = index_reduced_info(inner_i_reduced);
 
@@ -363,13 +374,13 @@ namespace tdd {
 
 			auto&& temp_tdd = direct_product(a, b, parallel_tensor);
 
-			cache::cont_cmd i_cmd(ils_a.size());
+			cache::pair_cmd i_cmd(ils_a.size());
 
 			for (int i = 0; i < ils_a.size(); i++) {
 				i_cmd[i].first = ils_a[i];
 				i_cmd[i].second = ils_b[i] + a.dim_data();
 			}
-			return temp_tdd.contract(i_cmd);
+			return temp_tdd.trace(i_cmd);
 		}
 
 		/// <summary>

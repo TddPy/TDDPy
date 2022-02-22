@@ -102,7 +102,7 @@ class TDD:
         return self.__info
 
     @property
-    def data_shape(self) -> Tuple:
+    def shape(self) -> Tuple:
         return self.__info["data shape"]
     
     @property
@@ -153,10 +153,21 @@ class TDD:
         return Image(dot.render(path))
 
 
+    def __del__(self):
+        if ctdd.delete_tdd:
+            ctdd.delete_tdd(self.__pointer)
+
+
 
 #################################################
-def reset():
-    ctdd.reset()
+def delete_tdd(tensor: TDD):
+    ctdd.delete_tdd(tensor.pointer)
+
+def reset(device_cuda: bool):
+    if device_cuda:
+        ctdd.reset(1)
+    else:
+        ctdd.reset(0)
 
     
 def as_tensor(data : TDD|CUDAcpl_Tensor|np.ndarray|
@@ -212,6 +223,18 @@ def to_numpy(tensor: TDD)->np.ndarray:
         Transform this tdd to a numpy ndarray.
     '''
     return CUDAcpl.CUDAcpl2np(to_CUDAcpl(tensor))
+
+def trace(tensor: TDD, axes:Sequence[Sequence[int]]) -> TDD:
+    '''
+        Trace the TDD at given indices.
+    '''
+
+    # examination
+    if len(axes[0]) != len(axes[1]):
+        raise Exception("The indices given by parameter axes does not match.")
+
+    pointer = ctdd.trace(tensor.pointer, axes[0], axes[1])
+    return TDD(pointer)
 
 def tensordot(a: TDD, b: TDD,
                 axes: int|Sequence[Sequence[int]]) -> TDD:

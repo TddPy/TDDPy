@@ -248,16 +248,16 @@ namespace cache {
 	using sum_table = boost::unordered_map<sum_key<W>, node::weightednode<W>>;
 
 
-	typedef std::vector<std::pair<int, int>> cont_cmd;
+	typedef std::vector<std::pair<int, int>> pair_cmd;
 
 	// the type for contraction cache
 	template <class W>
 	struct cont_key {
 		int id;
 		// first: the smaller index to trace, second: the larger index to trace
-		cont_cmd remained_ls;
+		pair_cmd remained_ls;
 		// first: the larger index to trace, seconde; the index value to select
-		cont_cmd waiting_ls;
+		pair_cmd waiting_ls;
 
 		/// <summary>
 		/// Note: all pointer ownership borrowed.
@@ -269,13 +269,13 @@ namespace cache {
 		/// <param name="_num_waiting"></param>
 		/// <param name="_p_w_i"></param>
 		/// <param name="_p_w_v"></param>
-		inline cont_key(int _id, const cont_cmd& _remained_ls, const cont_cmd& _waiting_ls) {
+		inline cont_key(int _id, const pair_cmd& _remained_ls, const pair_cmd& _waiting_ls) {
 			id = _id;
-			remained_ls = cont_cmd(_remained_ls);
-			waiting_ls = cont_cmd(_waiting_ls);
+			remained_ls = pair_cmd(_remained_ls);
+			waiting_ls = pair_cmd(_waiting_ls);
 		}
 
-		inline cont_key(int _id, const cont_cmd& _remained_ls, cont_cmd&& _waiting_ls) {
+		inline cont_key(int _id, const pair_cmd& _remained_ls, pair_cmd&& _waiting_ls) {
 			id = _id;
 			remained_ls = std::move(_remained_ls);
 			waiting_ls = std::move(_waiting_ls);

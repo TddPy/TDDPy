@@ -13,8 +13,21 @@ namespace CUDAcpl {
 	// The CUDA complex tensor.
 	typedef torch::Tensor Tensor;
 
+	extern c10::TensorOptions tensor_opt;
+
+	inline void reset(bool device_cuda) {
+		if (device_cuda) {
+			tensor_opt = tensor_opt.device(c10::Device::Type::CUDA);
+		}
+		else {
+			tensor_opt = tensor_opt.device(c10::Device::Type::CPU);
+		}
+
+		tensor_opt = tensor_opt.dtype(c10::ScalarType::Double);
+	}
+
 	inline Tensor from_complex(Complex cpl) {
-		auto&& res = torch::empty({ 2 });
+		auto&& res = torch::empty({ 2 }, tensor_opt);
 		res[0] = cpl.real();
 		res[1] = cpl.imag();
 		return res;
@@ -26,8 +39,8 @@ namespace CUDAcpl {
 	}
 
 	inline Tensor ones(c10::IntArrayRef size) {
-		auto&& real = torch::ones(size);
-		auto&& imag = torch::zeros(size);
+		auto&& real = torch::ones(size, tensor_opt);
+		auto&& imag = torch::zeros(size, tensor_opt);
 		return torch::stack({ real, imag }, size.size());
 	}
 
