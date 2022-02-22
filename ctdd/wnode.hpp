@@ -329,8 +329,15 @@ public:
 			auto&& new_successors = std::vector<node::weightednode<W>>(p_wnode_1->node->get_range());
 
 			bool not_operated = true;
+			node::weightednode<W> res;
 			if (p_wnode_2->node != nullptr) {
-				if (p_wnode_1->node->get_order() == p_wnode_2->node->get_order()) {
+
+				// if they are the same node, then we can only adjust the weight
+				if (p_wnode_1->node->get_id() == p_wnode_2->node->get_id()) {
+					res = node::weightednode<W>(p_wnode_1->weight + p_wnode_2->weight, p_wnode_1->node);
+					not_operated = false;
+				}
+				else if (p_wnode_1->node->get_order() == p_wnode_2->node->get_order()) {
 					// node1 and node2 are assumed to have the same shape
 					auto&& successors_1 = p_wnode_1->node->get_successors();
 					auto&& successors_2 = p_wnode_2->node->get_successors();
@@ -344,6 +351,8 @@ public:
 						auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->node);
 						*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef);
 					}
+					auto&& temp_node = node::Node<W>(p_wnode_1->node->get_order(), std::move(new_successors));
+					res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
 					not_operated = false;
 				}
 			}
@@ -366,10 +375,10 @@ public:
 					auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), p_wnode_2->node);
 					*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef);
 				}
+				auto&& temp_node = node::Node<W>(p_wnode_1->node->get_order(), std::move(new_successors));
+				res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
 			}
 
-			auto&& temp_node = node::Node<W>(p_wnode_1->node->get_order(), std::move(new_successors));
-			auto&& res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
 
 			// cache the result
 			cache::Global_Cache<W>::p_sum_cache->insert(std::make_pair(std::move(key), res));
