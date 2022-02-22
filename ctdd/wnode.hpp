@@ -472,14 +472,12 @@ public:
 				*	If multiple waiting indices have been skipped, we will resolve with iteration, one by one.
 				*/
 
-				// next_to_close: <pos in waiting_ls_pd, min in waiting_ls_pd>
-				auto&& next_to_close = min_iv(waiting_ls_pd, &cmd_smaller);
-
+				// next_to_close: <pos in waiting_ls_pd, min in waiting_ls_pd>: must be the first of waiting_ls_pd
 				// note that next_i_to_close >= node.order is guaranteed here
-				if (order == next_to_close.second.first) {
-					auto&& index_val = waiting_ls_pd[next_to_close.first].second;
+				if (order == waiting_ls_pd[0].first) {
+					auto&& index_val = waiting_ls_pd[0].second;
 					// close the waiting index
-					auto&& next_waiting_ls = removed<std::pair<int, int>>(waiting_ls_pd, next_to_close.first);
+					auto&& next_waiting_ls = removed<std::pair<int, int>>(waiting_ls_pd, 0);
 					res = trace_iterate(successors[index_val], data_shape, remained_ls_pd, next_waiting_ls);
 					not_operated = false;
 				}
@@ -489,16 +487,15 @@ public:
 				*	Check the remained indices to start tracing.
 				*	If multiple (smaller ones of) remained indices have been skipped, we will resolve with iteration, one by one.
 				*/
-				auto&& next_to_open = min_iv(remained_ls_pd, &cmd_smaller);
-				if (order >= next_to_open.second.first) {
+				if (order >= remained_ls_pd[0].first) {
 					// open the index and finally sum up
 
-					auto&& next_remained_ls = removed(remained_ls_pd, next_to_open.first);
+					auto&& next_remained_ls = removed(remained_ls_pd, 0);
 
 					// find the right insert place in waiting_ls
 					int insert_pos = 0;
 					for (; insert_pos < waiting_ls_pd.size(); insert_pos++) {
-						if (waiting_ls_pd[insert_pos].first < next_to_open.second.first) {
+						if (waiting_ls_pd[insert_pos].first < remained_ls_pd[0].second) {
 							continue;
 						}
 						else {
@@ -507,15 +504,15 @@ public:
 					}
 
 					// get the index range
-					int range = data_shape[next_to_open.second.first];
+					int range = data_shape[remained_ls_pd[0].first];
 
 					// produce the sorted new index lists
 					auto&& next_waiting_ls = inserted(waiting_ls_pd, insert_pos, std::make_pair(
-						remained_ls_pd[next_to_open.first].second, 0)
+						remained_ls_pd[0].second, 0)
 					);
 
 					auto&& new_successors = std::vector<node::weightednode<W>>(range);
-					if (order == next_to_open.second.first) {
+					if (order == remained_ls_pd[0].first) {
 						int index_val = 0;
 						auto&& i_new = new_successors.begin();
 						for (auto&& i = successors.begin(); i != successors.end(); i++, i_new++, index_val++) {
@@ -589,7 +586,16 @@ public:
 	static node::weightednode<W> trace(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
 		const cache::pair_cmd& remained_ls, const std::vector<int64_t> reduced_indices) {
 
-		auto&& res = trace_iterate(w_node, data_shape, remained_ls, cache::pair_cmd());
+		// sort the remained_ls by first element, to keep the key unique
+		cache::pair_cmd sorted_remained_ls(remained_ls);
+
+		std::sort(sorted_remained_ls.begin(), sorted_remained_ls.end(),
+			[](const std::pair<int,int>& a, const std::pair<int,int>& b) {
+				return (a.first < b.first);
+			});
+
+
+		auto&& res = trace_iterate(w_node, data_shape, sorted_remained_ls, cache::pair_cmd());
 
 		// shift the nodes at a time
 		auto&& num_pair = remained_ls.size();

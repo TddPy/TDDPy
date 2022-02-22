@@ -343,7 +343,6 @@ namespace tdd {
 						inner_indices_cmd[i].first = m_inversed_order[indices[i].second];
 						inner_indices_cmd[i].second = m_inversed_order[indices[i].first];
 					}
-
 				}
 
 				std::vector<int64_t> inner_i_reduced(indices.size() * 2);
