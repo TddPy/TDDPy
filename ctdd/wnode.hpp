@@ -417,9 +417,9 @@ public:
 		node::weightednode<W> res;
 
 		// first look up in the dictionary
-		auto&& key = cache::cont_key<W>(w_node.node->get_id(), remained_ls, waiting_ls);
-		auto&& p_find_res = cache::Global_Cache<W>::p_cont_cache->find(key);
-		if (p_find_res != cache::Global_Cache<W>::p_cont_cache->end()) {
+		auto&& key = cache::trace_key<W>(w_node.node->get_id(), remained_ls, waiting_ls);
+		auto&& p_find_res = cache::Global_Cache<W>::p_trace_cache->find(key);
+		if (p_find_res != cache::Global_Cache<W>::p_trace_cache->end()) {
 			res = p_find_res->second;
 			res.weight = res.weight * w_node.weight;
 			return res;
@@ -560,7 +560,7 @@ public:
 
 			// add to the cache
 			res.weight *= scale;
-			cache::Global_Cache<W>::p_cont_cache->insert(std::make_pair(std::move(key), res));
+			cache::Global_Cache<W>::p_trace_cache->insert(std::make_pair(std::move(key), res));
 			res.weight = res.weight * w_node.weight;
 			return res;
 		}

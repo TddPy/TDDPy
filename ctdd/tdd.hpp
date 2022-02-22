@@ -125,7 +125,7 @@ namespace tdd {
 			cache::Global_Cache<W>::p_append_cache->clear();
 			cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
 			cache::Global_Cache<W>::p_sum_cache->clear();
-			cache::Global_Cache<W>::p_cont_cache->clear();
+			cache::Global_Cache<W>::p_trace_cache->clear();
 			std::cout << std::endl;
 			std::cout << "# ctdd device: " << CUDAcpl::tensor_opt.dtype() << std::endl;
 			std::cout << "# ctdd scalar: " << CUDAcpl::tensor_opt.device() << std::endl;

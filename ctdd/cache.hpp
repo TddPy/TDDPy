@@ -252,7 +252,7 @@ namespace cache {
 
 	// the type for contraction cache
 	template <class W>
-	struct cont_key {
+	struct trace_key {
 		int id;
 		// first: the smaller index to trace, second: the larger index to trace
 		pair_cmd remained_ls;
@@ -269,24 +269,24 @@ namespace cache {
 		/// <param name="_num_waiting"></param>
 		/// <param name="_p_w_i"></param>
 		/// <param name="_p_w_v"></param>
-		inline cont_key(int _id, const pair_cmd& _remained_ls, const pair_cmd& _waiting_ls) {
+		inline trace_key(int _id, const pair_cmd& _remained_ls, const pair_cmd& _waiting_ls) {
 			id = _id;
 			remained_ls = pair_cmd(_remained_ls);
 			waiting_ls = pair_cmd(_waiting_ls);
 		}
 
-		inline cont_key(int _id, const pair_cmd& _remained_ls, pair_cmd&& _waiting_ls) {
+		inline trace_key(int _id, const pair_cmd& _remained_ls, pair_cmd&& _waiting_ls) {
 			id = _id;
 			remained_ls = std::move(_remained_ls);
 			waiting_ls = std::move(_waiting_ls);
 		}
 
-		inline cont_key(const cont_key& other) {
+		inline trace_key(const trace_key& other) {
 			id = other.id;
 			remained_ls = other.remained_ls;
 			waiting_ls = other.waiting_ls;
 		}
-		inline cont_key& operator =(cont_key&& other) {
+		inline trace_key& operator =(trace_key&& other) {
 			id = other.id;
 			remained_ls = std::move(other.remained_ls);
 			waiting_ls = std::move(other.waiting_ls);
@@ -295,12 +295,12 @@ namespace cache {
 	};
 
 	template <class W>
-	inline bool operator == (const cont_key<W>& a, const cont_key<W>& b) {
+	inline bool operator == (const trace_key<W>& a, const trace_key<W>& b) {
 		return (a.id == b.id && a.remained_ls == b.remained_ls && a.waiting_ls == b.waiting_ls);
 	}
 
 	template <class W>
-	inline std::size_t hash_value(const cont_key<W>& key) {
+	inline std::size_t hash_value(const trace_key<W>& key) {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.id);
 		for (const auto& cmd : key.remained_ls) {
@@ -315,7 +315,7 @@ namespace cache {
 	}
 
 	template <class W>
-	using cont_table = boost::unordered_map<cont_key<W>, node::weightednode<W>>;
+	using trace_table = boost::unordered_map<trace_key<W>, node::weightednode<W>>;
 
 
 	template <class W>
@@ -324,6 +324,6 @@ namespace cache {
 		static append_table<W>* p_append_cache;
 		static CUDAcpl_table<W>* p_CUDAcpl_cache;
 		static sum_table<W>* p_sum_cache;
-		static cont_table<W>* p_cont_cache;
+		static trace_table<W>* p_trace_cache;
 	};
 }
