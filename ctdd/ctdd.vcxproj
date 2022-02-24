@@ -140,6 +140,7 @@
     <LinkIncremental>true</LinkIncremental>
     <TargetExt>.pyd</TargetExt>
     <LibraryPath>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)pytdd\pytdd\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -218,7 +219,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(libtorch)\include;$(libtorch)\include\torch\csrc\api\include;$(Boost);$(PythonPath)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>

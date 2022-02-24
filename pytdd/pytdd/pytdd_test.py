@@ -17,11 +17,11 @@ def test1():
     direct contraction
     '''
     a = CUDAcpl.quantum_basic.sigmax
-    b = CUDAcpl.quantum_basic.sigmay
+    b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.tensordot(a,b,1)
     
-    tdd_a = interface.as_tensor(a)
-    tdd_b = interface.as_tensor(b)
+    tdd_a = interface.as_tensor((a,0,[1,0]))
+    tdd_b = interface.as_tensor((b,0,[1,0]))
     actual = interface.tensordot(tdd_a, tdd_b, 1).CUDAcpl()
 
     compare(expected,actual)
@@ -34,7 +34,7 @@ def test2():
     a = torch.rand((2,2,2,2,2))
     expected = a.permute((0,2,3,1,4))
 
-    tdd_a = interface.as_tensor(a)
+    tdd_a = interface.as_tensor((a,0,[0,2,3,1]))
     actual = interface.permute(tdd_a, (0,2,3,1)).CUDAcpl()
 
     compare(expected, actual)
@@ -42,7 +42,7 @@ def test2():
 
 def test3():
     '''
-    tracing
+    tracing, cuda
     '''
     a = torch.rand((2,2,2,2,2), dtype = torch.double, device = 'cuda')
     expected = torch.einsum("iijjk->k", a)

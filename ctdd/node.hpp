@@ -269,7 +269,8 @@ namespace node {
 		inline int get_size() const {
 			auto&& id_ls = std::vector<int>();
 			node_search(id_ls);
-			return id_ls.size();
+			// the terminal node is counted
+			return id_ls.size() + 1;
 		}
 
 		/// <summary>

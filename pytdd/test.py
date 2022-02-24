@@ -7,11 +7,11 @@ from pytdd import CUDAcpl
 
 from pytdd import pytdd_test
 
-interface.reset(True)
+#interface.reset(True)
 
-#pytdd_test.test1()
-#pytdd_test.test2()
-pytdd_test.test3()
+pytdd_test.test1()
+pytdd_test.test2()
+#pytdd_test.test3()
 
 
 

@@ -154,8 +154,9 @@ class TDD:
 
 
     def __del__(self):
-        if ctdd.delete_tdd:
-            ctdd.delete_tdd(self.__pointer)
+        if ctdd:
+            if ctdd.delete_tdd:
+                ctdd.delete_tdd(self.__pointer)
 
 
 

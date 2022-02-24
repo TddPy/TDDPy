@@ -250,7 +250,7 @@ namespace cache {
 
 	typedef std::vector<std::pair<int, int>> pair_cmd;
 
-	// the type for contraction cache
+	// the type for trace cache
 	template <class W>
 	struct trace_key {
 		int id;
@@ -275,7 +275,7 @@ namespace cache {
 			waiting_ls = pair_cmd(_waiting_ls);
 		}
 
-		inline trace_key(int _id, const pair_cmd& _remained_ls, pair_cmd&& _waiting_ls) {
+		inline trace_key(int _id, pair_cmd&& _remained_ls, pair_cmd&& _waiting_ls) {
 			id = _id;
 			remained_ls = std::move(_remained_ls);
 			waiting_ls = std::move(_waiting_ls);
@@ -317,6 +317,110 @@ namespace cache {
 	template <class W>
 	using trace_table = boost::unordered_map<trace_key<W>, node::weightednode<W>>;
 
+	
+	// the type for contract cache
+	// under extreame case this key is not secure, because the "data shape" information is not stored here.
+	// It is a potential flaw, but we can avoid it by using it only in quantum circuits.
+	// It is left for future, when quantum situation is devided from general situation.
+	template <class W>
+	struct cont_key {
+		const node::Node<W>* p_a;
+		const node::Node<W>* p_b;
+		// first: the smaller index to trace, second: the larger index to trace
+		pair_cmd remained_ls;
+		// first: the larger index to trace, seconde; the index value to select
+		pair_cmd a_waiting_ls;
+		pair_cmd b_waiting_ls;
+		// true: the next index is from A. false: the next index is from B.
+		std::vector<int64_t> a_new_order;
+		std::vector<int64_t> b_new_order;
+
+		inline cont_key(const node::Node<W>* _p_a, const node::Node<W>* _p_b, const pair_cmd& _remained_ls, 
+			const pair_cmd& _a_waiting_ls, const pair_cmd& _b_waiting_ls,
+			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b) {
+
+			// in theory, we can further increase the reuseage of cont_cache, by eliminating the swaping freedom
+			// but it is time consuming and maybe not that worthy.
+			p_a = _p_a;
+			p_b = _p_b;
+			remained_ls = _remained_ls;
+			a_waiting_ls = _a_waiting_ls;
+			b_waiting_ls = _b_waiting_ls;
+			a_new_order = std::vector<int64_t>(_a_new_order.begin() + pos_a, _a_new_order.end());
+			b_new_order = std::vector<int64_t>(_b_new_order.begin() + pos_b, _b_new_order.end());
+		}
+
+		inline cont_key(const node::Node<W>* _p_a, const node::Node<W>* _p_b, pair_cmd&& _remained_ls, 
+			pair_cmd&& _a_waiting_ls, pair_cmd&& _b_waiting_ls,
+			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b) {
+			p_a = _p_a;
+			p_b = _p_b;
+			remained_ls = std::move(_remained_ls);
+			a_waiting_ls = std::move(_a_waiting_ls);
+			b_waiting_ls = std::move(_b_waiting_ls);
+			a_new_order = std::vector<int64_t>(_a_new_order.begin() + pos_a, _a_new_order.end());
+			b_new_order = std::vector<int64_t>(_b_new_order.begin() + pos_b, _b_new_order.end());
+		}
+
+		inline cont_key(const cont_key& other) {
+			p_a = other.p_a;
+			p_b = other.p_b;
+			remained_ls = other.remained_ls;
+			a_waiting_ls = other.a_waiting_ls;
+			b_waiting_ls = other.b_waiting_ls;
+			a_new_order = other.a_new_order;
+			b_new_order = other.b_new_order;
+		}
+		inline cont_key& operator =(cont_key&& other) {
+			p_a = other.p_a;
+			p_b = other.p_b;
+			remained_ls = std::move(other.remained_ls);
+			a_waiting_ls = std::move(other.a_waiting_ls);
+			b_waiting_ls = std::move(other.b_waiting_ls);
+			a_new_order = std::move(other.a_new_order);
+			b_new_order = std::move(other.b_new_order);
+			return *this;
+		}
+	};
+
+	template <class W>
+	inline bool operator == (const cont_key<W>& a, const cont_key<W>& b) {
+		return (a.p_a == b.p_a && a.p_b == b.p_b &&
+			a.remained_ls == b.remained_ls && a.a_waiting_ls == b.a_waiting_ls && a.b_waiting_ls == b.b_waiting_ls &&
+			a.a_new_order == b.a_new_order && a.b_new_order == b.b_new_order);
+	}
+
+	template <class W>
+	inline std::size_t hash_value(const cont_key<W>& key) {
+		std::size_t seed = 0;
+		boost::hash_combine(seed, key.p_a);
+		boost::hash_combine(seed, key.p_b);
+		for (const auto& cmd : key.remained_ls) {
+			boost::hash_combine(seed, cmd.first);
+			boost::hash_combine(seed, cmd.second);
+		}
+		for (const auto& cmd : key.a_waiting_ls) {
+			boost::hash_combine(seed, cmd.first);
+			boost::hash_combine(seed, cmd.second);
+		}
+		for (const auto& cmd : key.b_waiting_ls) {
+			boost::hash_combine(seed, cmd.first);
+			boost::hash_combine(seed, cmd.second);
+		}
+		for (const auto& order_a : key.a_new_order) {
+			boost::hash_combine(seed, order_a);
+		}
+		for (const auto& order_b : key.b_new_order) {
+			boost::hash_combine(seed, order_b);
+		}
+		return seed;
+	}
+
+	template <class W>
+	using cont_table = boost::unordered_map<cont_key<W>, node::weightednode<W>>;
+
+
+
 
 	template <class W>
 	struct Global_Cache {
@@ -325,5 +429,6 @@ namespace cache {
 		static CUDAcpl_table<W>* p_CUDAcpl_cache;
 		static sum_table<W>* p_sum_cache;
 		static trace_table<W>* p_trace_cache;
+		static cont_table<W>* p_cont_cache;
 	};
 }
