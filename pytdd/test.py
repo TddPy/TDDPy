@@ -12,7 +12,9 @@ from pytdd import pytdd_test
 pytdd_test.test1()
 pytdd_test.test2()
 #pytdd_test.test3()
-
+pytdd_test.test4()
+pytdd_test.test5()
+pytdd_test.test6()
 
 
 os.system('pause')

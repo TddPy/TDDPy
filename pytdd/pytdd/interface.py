@@ -238,20 +238,21 @@ def trace(tensor: TDD, axes:Sequence[Sequence[int]]) -> TDD:
     return TDD(pointer)
 
 def tensordot(a: TDD, b: TDD,
-                axes: int|Sequence[Sequence[int]]) -> TDD:
+                axes: int|Sequence[Sequence[int]], rearrangement: Sequence[bool] = []) -> TDD:
     '''
         The pytorch-like tensordot method. Note that indices should be counted with data indices only.
         sum_dict_cache: the dictionary cache of former summation calculations.
         parallel_tensor: Whether to tensor on the parallel indices.
     '''
     if isinstance(axes, int):
-        pointer = ctdd.tensordot_num(a.pointer, b.pointer, axes)
+        pointer = ctdd.tensordot_num(a.pointer, b.pointer, axes, list(rearrangement))
     else:
         i1 = list(axes[0])
         i2 = list(axes[1])
         if len(i1) != len(i2):
             raise Exception("The list of indices provided")
-        pointer = ctdd.tensordot_ls(a.pointer, b.pointer, i1, i2)
+
+        pointer = ctdd.tensordot_ls(a.pointer, b.pointer, i1, i2, list(rearrangement))
     
     res = TDD(pointer)
     return res

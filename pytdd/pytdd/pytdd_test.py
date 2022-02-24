@@ -1,5 +1,6 @@
 
 import torch
+from torch._C import dtype
 from . import CUDAcpl
 from . import interface
 
@@ -52,3 +53,60 @@ def test3():
 
     compare(expected, actual)
 
+
+def test4():
+    '''
+    large tensor contraction
+    '''
+
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmay, CUDAcpl.quantum_basic.sigmax, 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard, a, 0)
+
+    b = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard, CUDAcpl.quantum_basic.hadamard, 0)
+    b = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard, b, 0)
+
+    expected = CUDAcpl.tensordot(a,b,[[1,5,3],[4,0,5]])
+    
+    tdd_a = interface.as_tensor((a,0,[]))
+    tdd_b = interface.as_tensor((b,0,[]))
+    actual = interface.tensordot(tdd_a, tdd_b, [[1,5,3],[4,0,5]]).CUDAcpl()
+
+    compare(expected,actual)
+
+def test5():
+
+    '''
+    small tensor contraction
+    '''
+
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmay, CUDAcpl.quantum_basic.hadamard, 0)
+
+    b = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmax, CUDAcpl.quantum_basic.hadamard, 0)
+
+    expected = CUDAcpl.tensordot(a,b,[[1,3],[3,2]])
+    
+    tdd_a = interface.as_tensor((a,0,[]))
+    tdd_a.show("A")
+    tdd_b = interface.as_tensor((b,0,[]))
+    tdd_b.show("B")
+    actual = interface.tensordot(tdd_a, tdd_b, [[1,3],[3,2]]).CUDAcpl()
+
+    compare(expected,actual)
+
+def test6():
+
+    '''
+    micro tensor contraction
+    '''
+
+    a = CUDAcpl._U_(torch.rand,(2,2,2))
+
+    b = CUDAcpl.quantum_basic.hadamard
+
+    expected = CUDAcpl.tensordot(a,b,[[0,1],[1,0]])
+    
+    tdd_a = interface.as_tensor((a,0,[]))
+    tdd_b = interface.as_tensor((b,0,[]))
+    actual = interface.tensordot(tdd_a, tdd_b, [[0,1],[1,0]]).CUDAcpl()
+
+    compare(expected,actual)

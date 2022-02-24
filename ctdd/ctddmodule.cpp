@@ -163,12 +163,20 @@ static PyObject*
 tensordot_num(PyObject* self, PyObject* args) {
 	int64_t code_a, code_b;
 	int dim;
-	if (!PyArg_ParseTuple(args, "LLi", &code_a, &code_b, &dim)) {
+	PyObject* p_rearrangement_pyo;
+	if (!PyArg_ParseTuple(args, "LLiO", &code_a, &code_b, &dim, &p_rearrangement_pyo)) {
 		return NULL;
 	}
 	TDD<W>* p_tdda = (TDD<W>*)code_a;
 	TDD<W>* p_tddb = (TDD<W>*)code_b;
-	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, dim));
+
+	auto&& size = PyList_GET_SIZE(p_rearrangement_pyo);
+	std::vector<bool> rearrangement(size);
+	for (int i = 0; i < size; i++) {
+		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i)) != 0;
+	}
+
+	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, dim, rearrangement));
 	// convert to long long
 	int64_t code = (int64_t)p_res;
 	return Py_BuildValue("L", code);
@@ -184,8 +192,8 @@ template <class W>
 static PyObject*
 tensordot_ls(PyObject* self, PyObject* args) {
 	int64_t code_a, code_b;
-	PyObject* p_i1_pyo, * p_i2_pyo;
-	if (!PyArg_ParseTuple(args, "LLOO", &code_a, &code_b, &p_i1_pyo, &p_i2_pyo)) {
+	PyObject* p_i1_pyo, * p_i2_pyo, * p_rearrangement_pyo;
+	if (!PyArg_ParseTuple(args, "LLOOO", &code_a, &code_b, &p_i1_pyo, &p_i2_pyo, &p_rearrangement_pyo)) {
 		return NULL;
 	}
 	TDD<W>* p_tdda = (TDD<W>*)code_a;
@@ -198,7 +206,14 @@ tensordot_ls(PyObject* self, PyObject* args) {
 		i1[i] = PyLong_AsLongLong(PyList_GetItem(p_i1_pyo, i));
 		i2[i] = PyLong_AsLongLong(PyList_GetItem(p_i2_pyo, i));
 	}
-	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, i1, i2));
+
+	size = PyList_GET_SIZE(p_rearrangement_pyo);
+	std::vector<bool> rearrangement(size);
+	for (int i = 0; i < size; i++) {
+		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i)) != 0;
+	}
+
+	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, i1, i2, rearrangement));
 
 	// convert to long long
 	int64_t code = (int64_t)p_res;

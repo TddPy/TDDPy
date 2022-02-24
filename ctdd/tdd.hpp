@@ -381,24 +381,6 @@ namespace tdd {
 		}
 
 
-		/// <summary>
-		/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.
-		/// Whether to tensor on the parallel indices.
-		/// </summary>
-		/// <typeparam name="W"></typeparam>
-		inline static TDD<W> tensordot(const TDD<W>& a, const TDD<W>& b,
-			const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b, bool parallel_tensor = false) {
-
-			auto&& temp_tdd = direct_product(a, b, parallel_tensor);
-
-			cache::pair_cmd i_cmd(ils_a.size());
-
-			for (int i = 0; i < ils_a.size(); i++) {
-				i_cmd[i].first = ils_a[i];
-				i_cmd[i].second = ils_b[i] + a.dim_data();
-			}
-			return temp_tdd.trace(i_cmd);
-		}
 
 		/// <summary>
 		/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.
@@ -408,18 +390,23 @@ namespace tdd {
 		/// <param name="num_indices">contract the last num_indices indices of a and first of b</param>
 		/// <param name="parallel_tensor"></param>
 		/// <returns></returns>
-		inline static TDD<W> tensordot(const TDD<W>& a, const TDD<W>& b, int num_indices, bool parallel_tensor = false) {
+		inline static TDD<W> tensordot(const TDD<W>& a, const TDD<W>& b, int num_indices, 
+			const std::vector<bool>& rearrangement = {}, bool parallel_tensor = false) {
 			std::vector<int64_t> ia(num_indices);
 			std::vector<int64_t> ib(num_indices);
 			for (int i = 0; i < num_indices; i++) {
 				ia[i] = a.dim_data() - num_indices + i;
 				ib[i] = i;
 			}
-			return tensordot(a, b, ia, ib, parallel_tensor);
+			return tensordot(a, b, ia, ib, rearrangement, parallel_tensor);
 		}
 
-
-		inline static TDD<W> tensordot2(const TDD<W>& a, const TDD<W>& b,
+		/// <summary>
+		/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.
+		/// Whether to tensor on the parallel indices.
+		/// </summary>
+		/// <typeparam name="W"></typeparam>
+		static TDD<W> tensordot(const TDD<W>& a, const TDD<W>& b,
 			const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b, 
 			const std::vector<bool>& rearrangement = {}, bool parallel_tensor = false) {
 
@@ -462,6 +449,7 @@ namespace tdd {
 				b_reduced_indices[i] = cmd.second;
 				i++;
 			}
+			std::sort(a_reduced_indices.begin(), a_reduced_indices.end());
 			std::sort(b_reduced_indices.begin(), b_reduced_indices.end());
 
 			// prepare the order and shape (inner)

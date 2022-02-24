@@ -23,32 +23,26 @@ int main() {
 		}
 		*/
 
-		auto&& t1 = torch::zeros({ 2,2,2 });
-		t1[0][0][0] = 1;
-		t1[0][1][0] = 1;
-		t1[1][0][0] = 1;
-		t1[1][1][0] = -1;
-
-		auto&& t2 = torch::zeros({ 2,2,2 });
-		t2[0][0][0] = 1;
-		t2[0][1][0] = 1;
-		t2[1][0][0] = -1;
-		t2[1][1][0] = 1;
+		auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }).reshape({ 2,2,2 });
+		auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }).reshape({ 2,2,2 });
+		auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }).reshape({ 2,2,2 }) / sqrt(2);
 
 
-
-		auto&& res_direct = CUDAcpl::tensordot(t1, t2, {1,0}, {0,1});
+		auto t1 = CUDAcpl::tensordot(sigmay, hadamard, {}, {});
+		auto t2 = CUDAcpl::tensordot(sigmax, hadamard, {}, {});
+		
+		auto&& res_direct = CUDAcpl::tensordot(t1, t2, {1,3}, {3,2});
 		//auto res_direct = t1 + t2;
 		//std::cout << res_direct << std::endl;
 
 
-		auto&& t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {1,0});
-		auto&& t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {0,1});
+		auto&& t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {});
+		auto&& t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
 
 
 		//auto res_tdd = TDD<wcomplex>::sum(t1_tdd, t2_tdd);
-		auto&& res_tdd = TDD<wcomplex>::tensordot2(t1_tdd, t2_tdd,
-			std::vector<int64_t>{1,0}, std::vector<int64_t>{0,1},{});
+		auto&& res_tdd = TDD<wcomplex>::tensordot(t1_tdd, t2_tdd,
+			std::vector<int64_t>{1,3}, std::vector<int64_t>{3,2},{});
 
 		std::cout << "direct" << std::endl;
 		std::cout << res_direct << std::endl;

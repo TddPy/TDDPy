@@ -792,6 +792,7 @@ public:
 								data_shape_a, data_shape_b, next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
 								a_new_order, b_new_order, parallel_tensor
 							);
+							index_val++;
 						}
 					}
 					not_operated = false;
@@ -833,6 +834,7 @@ public:
 									data_shape_a, data_shape_b, next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd,
 									a_new_order, b_new_order, parallel_tensor
 								);
+								index_val++;
 							}
 						}
 						not_operated = false;
