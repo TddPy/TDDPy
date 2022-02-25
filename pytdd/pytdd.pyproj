@@ -30,14 +30,23 @@
   <ItemGroup>
     <Compile Include="experiments\test_contract\test_contract.py" />
     <Compile Include="experiments\test_order\test_order.py" />
+    <Compile Include="pytdd\abstract_coordinator.py" />
+    <Compile Include="pytdd\global_method.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="pytdd\tdd.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="pytdd\CUDAcpl\config.py" />
     <Compile Include="pytdd\CUDAcpl\main.py" />
     <Compile Include="pytdd\CUDAcpl\quantum_basic.py" />
     <Compile Include="pytdd\CUDAcpl\__init__.py" />
-    <Compile Include="pytdd\interface.py">
+    <Compile Include="pytdd\global_order_coordinator.py" />
+    <Compile Include="pytdd\node.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="pytdd\pytdd_test.py" />
+    <Compile Include="pytdd_test.py" />
+    <Compile Include="pytdd\trival_coordinator.py" />
     <Compile Include="pytdd\__init__.py" />
     <Compile Include="tdd\CUDAcpl\config.py" />
     <Compile Include="tdd\CUDAcpl\main.py" />

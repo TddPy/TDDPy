@@ -104,7 +104,6 @@ namespace tdd {
 		std::pair<std::vector<int64_t>, std::vector<int64_t>> index_reduced_info(const std::vector<int64_t>& inner_indices_reduced) {
 			auto&& length = inner_indices_reduced.size();
 			std::vector<int64_t> orders(dim_data() - length);
-			std::vector<int64_t> out_indices_reduced{};
 			std::vector<int64_t> data_shapes(dim_data() + 1 - length);
 			data_shapes[dim_data() - length] = 2;
 
@@ -115,16 +114,19 @@ namespace tdd {
 					orders[new_count] = m_index_order[i];
 					new_count++;
 				}
-				else {
-					out_indices_reduced.push_back(m_index_order[i]);
-				}
 			}
-			std::sort(out_indices_reduced.begin(), out_indices_reduced.end());
 
-			auto&& new_squeezed_order = wnode<W>::get_new_order(dim_data(), out_indices_reduced);
+			std::vector<int64_t> index(orders.size());
+			for (int i = 0; i < orders.size(); i++) {
+				index[i] = i;
+			}
+			std::sort(index.begin(), index.end(),
+				[orders](const int64_t& a, const int64_t& b) {
+					return orders[a] < orders[b];
+				});
 
-			for (int i = 0; i < dim_data() - length; i++) {
-				orders[i] = new_squeezed_order[orders[i]];
+			for (int i = 0; i < orders.size(); i++) {
+				orders[index[i]] = i;
 			}
 
 			std::vector<int64_t> shapes_res(data_shapes);
@@ -410,18 +412,13 @@ namespace tdd {
 			const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b, 
 			const std::vector<bool>& rearrangement = {}, bool parallel_tensor = false) {
 
-			std::vector<int64_t> out_indices_reduced(ils_a.size() * 2);
-
 			// transform to inner indices
 			cache::pair_cmd inner_indices_cmd(ils_a.size());
 			for (int i = 0; i < ils_a.size(); i++) {
 				// arrange the smaller index at the first
 				inner_indices_cmd[i].first = a.m_inversed_order[ils_a[i]];
 				inner_indices_cmd[i].second = b.m_inversed_order[ils_b[i]];
-				out_indices_reduced[2 * i] = ils_a[i];
-				out_indices_reduced[2 * i + 1] = ils_b[i] + a.dim_data();
 			}
-			std::sort(out_indices_reduced.begin(), out_indices_reduced.end());
 
 			std::vector<bool> rearrangement_default;
 			const std::vector<bool>* p_rearrangement_pd;
@@ -503,9 +500,16 @@ namespace tdd {
 			
 
 			// transform to outer order
-			auto&& new_order = wnode<W>::get_new_order(a.dim_data() + b.dim_data(), out_indices_reduced);
+			std::vector<int64_t> index(total_order.size());
 			for (int i = 0; i < total_order.size(); i++) {
-				total_order[i] = new_order[total_order[i]];
+				index[i] = i;
+			}
+			std::sort(index.begin(), index.end(),
+				[total_order](const int64_t& a, const int64_t& b) {
+					return total_order[a] < total_order[b];
+				});
+			for (int i = 0; i < total_order.size(); i++) {
+				total_order[index[i]] = i;
 			}
 
 			std::vector<int64_t> total_shape(total_inner_shape.size());
