@@ -1,8 +1,7 @@
 
 import torch
 from torch._C import dtype
-from . import CUDAcpl
-from . import interface
+from pytdd import TDD, CUDAcpl
 
 def compare(expected: CUDAcpl.CUDAcpl_Tensor,
             actual: CUDAcpl.CUDAcpl_Tensor):
@@ -21,9 +20,9 @@ def test1():
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.tensordot(a,b,1)
     
-    tdd_a = interface.as_tensor((a,0,[1,0]))
-    tdd_b = interface.as_tensor((b,0,[1,0]))
-    actual = interface.tensordot(tdd_a, tdd_b, 1).CUDAcpl()
+    tdd_a = TDD.as_tensor(((a,0,[1,0]),None))
+    tdd_b = TDD.as_tensor(((b,0,[1,0]),None))
+    actual = TDD.tensordot(tdd_a, tdd_b, 1).CUDAcpl()
 
     compare(expected,actual)
 
@@ -32,11 +31,11 @@ def test2():
     '''
     permutation and contraction
     '''
-    a = torch.rand((2,2,2,2,2))
+    a = torch.rand((2,4,1,3,2))
     expected = a.permute((0,2,3,1,4))
 
-    tdd_a = interface.as_tensor((a,0,[0,2,3,1]))
-    actual = interface.permute(tdd_a, (0,2,3,1)).CUDAcpl()
+    tdd_a = TDD.as_tensor(((a,0,[0,2,3,1]),None))
+    actual = TDD.permute(tdd_a, (0,2,3,1)).CUDAcpl()
 
     compare(expected, actual)
 
@@ -48,8 +47,8 @@ def test3():
     a = torch.rand((2,2,2,2,2), dtype = torch.double, device = 'cuda')
     expected = torch.einsum("iijjk->k", a)
 
-    tdd_a = interface.as_tensor(a)
-    actual = interface.trace(tdd_a, [[0,2],[1,3]]).CUDAcpl()
+    tdd_a = TDD.as_tensor((a,None))
+    actual = TDD.trace(tdd_a, [[0,2],[1,3]]).CUDAcpl()
 
     compare(expected, actual)
 
@@ -67,9 +66,9 @@ def test4():
 
     expected = CUDAcpl.tensordot(a,b,[[1,5,3],[4,0,5]])
     
-    tdd_a = interface.as_tensor((a,0,[]))
-    tdd_b = interface.as_tensor((b,0,[]))
-    actual = interface.tensordot(tdd_a, tdd_b, [[1,5,3],[4,0,5]]).CUDAcpl()
+    tdd_a = TDD.as_tensor(((a,0,[]),None))
+    tdd_b = TDD.as_tensor(((b,0,[]),None))
+    actual = TDD.tensordot(tdd_a, tdd_b, [[1,5,3],[4,0,5]]).CUDAcpl()
 
     compare(expected,actual)
 
@@ -85,11 +84,11 @@ def test5():
 
     expected = CUDAcpl.tensordot(a,b,[[1,3],[3,2]])
     
-    tdd_a = interface.as_tensor((a,0,[]))
+    tdd_a = TDD.as_tensor(((a,0,[]),None))
     tdd_a.show("A")
-    tdd_b = interface.as_tensor((b,0,[]))
+    tdd_b = TDD.as_tensor(((b,0,[]),None))
     tdd_b.show("B")
-    actual = interface.tensordot(tdd_a, tdd_b, [[1,3],[3,2]]).CUDAcpl()
+    actual = TDD.tensordot(tdd_a, tdd_b, [[1,3],[3,2]]).CUDAcpl()
 
     compare(expected,actual)
 
@@ -105,8 +104,85 @@ def test6():
 
     expected = CUDAcpl.tensordot(a,b,[[0,1],[1,0]])
     
-    tdd_a = interface.as_tensor((a,0,[]))
-    tdd_b = interface.as_tensor((b,0,[]))
-    actual = interface.tensordot(tdd_a, tdd_b, [[0,1],[1,0]]).CUDAcpl()
+    tdd_a = TDD.as_tensor(((a,0,[]),None))
+    tdd_b = TDD.as_tensor(((b,0,[]),None))
+    actual = TDD.tensordot(tdd_a, tdd_b, [[0,1],[1,0]]).CUDAcpl()
 
     compare(expected,actual)
+
+def test7():
+    '''
+    qft_2 stepwise
+    '''
+
+    cz = CUDAcpl.quantum_basic.CZ.reshape((2,2,2,2,2))
+    tdd_cz = TDD.as_tensor((cz,None))
+    I = CUDAcpl.eye(2)
+    tdd_I = TDD.as_tensor((I,None))
+    h = CUDAcpl.quantum_basic.hadamard
+    tdd_h = TDD.as_tensor((h,None))
+
+    #step 1
+    t1 = CUDAcpl.tensordot(h, I, [[0],[1]])
+    tdd_t1 = TDD.tensordot(tdd_h, tdd_I, [[0],[1]])
+    compare(t1, tdd_t1.CUDAcpl())
+
+    #step 2
+    t2 = CUDAcpl.tensordot(I, cz, [[1],[1]])
+    tdd_t2 = TDD.tensordot(tdd_I, tdd_cz, [[1],[1]])
+    compare(t2, tdd_t2.CUDAcpl())
+
+    #step 3
+    t3 = CUDAcpl.tensordot(h, t2, [[0],[3]])
+    tdd_t3 = TDD.tensordot(tdd_h, tdd_t2, [[0],[3]])
+    compare(t3, tdd_t3.CUDAcpl())
+
+    #step4
+    t4 = CUDAcpl.tensordot(t1, t3, [[0],[3]])
+    tdd_t4 = TDD.tensordot(tdd_t1, tdd_t3, [[0],[3]])
+    compare(t4, tdd_t4.CUDAcpl())
+
+    #permute
+    res = t4.permute((0,3,1,2,4))
+    tdd_res = TDD.permute(tdd_t4,[0,3,1,2])
+    compare(res, tdd_res.CUDAcpl())
+
+def test8():
+    '''
+    qft_2 stepwise global_order_coordinator version
+    '''
+
+    cz = CUDAcpl.quantum_basic.CZ.reshape((2,2,2,2,2))
+    tdd_cz = TDD.as_tensor((cz,[2,5,3,6]))
+    I = CUDAcpl.eye(2)
+    tdd_I1 = TDD.as_tensor((I,[0,1]))
+    tdd_I2 = TDD.as_tensor((I,[4,5]))
+    h = CUDAcpl.quantum_basic.hadamard
+    tdd_h1 = TDD.as_tensor((h,[1,2]))
+    tdd_h2 = TDD.as_tensor((h,[6,7]))
+
+    #step 1
+    t1 = CUDAcpl.tensordot(h, I, [[0],[1]])
+    tdd_t1 = TDD.tensordot(tdd_h1, tdd_I1, [[0],[1]])
+    compare(t1, tdd_t1.CUDAcpl())
+
+    #step 2
+    t2 = CUDAcpl.tensordot(I, cz, [[1],[1]])
+    tdd_t2 = TDD.tensordot(tdd_I2, tdd_cz, [[1],[1]])
+    compare(t2, tdd_t2.CUDAcpl())
+
+    #step 3
+    t3 = CUDAcpl.tensordot(h, t2, [[0],[3]])
+    tdd_t3 = TDD.tensordot(tdd_h2, tdd_t2, [[0],[3]])
+    compare(t3, tdd_t3.CUDAcpl())
+
+    #step4
+    t4 = CUDAcpl.tensordot(t1, t3, [[0],[3]])
+    tdd_t4 = TDD.tensordot(tdd_t1, tdd_t3, [[0],[3]])
+    compare(t4, tdd_t4.CUDAcpl())
+
+    #permute
+    res = t4.permute((0,3,1,2,4))
+    tdd_res = TDD.permute(tdd_t4,[0,3,1,2])
+    compare(res, tdd_res.CUDAcpl())
+

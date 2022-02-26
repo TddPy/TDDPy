@@ -1,6 +1,6 @@
 
 from __future__ import annotations
-from typing import AbstractSet, Any, Dict, Tuple, List, Union, Sequence;
+from typing import Any, Dict, Tuple, List, Union, Sequence;
 import numpy as np
 from . import CUDAcpl;
 from .CUDAcpl import CUDAcpl_Tensor, CUDAcpl2np
@@ -14,6 +14,7 @@ from .node import Node
 # order coordinators
 from .abstract_coordinator import AbstractCoordinator, OrderInfo
 from .trival_coordinator import TrivalCoordinator
+from .global_order_coordinator import GlobalOrderCoordinator
 
 # for tdd graphing
 from graphviz import Digraph
@@ -21,23 +22,32 @@ from IPython.display import Image
 
 
 class TDD:
+    coordinator_factory = {
+        'trival': TrivalCoordinator(),
+        'global_order': GlobalOrderCoordinator()
+        }
 
-    coordinator : AbstractCoordinator = TrivalCoordinator() 
+    coordinator : AbstractCoordinator = coordinator_factory['global_order']
+    #coordinator : AbstractCoordinator = coordinator_factory['trival']
 
     @staticmethod
-    def set_coordinator(coordinator) -> None:
-        pass
+    def set_coordinator(name) -> None:
+        TDD.coordinator = TDD.coordinator_factory[name]
 
-    def __init__(self, pointer, order_info: OrderInfo):
+    def __init__(self, pointer, coordinator_info: OrderInfo):
         self._pointer : int = pointer
         self._info = ctdd.get_tdd_info(self._pointer)
 
-        # here copy is not needed, because order_info will only be resigned, not modified.
-        self._order_info: OrderInfo = order_info
+        # here copy is not needed, because coordinator_info will only be resigned, not modified.
+        self._coordinator_info: OrderInfo = coordinator_info
 
     @property
     def pointer(self) -> int:
         return self._pointer
+
+    @property
+    def coordinator_info(self) -> OrderInfo:
+        return self._coordinator_info
 
     @property
     def node(self) -> Node:
@@ -52,8 +62,12 @@ class TDD:
         return self._info["data shape"]
     
     @property
-    def index_order(self) -> Tuple:
-        return self._info["index order"]
+    def parallel_shape(self) -> Tuple:
+        return self._info["parallel shape"]
+
+    @property
+    def storage_order(self) -> Tuple:
+        return self._info["storage order"]
 
     # extremely time costy
     def size(self) -> int:
@@ -74,27 +88,26 @@ class TDD:
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
         '''
         edge=[]              
-        tdd_info = self.info
         tdd_node = self.node
 
         dot=Digraph(name='reduced_tree')
-        dot=tdd_node.layout(self.index_order, tdd_info["parallel shape"],tdd_info["index order"], dot, edge, full_output,precision)
+        dot=tdd_node.layout(self.storage_order, self.parallel_shape, dot, edge, full_output,precision)
         dot.node('-0','',shape='none')
 
         if tdd_node.pointer == 0:
             id_str = str(TERMINAL_ID)
         else:
-            id_str = str(tdd_node.info["id"])
+            id_str = str(tdd_node.id)
 
-        tdd_weight = tdd_info["weight"]
-        if tdd_info["dim parallel"]==0:
+        tdd_weight = self.info["weight"]
+        if self.info["dim parallel"]==0:
             label= str(complex(round(tdd_weight[0].cpu().item(),precision),round(tdd_weight[1].cpu().item(),precision)))
         else:
             if full_output == True:
                 label = str(CUDAcpl2np(tdd_weight))
             else:
-                label =str(tdd_info["parallel shape"])
-        dot.edge('-0',id_str,color="blue",label = label)
+                label =str(self.parallel_shape)
+        dot.edge('-0',id_str,color="blue",label = label + " shape: " +str(self.shape))
         dot.format = 'png'
         return Image(dot.render(path))
 
@@ -119,7 +132,7 @@ class TDD:
 
         data:
             0. in the form of a TDD, then return a copy of it.
-            1. in the form of (tensor, order_info), where tensor is
+            1. in the form of (tensor, coordinator_info), where tensor is
                 1a. in the form of a matrix only: assume the parallel_index_num to be 0, and index order to be []
                 1b. in the form of a tuple (data, index_shape, index_order)
                 Note that if the input matrix is a torch tensor, 
@@ -130,11 +143,11 @@ class TDD:
         # pre-process
         if isinstance(data, TDD):
             # note the order information is also copied
-            return TDD(ctdd.as_tensor_clone(data.pointer), data._order_info);
+            return TDD(ctdd.as_tensor_clone(data.pointer), data._coordinator_info);
 
         #extract the order_information
-        data, order_info = data
-        order_info = TDD.coordinator.create_order_info(order_info)
+        data, coordinator_info = data
+        coordinator_info = TDD.coordinator.create_order_info(coordinator_info)
 
         if isinstance(data,Tuple):
             tensor,parallel_i_num,storage_order = data
@@ -145,7 +158,7 @@ class TDD:
 
         # if storage order not given, the coordinator will take over
         if storage_order == []:
-            storage_order = TDD.coordinator.as_tensor_order(order_info)
+            storage_order = TDD.coordinator.as_tensor_order(coordinator_info)
         else:
             storage_order = list(storage_order)
             
@@ -162,7 +175,7 @@ class TDD:
 
         pointer = ctdd.as_tensor(tensor, parallel_i_num, storage_order)
 
-        return TDD(pointer, order_info)
+        return TDD(pointer, coordinator_info)
 
 
     @staticmethod
@@ -175,7 +188,7 @@ class TDD:
             raise Exception("The indices given by parameter axes does not match.")
 
         pointer = ctdd.trace(tensor.pointer, axes[0], axes[1])
-        return TDD(pointer, TDD.coordinator.trace_order_info(tensor._order_info, axes))
+        return TDD(pointer, TDD.coordinator.trace_order_info(tensor._coordinator_info, axes))
 
 
     @staticmethod
@@ -187,24 +200,25 @@ class TDD:
             rearrangement: If not [], then will rearrange according to the parameter. Otherwise, it will rearrange according to the coordinator.
             parallel_tensor: Whether to tensor on the parallel indices.
         '''
-        
+        if rearrangement == []:
+            rearrangement = TDD.coordinator.tensordot_rearrangement(a._coordinator_info, b._coordinator_info, axes)
+
+        new_coordinator_info = TDD.coordinator.tensordot_order_info(a._coordinator_info, b._coordinator_info, axes)
         if isinstance(axes, int):
-            pointer = ctdd.tensordot_num(a.pointer, b.pointer, axes, 
-                                         TDD.coordinator.tensordot_rearrangement(a._order_info, b._order_info, axes))
+            pointer = ctdd.tensordot_num(a.pointer, b.pointer, axes, rearrangement)
         else:
             i1 = list(axes[0])
             i2 = list(axes[1])
             if len(i1) != len(i2):
                 raise Exception("The list of indices provided")
-
-            pointer = ctdd.tensordot_ls(a.pointer, b.pointer, i1, i2,
-                                        TDD.coordinator.tensordot_rearrangement(a._order_info, b._order_info, axes))
-    
-        res = TDD(pointer,TDD.coordinator.tensordot_order_info(a._order_info, b._order_info, axes))
+            
+            pointer = ctdd.tensordot_ls(a.pointer, b.pointer, i1, i2, rearrangement)
+        
+        res = TDD(pointer, new_coordinator_info)
         return res
 
 
     @staticmethod
     def permute(tensor: TDD, perm: Sequence[int]) -> TDD:
         return TDD(ctdd.permute(tensor.pointer, list(perm)),
-                   TDD.coordinator.permute_order_info(tensor._order_info, perm));
+                   TDD.coordinator.permute_order_info(tensor._coordinator_info, perm));

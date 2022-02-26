@@ -2,19 +2,23 @@ import numpy as np
 import os
 import torch
 
-from pytdd import interface
+from pytdd import TDD
 from pytdd import CUDAcpl
 
-from pytdd import pytdd_test
+import pytdd_test
 
 #interface.reset(True)
 
-pytdd_test.test1()
-pytdd_test.test2()
+#pytdd_test.test1()
+#pytdd_test.test2()
 #pytdd_test.test3()
-pytdd_test.test4()
-pytdd_test.test5()
-pytdd_test.test6()
+#pytdd_test.test4()
+#pytdd_test.test5()
+#pytdd_test.test6()
+#pytdd_test.test7()
+pytdd_test.test8()
+
+
 
 
 os.system('pause')

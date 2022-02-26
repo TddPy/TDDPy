@@ -1,8 +1,8 @@
-
-from pytdd import interface
-from typing import Sequence, List
+from __future__ import annotations
+from typing import List, Any, Sequence, Union
 import numpy as np
-from .abstract_coordinator import AbstractCoordinator
+
+from .abstract_coordinator import OrderInfo, AbstractCoordinator
 
 
 
@@ -13,28 +13,90 @@ def order_squeezed(order: Sequence[int]) -> List[int]:
         res[index[i]] = i
     return res
 
-def get_rearrangement(order_a: Sequence[int], order_b: Sequence[int]) -> List[bool]:
-    order_all = order_a + order_b
-    index = list(range(order_all))
-    res = [True] * len(order_a) + [False] * len(order_b)
-    sorted(index, lambda i: order_all[i])
-    return res[index]
-
 class GlobalOrderCoordinator(AbstractCoordinator):
+
   def __init__(self) -> None:
-    self.name = 'global order coordinator'
+    self.name = 'trival coordinator'
 
-    # records the global order of every tensor
-    self.tensor_order = dict()
+  def create_order_info(self, order_info: Any) -> OrderInfo:
+      '''
+        here the order_info should be the corresponding orders of tensor indices, in the global index order
+      '''
+      if order_info == None:
+          return None
+      return list(order_info)
 
-  def as_tensor(self, tensor_data) -> interface.TDD:
-    tensor, global_order = tensor_data
-    self.tensor_order[]
-    order = order_squeezed(self.global_order)
+  def as_tensor_order(self, order_info: OrderInfo)->List[int]:
+      if order_info == None:
+          return []
 
-    return interface.as_tensor((tensor_data, 0, order))
+      temp = order_squeezed(order_info)
+      # a reverse is needed
+      res = [0] * len(temp)
+      for i in range(len(temp)):
+          res[temp[i]] = i
+      return res
 
-  def tensordot(self, tdd_a: interface.TDD, tdd_b: interface.TDD, axes) -> interface.TDD:
-    return interface.tensordot(tdd_a, tdd_b, axes)
+  def trace_order_info(self, order_info: OrderInfo, axes: Sequence[Sequence[int]]) -> OrderInfo:
+      if order_info == None:
+          return None
 
+      res = []
+      for i in range(len(order_info)):
+          if i not in axes[0] and i not in axes[1]:
+              res.append(order_info[i])
+      return res
+
+
+  def tensordot_rearrangement(self, info_a: OrderInfo, info_b: OrderInfo, 
+                              axes: int|Sequence[Sequence[int]]) -> List[int]:
+      if info_a == None or info_b == None:
+          return []
+
+      if isinstance(axes, int):
+          num = axes
+      else:
+          num = len(axes[0])
+
+      order_all = self.tensordot_order_info(info_a, info_b, axes)
+
+      index = list(range(len(order_all)))
+      res = [1] * (len(info_a) - num) + [0] * (len(info_b) - num)
+      index = sorted(index, key = lambda i: order_all[i])
+      res = [res[i] for i in index]
+      return res
+
+  def tensordot_order_info(self, info_a: OrderInfo, info_b: OrderInfo,
+                           axes: int|Sequence[Sequence[int]]) -> OrderInfo:
+      '''
+        The order after tensordot is determined by the standard order rearrangement of tensordot
+      '''
+      if info_a == None or info_b == None:
+          return None
+
+      if isinstance(axes, int):
+          num = axes
+          temp1 = list(range(len(info_a)-num, len(info_a)))
+          temp2 = list(range(num))
+          axes = [temp1, temp2]
+
+      order_all=[] 
+      for i in range(len(info_a)):
+          if i not in axes[0]:
+              order_all.append(info_a[i])
+      for i in range(len(info_b)):
+          if i not in axes[1]:
+              order_all.append(info_b[i])
+
+      return order_all
+
+  def permute_order_info(self, order_info: OrderInfo, perm: Sequence[int]) -> OrderInfo:
+      if order_info == None:
+          return None
+
+      res = [0]*len(order_info)
+      for i in range(len(order_info)):
+          res[i] = order_info[perm[i]]
+
+      return res
 

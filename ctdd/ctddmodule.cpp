@@ -31,7 +31,7 @@ delete_tdd(PyObject* self, PyObject* args) {
 /// reset the unique table and all the caches, designate the device.
 /// </summary>
 /// <param name="self"></param>
-/// <param name="args">for index_order, put in [] from python to indicate the trival order.</param>
+/// <param name="args">for storage_order, put in [] from python to indicate the trival order.</param>
 /// <returns>the pointer to the tdd</returns>
 static PyObject*
 reset(PyObject* self, PyObject* args) {
@@ -47,27 +47,27 @@ reset(PyObject* self, PyObject* args) {
 /// Take in the CUDAcpl tensor, transform to TDD and returns the pointer.
 /// </summary>
 /// <param name="self"></param>
-/// <param name="args">for index_order, put in [] from python to indicate the trival order.</param>
+/// <param name="args">for storage_order, put in [] from python to indicate the trival order.</param>
 /// <returns>the pointer to the tdd</returns>
 template <class W>
 static PyObject*
 as_tensor(PyObject* self, PyObject* args)
 {
-	PyObject* p_tensor, * p_index_order_ls;
+	PyObject* p_tensor, * p_storage_order_ls;
 	int dim_parallel;
-	if (!PyArg_ParseTuple(args, "OiO", &p_tensor, &dim_parallel, &p_index_order_ls))
+	if (!PyArg_ParseTuple(args, "OiO", &p_tensor, &dim_parallel, &p_storage_order_ls))
 		return NULL;
 	auto&& t = THPVariable_Unpack(p_tensor);
 
-	//prepare the index_order array
-	auto&& size = PyList_GET_SIZE(p_index_order_ls);
-	std::vector<int64_t> index_order(size);
+	//prepare the storage_order array
+	auto&& size = PyList_GET_SIZE(p_storage_order_ls);
+	std::vector<int64_t> storage_order(size);
 	for (int i = 0; i < size; i++) {
-		index_order[i] = PyLong_AsLongLong(PyList_GetItem(p_index_order_ls, i));
+		storage_order[i] = PyLong_AsLongLong(PyList_GetItem(p_storage_order_ls, i));
 	}
 
 	//construct the tdd
-	auto&& p_res = new TDD<W>(TDD<W>::as_tensor(t, dim_parallel, index_order));
+	auto&& p_res = new TDD<W>(TDD<W>::as_tensor(t, dim_parallel, storage_order));
 
 	// convert to long long
 	int64_t code = (int64_t)p_res;
@@ -78,7 +78,7 @@ as_tensor(PyObject* self, PyObject* args)
 /// Return the cloned tdd.
 /// </summary>
 /// <param name="self"></param>
-/// <param name="args">for index_order, put in [] from python to indicate the trival order.</param>
+/// <param name="args">for storage_order, put in [] from python to indicate the trival order.</param>
 /// <returns>the pointer to the tdd</returns>
 template <class W>
 static PyObject*
@@ -171,12 +171,12 @@ tensordot_num(PyObject* self, PyObject* args) {
 	TDD<W>* p_tddb = (TDD<W>*)code_b;
 
 	auto&& size = PyList_GET_SIZE(p_rearrangement_pyo);
-	std::vector<bool> rearrangement(size);
+	std::vector<int> rearrangement(size);
 	for (int i = 0; i < size; i++) {
-		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i)) != 0;
+		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i));
 	}
 
-	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, dim, rearrangement));
+	auto&& p_res = new TDD<W>(TDD<W>::tensordot_num(*p_tdda, *p_tddb, dim, rearrangement));
 	// convert to long long
 	int64_t code = (int64_t)p_res;
 	return Py_BuildValue("L", code);
@@ -199,7 +199,7 @@ tensordot_ls(PyObject* self, PyObject* args) {
 	TDD<W>* p_tdda = (TDD<W>*)code_a;
 	TDD<W>* p_tddb = (TDD<W>*)code_b;
 
-	auto&& size = PyList_GET_SIZE(p_i1_pyo);
+	auto size = PyList_GET_SIZE(p_i1_pyo);
 	std::vector<int64_t> i1(size);
 	std::vector<int64_t> i2(size);
 	for (int i = 0; i < size; i++) {
@@ -208,12 +208,12 @@ tensordot_ls(PyObject* self, PyObject* args) {
 	}
 
 	size = PyList_GET_SIZE(p_rearrangement_pyo);
-	std::vector<bool> rearrangement(size);
+	std::vector<int> rearrangement(size);
 	for (int i = 0; i < size; i++) {
-		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i)) != 0;
+		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i));
 	}
 
-	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, i1, i2, rearrangement));
+	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, i1, i2, {}));
 
 	// convert to long long
 	int64_t code = (int64_t)p_res;
@@ -276,23 +276,28 @@ get_tdd_info(PyObject* self, PyObject* args) {
 	auto&& tdd_dim_data = p_tdd->dim_data();
 	auto&& tdd_p_parallel_shape = p_tdd->parallel_shape();
 	auto&& tdd_p_data_shape = p_tdd->data_shape();
-	auto&& tdd_p_index_order = p_tdd->index_order();
+	auto&& tdd_p_storage_order = p_tdd->storage_order();
 
 	// prepare the objects
 	auto&& py_weight = THPVariable_Wrap(CUDAcpl::from_complex(tdd_weight));
+
 	auto&& py_parallel_shape = PyTuple_New(tdd_dim_parallel);
 	for (int i = 0; i < tdd_dim_parallel; i++) {
 		PyTuple_SetItem(py_parallel_shape, i, PyLong_FromLongLong(tdd_p_parallel_shape[i]));
 	}
+
 	auto&& py_data_shape = PyTuple_New(tdd_dim_data);
 	for (int i = 0; i < tdd_dim_data; i++) {
 		PyTuple_SetItem(py_data_shape, i, PyLong_FromLongLong(tdd_p_data_shape[i]));
 	}
-	auto&& py_index_order = PyTuple_New(tdd_dim_data);
+
+	auto&& py_storage_order = PyTuple_New(tdd_dim_data);
 	for (int i = 0; i < tdd_dim_data; i++) {
-		PyTuple_SetItem(py_index_order, i, PyLong_FromLong(tdd_p_index_order[i]));
+		PyTuple_SetItem(py_storage_order, i, PyLong_FromLong(tdd_p_storage_order[i]));
 	}
+
 	int64_t py_node_code = (int64_t)tdd_node;
+
 	return Py_BuildValue("{sOsLsisOsisOsO}",
 		"weight", py_weight,
 		"node", py_node_code,
@@ -300,7 +305,7 @@ get_tdd_info(PyObject* self, PyObject* args) {
 		"parallel shape", py_parallel_shape,
 		"dim data", tdd_dim_data,
 		"data shape", py_data_shape,
-		"index order", py_index_order
+		"storage order", py_storage_order
 	);
 }
 

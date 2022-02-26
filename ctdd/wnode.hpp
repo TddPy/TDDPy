@@ -71,7 +71,7 @@ public:
 	static node::weightednode<W> as_tensor_iterate(const CUDAcpl::Tensor& t,
 		const std::vector<int64_t>& parallel_shape,
 		const std::vector<int64_t>& data_shape,
-		const std::vector<int64_t>& index_order, int depth) {
+		const std::vector<int64_t>& storage_order, int depth) {
 
 		node::weightednode<W> res;
 		// checks whether the tensor is reduced to the [[...[val]...]] form
@@ -88,7 +88,7 @@ public:
 		}
 
 
-		int split_pos = index_order[depth];
+		int split_pos = storage_order[depth];
 		int axe_pos = t.dim() - dim_data + split_pos - 1;
 
 		//note: torch::chunk does not work here
@@ -98,7 +98,7 @@ public:
 			new_successors[i] = as_tensor_iterate(
 				// -1 is because the extra inner dim for real and imag
 				t.select(axe_pos, i).unsqueeze(axe_pos),
-				parallel_shape, data_shape, index_order, depth + 1);
+				parallel_shape, data_shape, storage_order, depth + 1);
 		}
 		auto&& temp_node = node::Node<W>(depth, std::move(new_successors));
 		// normalize this depth
@@ -912,7 +912,6 @@ public:
 	/// <param name="data_shape_a">given in the inner order</param>
 	/// <param name="data_shape_b">given in the inner order</param>
 	/// <param name="cont_indices">given in the inner order. list of (first, second). first: indices of a, second: indices of b </param>
-	/// <param name="rearrangement">given in the inner order</param>
 	/// <param name="parallel_tensor"></param>
 	/// <returns></returns>
 	static node::weightednode<W> contract(
@@ -920,8 +919,7 @@ public:
 		const std::vector<int64_t>& data_shape_a, const std::vector<int64_t>& data_shape_b,
 		const cache::pair_cmd& cont_indices, 
 		const std::vector<int64_t>& a_new_order,
-		const std::vector<int64_t>& b_new_order,
-		const std::vector<bool>& rearrangement, bool parallel_tensor) {
+		const std::vector<int64_t>& b_new_order, bool parallel_tensor) {
 
 		// sort the remained_ls by first element, to keep the key unique
 		cache::pair_cmd sorted_remained_ls(cont_indices);

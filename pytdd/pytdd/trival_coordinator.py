@@ -19,7 +19,7 @@ class TrivalCoordinator(AbstractCoordinator):
 
 
   def tensordot_rearrangement(self, info_a: OrderInfo, info_b: OrderInfo, 
-                              axes: int|Sequence[Sequence[int]]) -> List[bool]:
+                              axes: int|Sequence[Sequence[int]]) -> List[int]:
       return []
 
   def tensordot_order_info(self, info_a: OrderInfo, info_b: OrderInfo,

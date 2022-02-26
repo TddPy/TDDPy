@@ -3,6 +3,17 @@
 
 using namespace std;
 using namespace tdd;
+
+void compare(const torch::Tensor& a, const torch::Tensor& b) {
+	auto&& max_diff = torch::max(torch::abs(a - b)).item().toDouble();
+	if (max_diff > 1E-7) {
+		std::cout << "not passed, max diff: " << max_diff << std::endl;
+	}
+	else {
+		std::cout << "passed, max diff: " << max_diff << std::endl;
+	}
+}
+
 int main() {
 
 
@@ -26,37 +37,48 @@ int main() {
 		auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }).reshape({ 2,2,2 });
 		auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }).reshape({ 2,2,2 });
 		auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }).reshape({ 2,2,2 }) / sqrt(2);
+		auto&& cnot = torch::tensor({ 1., 0., 0., 0., 0., 0., 0., 0.,
+									 0., 0., 1., 0., 0., 0., 0., 0.,
+									 0., 0., 0., 0., 0., 0., 1., 0.,
+									 0., 0., 0., 0., 1., 0., 0., 0. }).reshape({ 2,2,2,2,2 });
+
+		auto&& cz = torch::tensor({ 1., 0., 0., 0., 0., 0., 0., 0.,
+									 0., 0., 1., 0., 0., 0., 0., 0.,
+									 0., 0., 0., 0., 1., 0., 0., 0.,
+									 0., 0., 0., 0., 0., 0., 0., 1. }).reshape({ 2,2,2,2,2 });
+		auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }).reshape({ 2,2,2 });
 
 
-		auto t1 = CUDAcpl::tensordot(sigmay, hadamard, {}, {});
-		auto t2 = CUDAcpl::tensordot(sigmax, hadamard, {}, {});
-		
-		auto&& res_direct = CUDAcpl::tensordot(t1, t2, {1,3}, {3,2});
-		//auto res_direct = t1 + t2;
-		//std::cout << res_direct << std::endl;
+		auto&& tdd_I = TDD<wcomplex>::as_tensor(I, 0, { 0,1 });
+		auto&& tdd_hadamard = TDD<wcomplex>::as_tensor(hadamard, 0, { 0,1 });
+		auto&& tdd_cz = TDD<wcomplex>::as_tensor(cz, 0, { 0,2,1,3 });
 
 
-		auto&& t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {});
-		auto&& t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
+		auto&& t0 = CUDAcpl::tensordot(hadamard, I, { 0 }, { 1 });
+		auto&& tdd_t0 = TDD<wcomplex>::tensordot(tdd_hadamard, tdd_I, { 0 }, { 1 }, { false, true });
+		compare(t0, tdd_t0.CUDAcpl());
+
+		// step 1
+		auto&& t1 = CUDAcpl::tensordot(hadamard, I, { 0 }, { 1 });
+		auto&& tdd_t1 = TDD<wcomplex>::tensordot(tdd_hadamard, tdd_I, { 0 }, { 1 }, { false, true });
+		compare(t1, tdd_t1.CUDAcpl());
+
+		// step 2
+		auto&& t2 = CUDAcpl::tensordot(I, cz, { 1 }, { 1 });
+		auto&& tdd_t2 = TDD<wcomplex>::tensordot(tdd_I, tdd_cz, { 1 }, { 1 }, { false, true, false, false });
+		compare(t2, tdd_t2.CUDAcpl());
+
+		// step 3
+		auto&& t3 = CUDAcpl::tensordot(hadamard, t2, { 0 }, { 3 });
+		auto&& tdd_t3 = TDD<wcomplex>::tensordot(tdd_hadamard, tdd_t2, { 0 }, { 3 }, { false, false, false ,true });
+		compare(t3, tdd_t3.CUDAcpl());
+
+		// step 4
+		auto&& t4 = CUDAcpl::tensordot(t1, t3, { 0 }, { 2 });
+		auto&& tdd_t4 = TDD<wcomplex>::tensordot(tdd_t1, tdd_t3, { 0 }, { 2 }, { true, false, false, false });
+		compare(t4, tdd_t4.CUDAcpl());
 
 
-		//auto res_tdd = TDD<wcomplex>::sum(t1_tdd, t2_tdd);
-		auto&& res_tdd = TDD<wcomplex>::tensordot(t1_tdd, t2_tdd,
-			std::vector<int64_t>{1,3}, std::vector<int64_t>{3,2},{});
-
-		std::cout << "direct" << std::endl;
-		std::cout << res_direct << std::endl;
-		std::cout << "tdd" << std::endl;
-		std::cout << res_tdd.CUDAcpl() << std::endl;
-
-		res_tdd.print();
-
-		auto&& max_diff = torch::max(torch::abs(res_direct - res_tdd.CUDAcpl())).item().toDouble();
-		std::cout << "max difference: " << max_diff << endl;
-		if (max_diff > 1E-5) {
-			cout << "WRONG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
-			throw - 100;
-		}
 
 		//TDD<wcomplex>::reset();
 	}

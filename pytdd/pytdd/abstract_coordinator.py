@@ -23,7 +23,7 @@ class AbstractCoordinator:
 
 
   def tensordot_rearrangement(self, info_a: OrderInfo, info_b: OrderInfo, 
-                              axes: int|Sequence[Sequence[int]]) -> List[bool]:
+                              axes: int|Sequence[Sequence[int]]) -> List[int]:
     raise NotImplementedError(
         "Coordinator '{}' has not implemented tensordot_rearrangement.".format(self.name))
 

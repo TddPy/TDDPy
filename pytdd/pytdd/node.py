@@ -34,7 +34,19 @@ class Node:
             raise Exception("terminal node should not use this property")
         return self.__info
 
-    def layout(self, order: List, parallel_shape: Sequence[int], index_order: Sequence[int],
+    @property
+    def id(self) -> int:
+        return self.__info["id"]
+
+    @property
+    def range(self) -> int:
+        return self.__info["range"]
+
+    @property
+    def order(self) -> int:
+        return self.__info["order"]
+
+    def layout(self, storage_order: Sequence[int], parallel_shape: Sequence[int],
                  dot=Digraph(), succ: List=[], full_output: bool=False, precision: int = 2):
         '''
             full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
@@ -49,15 +61,15 @@ class Node:
             label = str(1)
         else:
             node_info = self.__info
-            id_str = str(node_info["id"])
-            label = 'i'+str(order[node_info["order"]])
+            id_str = str(self.id)
+            label = 'i'+str(storage_order[self.order])
 
 
         dot.node(id_str, label, fontname="helvetica",shape="circle",color="red")
 
         if self.pointer != 0:
             node_successors = node_info["successors"]
-            for k in range(node_info["range"]):
+            for k in range(self.range):
                 #if there is no parallel index, directly demonstrate the edge values
                 if list(node_successors[0]["weight"].shape) == [2]:
                     label1=str(complex(round(node_successors[k]["weight"][0].cpu().item(),precision),
@@ -73,13 +85,12 @@ class Node:
                 if (temp_node.pointer == 0):
                     id_str = str(TERMINAL_ID)
                 else:
-                    temp_node_info = temp_node.info
-                    id_str = str(temp_node_info["id"])
+                    id_str = str(temp_node.id)
                 
                 if not temp_node.pointer in succ:
-                    dot=temp_node.layout(order, parallel_shape,index_order, dot,succ,full_output)
-                    dot.edge(str(node_info["id"]),id_str,color=col[k%4],label=label1)
+                    dot=temp_node.layout(storage_order, parallel_shape, dot,succ,full_output)
+                    dot.edge(str(self.id),id_str,color=col[k%4],label=label1)
                     succ.append(temp_node.pointer)
                 else:
-                    dot.edge(str(node_info["id"]),id_str,color=col[k%4],label=label1)
+                    dot.edge(str(self.id),id_str,color=col[k%4],label=label1)
         return dot    
