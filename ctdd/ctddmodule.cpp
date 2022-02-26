@@ -213,7 +213,7 @@ tensordot_ls(PyObject* self, PyObject* args) {
 		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i));
 	}
 
-	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, i1, i2, {}));
+	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, i1, i2, rearrangement));
 
 	// convert to long long
 	int64_t code = (int64_t)p_res;
