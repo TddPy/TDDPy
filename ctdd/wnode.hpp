@@ -697,14 +697,27 @@ public:
 		}
 		else {
 			double scale = 1.;
-
+			
+			bool a_node_uncontracted = true, b_node_uncontracted = true;
+			// find out the next contracting index for B at the same time
+			int next_b_min_i = 0;
 			auto&& remained_ls_pd = cache::pair_cmd();
 			for (const auto& cmd : remained_ls) {
 				if (cmd.first < order_a && cmd.second < order_b) {
 					scale *= data_shape_a[cmd.first];
 				}
 				else {
+					if (cmd.first == order_a) {
+						a_node_uncontracted = false;
+					}
+					if (cmd.second == order_b) {
+						b_node_uncontracted = false;
+					}
 					remained_ls_pd.push_back(cmd);
+					// record min i of b
+					if (cmd.second < remained_ls_pd[next_b_min_i].second) {
+						next_b_min_i = remained_ls_pd.size() - 1;
+					}
 				}
 			}
 
@@ -712,6 +725,9 @@ public:
 			for (const auto& cmd : a_waiting_ls) {
 				if (cmd.first >= order_a) {
 					a_waiting_ls_pd.push_back(cmd);
+					if (cmd.first == order_a) {
+						a_node_uncontracted = false;
+					}
 				}
 			}
 
@@ -719,10 +735,60 @@ public:
 			for (const auto& cmd : b_waiting_ls) {
 				if (cmd.first >= order_b) {
 					b_waiting_ls_pd.push_back(cmd);
+					if (cmd.first == order_b) {
+						b_node_uncontracted = false;
+					}
 				}
 			}
 
-			auto&& not_operated = true;
+			// first try to weave the nodes of uncontracted indices
+			bool choice_A;
+			if (p_node_a == nullptr) {
+				choice_A = false;
+			}
+			else if (p_node_b == nullptr) {
+				choice_A = true;
+			}
+			else {
+				choice_A = a_new_order[order_a] < b_new_order[order_b];
+			}
+
+			if (choice_A) {
+				if (a_node_uncontracted) {
+					std::vector<node::weightednode<W>> new_successors;
+					// w_node_a.node will not be null
+					auto&& successors_a = p_node_a->get_successors();
+					new_successors = std::vector<node::weightednode<W>>(data_shape_a[order_a]);
+					auto&& i_new = new_successors.begin();
+					for (auto&& i_a = successors_a.begin(); i_a != successors_a.end(); i_new++, i_a++) {
+
+						*i_new = contract_iterate(i_a->node, p_node_b, i_a->weight, data_shape_a, data_shape_b,
+							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
+							a_new_order, b_new_order, parallel_tensor);
+					}
+					auto&& temp_node = node::Node<W>(a_new_order[order_a], std::move(new_successors));
+					res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
+					goto RETURN;
+				}
+			}
+			else {
+				if (b_node_uncontracted) {
+					std::vector<node::weightednode<W>> new_successors;
+					// w_node_b.node will not be null
+					auto&& successors_b = p_node_b->get_successors();
+					new_successors = std::vector<node::weightednode<W>>(data_shape_b[order_b]);
+					auto&& i_new = new_successors.begin();
+					for (auto&& i_b = successors_b.begin(); i_b != successors_b.end(); i_new++, i_b++) {
+						*i_new = contract_iterate(p_node_a, i_b->node, i_b->weight, data_shape_a, data_shape_b,
+							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
+							a_new_order, b_new_order, parallel_tensor);
+					}
+					auto&& temp_node = node::Node<W>(b_new_order[order_b], std::move(new_successors));
+					res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
+					goto RETURN;
+				}
+			}
+
 			
 			// note that the situation of both a,b being the waited index will not happen, because the iteration strategy updates either A or B at one time.
 			if (!a_waiting_ls_pd.empty()) {
@@ -735,13 +801,11 @@ public:
 					res = contract_iterate(succ.node, p_node_b, succ.weight,
 						data_shape_a, data_shape_b, remained_ls_pd, next_a_waiting_ls, b_waiting_ls_pd,
 						a_new_order, b_new_order, parallel_tensor);
-					not_operated = false;
+					goto RETURN;
 				}
 			}
 
-			// the flag of whether node b is in the waiting list
-			bool b_waited = false;
-			if (!b_waiting_ls_pd.empty() && not_operated) {
+			if (!b_waiting_ls_pd.empty()) {
 				if (order_b == b_waiting_ls_pd[0].first) {
 					// w_node_b.node is not null in this case
 					auto&& index_val = b_waiting_ls_pd[0].second;
@@ -751,14 +815,13 @@ public:
 					res = contract_iterate(p_node_a, succ.node, succ.weight,
 						data_shape_a, data_shape_b, remained_ls_pd, a_waiting_ls_pd, next_b_waiting_ls,
 						a_new_order, b_new_order, parallel_tensor);
-					not_operated = false;
-					b_waited = true;
+					goto RETURN;
 				}
 			}
 
-			if (!remained_ls_pd.empty() && not_operated) {
+			// remained_ls not empty holds in this situation
+			{
 				std::vector<node::weightednode<W>> new_successors;
-
 
 				if (order_a >= remained_ls_pd[0].first) {
 					auto&& next_remained_ls = removed(remained_ls_pd, 0);
@@ -795,107 +858,54 @@ public:
 							index_val++;
 						}
 					}
-					not_operated = false;
 				}
-				else if (!b_waited) {
-					// find the least opening index for node b (cause the remained list is sorted according to indices of a)
-					auto&& next_to_open = min_iv(remained_ls_pd, &cmd_second_smaller);
+				else if (order_b >= remained_ls_pd[next_b_min_i].second) {
+					auto&& next_remained_ls = removed(remained_ls_pd, next_b_min_i);
 
-					if (order_b >= next_to_open.second.second) {
-						auto&& next_remained_ls = removed(remained_ls_pd, next_to_open.first);
+					// find the right insert place in a_waiting_ls
+					int insert_pos = get_cmd_insert_pos(a_waiting_ls_pd, remained_ls_pd[next_b_min_i].first);
+					auto&& next_a_waiting_ls = inserted(a_waiting_ls_pd, insert_pos, std::make_pair(
+						remained_ls_pd[next_b_min_i].first, 0)
+					);
 
-						// find the right insert place in a_waiting_ls
-						int insert_pos = get_cmd_insert_pos(a_waiting_ls_pd, next_to_open.second.first);
-						auto&& next_a_waiting_ls = inserted(a_waiting_ls_pd, insert_pos, std::make_pair(
-							next_to_open.second.first, 0)
-						);
-
-						new_successors = std::vector<node::weightednode<W>>(data_shape_b[next_to_open.second.second]);
-						if (order_b == next_to_open.second.second) {
-							// w_node_b.node is not null in this case
-							auto&& successors_b = p_node_b->get_successors();
-							int index_val = 0;
-							auto&& i_new = new_successors.begin();
-							for (auto&& i_b = successors_b.begin(); i_b != successors_b.end();
-								i_new++, i_b++, index_val++) {
-								next_a_waiting_ls[insert_pos].second = index_val;
-								*i_new = contract_iterate(p_node_a, i_b->node, i_b->weight, data_shape_a, data_shape_b,
-									next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd, 
-									a_new_order, b_new_order, parallel_tensor);
-							}
+					new_successors = std::vector<node::weightednode<W>>(data_shape_b[remained_ls_pd[next_b_min_i].second]);
+					if (order_b == remained_ls_pd[next_b_min_i].second) {
+						// w_node_b.node is not null in this case
+						auto&& successors_b = p_node_b->get_successors();
+						int index_val = 0;
+						auto&& i_new = new_successors.begin();
+						for (auto&& i_b = successors_b.begin(); i_b != successors_b.end();
+							i_new++, i_b++, index_val++) {
+							next_a_waiting_ls[insert_pos].second = index_val;
+							*i_new = contract_iterate(p_node_a, i_b->node, i_b->weight, data_shape_a, data_shape_b,
+								next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd, 
+								a_new_order, b_new_order, parallel_tensor);
 						}
-						else {
-							// this node skipped the opening index in this case
-							int index_val = 0;
-							for (auto&& succ_new : new_successors) {
-								next_a_waiting_ls[insert_pos].second = index_val;
-								succ_new = contract_iterate(
-									p_node_a, p_node_b, wcomplex(1.,0.),
-									data_shape_a, data_shape_b, next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd,
-									a_new_order, b_new_order, parallel_tensor
-								);
-								index_val++;
-							}
+					}
+					else {
+						// this node skipped the opening index in this case
+						int index_val = 0;
+						for (auto&& succ_new : new_successors) {
+							next_a_waiting_ls[insert_pos].second = index_val;
+							succ_new = contract_iterate(
+								p_node_a, p_node_b, wcomplex(1.,0.),
+								data_shape_a, data_shape_b, next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd,
+								a_new_order, b_new_order, parallel_tensor
+							);
+							index_val++;
 						}
-						not_operated = false;
 					}
 				}
 
-				// check whether sum up is needed
-				if (!not_operated) {
-					res = new_successors[0];
-					for (auto&& i = new_successors.begin() + 1; i != new_successors.end(); i++) {
-						res = sum(res, *i);
-					}
+				// sum up
+				res = new_successors[0];
+				for (auto&& i = new_successors.begin() + 1; i != new_successors.end(); i++) {
+					res = sum(res, *i);
 				}
 			}
 
-			if (not_operated) {
-				// in this case, no operation is performed, and nodes are weaved according to the rearrangement order.
-				std::vector<node::weightednode<W>> new_successors;
-				// arrange the node at this level				
 
-				bool choice_A;
-				if (p_node_a == nullptr) {
-					choice_A = false;
-				}
-				else if (p_node_b == nullptr) {
-					choice_A = true;
-				}
-				else {
-					choice_A = a_new_order[order_a] < b_new_order[order_b];
-				}
-
-				if (choice_A) {
-					// w_node_a.node will not be null
-					auto&& successors_a = p_node_a->get_successors();
-					new_successors = std::vector<node::weightednode<W>>(data_shape_a[order_a]);
-					auto&& i_new = new_successors.begin();
-					for (auto&& i_a = successors_a.begin(); i_a != successors_a.end(); i_new++, i_a++) {
-
-						*i_new = contract_iterate(i_a->node, p_node_b, i_a->weight, data_shape_a, data_shape_b,
-							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
-							a_new_order, b_new_order, parallel_tensor);
-					}
-					auto&& temp_node = node::Node<W>(a_new_order[order_a], std::move(new_successors));
-					res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
-				}
-				else {
-					// w_node_b.node will not be null
-					auto&& successors_b = p_node_b->get_successors();
-					new_successors = std::vector<node::weightednode<W>>(data_shape_b[order_b]);
-					auto&& i_new = new_successors.begin();
-					for (auto&& i_b = successors_b.begin(); i_b != successors_b.end(); i_new++, i_b++) {
-						*i_new = contract_iterate(p_node_a, i_b->node, i_b->weight, data_shape_a, data_shape_b,
-							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
-							a_new_order, b_new_order, parallel_tensor);
-					}
-					auto&& temp_node = node::Node<W>(b_new_order[order_b], std::move(new_successors));
-					res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
-				}
-
-			}
-
+			RETURN:
 			// add to the cache
 			res.weight *= scale;
 			cache::Global_Cache<W>::p_cont_cache->insert(std::make_pair(std::move(key), res));
@@ -929,6 +939,7 @@ public:
 				return (a.first < b.first);
 			});
 
+		//std::cout << sorted_remained_ls << std::endl;
 
 		return contract_iterate(w_node_a.node, w_node_b.node, w_node_a.weight * w_node_b.weight,
 			data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
