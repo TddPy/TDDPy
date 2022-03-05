@@ -36,9 +36,10 @@ delete_tdd(PyObject* self, PyObject* args) {
 static PyObject*
 reset(PyObject* self, PyObject* args) {
 	int device_cuda;
-	if (!PyArg_ParseTuple(args, "i", &device_cuda))
+	double new_eps;
+	if (!PyArg_ParseTuple(args, "id", &device_cuda, &new_eps))
 		return NULL;
-	TDD<wcomplex>::reset(device_cuda);
+	TDD<wcomplex>::reset(device_cuda, new_eps);
 	return Py_BuildValue("");
 }
 

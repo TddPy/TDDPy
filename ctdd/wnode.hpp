@@ -156,7 +156,8 @@ public:
 		double norm_max = norm(successors[0].weight);
 		for (int i = 1; i < successors.size(); i++) {
 			double temp_norm = norm(successors[i].weight);
-			if (temp_norm > norm_max) {
+			// alter the maximum according to EPS, to avoid arbitrary normalization
+			if (temp_norm - norm_max > weight::EPS) {
 				i_max = i;
 				norm_max = temp_norm;
 			}

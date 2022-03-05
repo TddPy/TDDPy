@@ -142,8 +142,9 @@ namespace tdd {
 	public:
 
 
-		static void reset(bool device_cuda = false) {
+		static void reset(bool device_cuda = false, double new_eps = DEFAULT_EPS) {
 			CUDAcpl::reset(device_cuda);
+			weight::EPS = new_eps;
 			node::Node<W>::reset();
 			cache::Global_Cache<W>::p_duplicate_cache->clear();
 			cache::Global_Cache<W>::p_append_cache->clear();

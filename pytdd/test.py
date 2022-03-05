@@ -16,7 +16,12 @@ import pytdd_test
 #pytdd_test.test5()
 #pytdd_test.test6()
 #pytdd_test.test7()
-pytdd_test.test8()
+#pytdd_test.test8()
+
+
+tensor = CUDAcpl.einsum('ab,cd->acbd',CUDAcpl.quantum_basic.hadamard,CUDAcpl.quantum_basic.hadamard);
+tdd = TDD.as_tensor(((tensor,0,[0,2,1,3]),None))
+tdd.show()
 
 
 
