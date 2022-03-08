@@ -697,6 +697,8 @@ public:
 			return res;
 		}
 		else {
+			//std::cout << remained_ls << " / " << a_waiting_ls << " / " << b_waiting_ls << std::endl;
+
 			double scale = 1.;
 			
 			bool a_node_uncontracted = true, b_node_uncontracted = true;
@@ -742,7 +744,38 @@ public:
 				}
 			}
 
-			// first try to weave the nodes of uncontracted indices
+			// first try to close the waited indices
+			// note that the situation of both a,b being the waited index will not happen, because the iteration strategy updates either A or B at one time.
+			if (!a_waiting_ls_pd.empty()) {
+				if (order_a == a_waiting_ls_pd[0].first) {
+					// w_node_a.node is not null in this case
+					auto&& index_val = a_waiting_ls_pd[0].second;
+					// close the waiting index
+					auto&& next_a_waiting_ls = removed(a_waiting_ls_pd, 0);
+					auto&& succ = p_node_a->get_successors()[index_val];
+					res = contract_iterate(succ.node, p_node_b, succ.weight,
+						data_shape_a, data_shape_b, remained_ls_pd, next_a_waiting_ls, b_waiting_ls_pd,
+						a_new_order, b_new_order, parallel_tensor);
+					goto RETURN;
+				}
+			}
+
+			if (!b_waiting_ls_pd.empty()) {
+				if (order_b == b_waiting_ls_pd[0].first) {
+					// w_node_b.node is not null in this case
+					auto&& index_val = b_waiting_ls_pd[0].second;
+					// close the waiting index
+					auto&& next_b_waiting_ls = removed(b_waiting_ls_pd, 0);
+					auto&& succ = p_node_b->get_successors()[index_val];
+					res = contract_iterate(p_node_a, succ.node, succ.weight,
+						data_shape_a, data_shape_b, remained_ls_pd, a_waiting_ls_pd, next_b_waiting_ls,
+						a_new_order, b_new_order, parallel_tensor);
+					goto RETURN;
+				}
+			}
+
+
+			// then try to weave the nodes of uncontracted indices
 			bool choice_A;
 			if (p_node_a == nullptr) {
 				choice_A = false;
@@ -791,34 +824,6 @@ public:
 			}
 
 			
-			// note that the situation of both a,b being the waited index will not happen, because the iteration strategy updates either A or B at one time.
-			if (!a_waiting_ls_pd.empty()) {
-				if (order_a == a_waiting_ls_pd[0].first) {
-					// w_node_a.node is not null in this case
-					auto&& index_val = a_waiting_ls_pd[0].second;
-					// close the waiting index
-					auto&& next_a_waiting_ls = removed(a_waiting_ls_pd, 0);
-					auto&& succ = p_node_a->get_successors()[index_val];
-					res = contract_iterate(succ.node, p_node_b, succ.weight,
-						data_shape_a, data_shape_b, remained_ls_pd, next_a_waiting_ls, b_waiting_ls_pd,
-						a_new_order, b_new_order, parallel_tensor);
-					goto RETURN;
-				}
-			}
-
-			if (!b_waiting_ls_pd.empty()) {
-				if (order_b == b_waiting_ls_pd[0].first) {
-					// w_node_b.node is not null in this case
-					auto&& index_val = b_waiting_ls_pd[0].second;
-					// close the waiting index
-					auto&& next_b_waiting_ls = removed(b_waiting_ls_pd, 0);
-					auto&& succ = p_node_b->get_successors()[index_val];
-					res = contract_iterate(p_node_a, succ.node, succ.weight,
-						data_shape_a, data_shape_b, remained_ls_pd, a_waiting_ls_pd, next_b_waiting_ls,
-						a_new_order, b_new_order, parallel_tensor);
-					goto RETURN;
-				}
-			}
 
 			// remained_ls not empty holds in this situation
 			{
