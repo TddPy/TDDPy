@@ -42,9 +42,9 @@ def test2():
 
 def test3():
     '''
-    tracing, cuda
+    tracing
     '''
-    a = torch.rand((2,2,2,2,2), dtype = torch.double, device = 'cuda')
+    a = torch.rand((2,2,2,2,2), dtype = torch.double)
     expected = torch.einsum("iijjk->k", a)
 
     tdd_a = TDD.as_tensor((a,None))
@@ -52,6 +52,18 @@ def test3():
 
     compare(expected, actual)
 
+def test3_q():
+    '''
+    tracing (quantum tensors)
+    '''
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmay, CUDAcpl.quantum_basic.sigmax, 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard, a, 0)
+    expected = torch.einsum("ijijklm->klm",a)
+    
+    tdd_a = TDD.as_tensor((a,None))
+    actual = TDD.trace(tdd_a, [[0,1],[2,3]]).CUDAcpl()
+
+    compare(expected, actual)
 
 def test4():
     '''

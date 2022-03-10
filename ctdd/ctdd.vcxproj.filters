@@ -56,7 +56,7 @@
     <ClInclude Include="CUDAcpl.h">
       <Filter>dependency\CUDAcpl</Filter>
     </ClInclude>
-    <ClInclude Include="weight.h">
+    <ClInclude Include="weight.hpp">
       <Filter>templates &amp; headers</Filter>
     </ClInclude>
     <ClInclude Include="node.hpp">

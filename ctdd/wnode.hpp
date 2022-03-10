@@ -278,7 +278,7 @@ public:
 		return res;
 	}
 
-
+	/*
 	static node::weightednode<W> direct_product(const node::weightednode<W>& a, int a_depth,
 		const node::weightednode<W>& b,
 		const std::vector<int64_t>& parallel_shape,
@@ -296,6 +296,7 @@ public:
 		auto&& p_res_node = node::Node<W>::append(a.node, a_depth, b.node, parallel_shape, shape_front, shape_back, parallel_tensor);
 		return node::weightednode<W>(std::move(weight), p_res_node);
 	}
+	*/
 
 
 	/// <summary>
@@ -513,12 +514,7 @@ public:
 
 			auto&& successors = w_node.node->get_successors();
 
-			// check whether all operations have already taken place
-			if (remained_ls_pd.empty() && waiting_ls_pd.empty()) {
-				res = node::weightednode<W>(wcomplex(1., 0.), w_node.node);
-				not_operated = false;
-			}
-			else if (!waiting_ls_pd.empty()) {
+			if (!waiting_ls_pd.empty()) {
 				/*
 				*   waiting_ils is not empty in this case
 				*	If multiple waiting indices have been skipped, we will resolve with iteration, one by one.
@@ -604,7 +600,7 @@ public:
 						*i_new = trace_iterate(*i, data_shape, remained_ls_pd, waiting_ls_pd, new_order);
 					}
 				}
-				auto&& temp_node = node::Node<W>(order, std::move(new_successors));
+				auto&& temp_node = node::Node<W>(new_order[order], std::move(new_successors));
 				res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
 			}
 
@@ -646,8 +642,6 @@ public:
 		////////////////////////////////
 
 		auto&& res = trace_iterate(w_node, data_shape, sorted_remained_ls, cache::pair_cmd(), new_order);
-
-		res.node = node::Node<W>::shift_multiple(res.node, new_order);
 
 		return res;
 	}

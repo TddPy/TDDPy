@@ -6,8 +6,17 @@ namespace weight {
 
 	typedef long long WCode;
 
-	inline WCode get_int_key(double weight) {
-		return (WCode)round(weight / EPS);
+	inline void get_int_key(WCode* p_vec, double weight) {
+		*p_vec = (WCode)round(weight / EPS);
+	}
+
+	inline void get_int_key(WCode* p_vec, CUDAcpl::Tensor weight) {
+		auto&& temp = torch::round(weight / EPS);
+		auto&& ptr = temp.data_ptr<WCode>();
+
+		for (int i = 0; i < temp.numel(); i++) {
+			p_vec[i] = ptr[i];
+		}
 	}
 
 	inline bool is_equal(wcomplex a, wcomplex b) {
@@ -28,6 +37,10 @@ namespace weight {
 		W nweight2;
 		W renorm_coef;
 
-		sum_nweights(W&& _nweight1, W&& _nweight2, W&& _renorm_coef);
+		sum_nweights(W&& _nweight1, W&& _nweight2, W&& _renorm_coef) {
+			nweight1 = std::move(_nweight1);
+			nweight2 = std::move(_nweight2);
+			renorm_coef = std::move(_renorm_coef);
+		}
 	};
 }

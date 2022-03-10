@@ -1,6 +1,6 @@
 #pragma once
 #include "stdafx.h"
-#include "weight.h"
+#include "weight.hpp"
 #include "succ_ls.hpp"
 
 namespace node {

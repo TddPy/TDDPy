@@ -187,7 +187,7 @@ class TDD:
         if len(axes[0]) != len(axes[1]):
             raise Exception("The indices given by parameter axes does not match.")
 
-        pointer = ctdd.trace(tensor.pointer, axes[0], axes[1])
+        pointer = ctdd.trace(tensor.pointer, list(axes[0]), list(axes[1]))
         return TDD(pointer, TDD.coordinator.trace_order_info(tensor._coordinator_info, axes))
 
 

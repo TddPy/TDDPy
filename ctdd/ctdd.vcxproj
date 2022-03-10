@@ -313,7 +313,7 @@
     <ClInclude Include="succ_ls.hpp" />
     <ClInclude Include="tdd.hpp" />
     <ClInclude Include="ThreadPool.h" />
-    <ClInclude Include="weight.h" />
+    <ClInclude Include="weight.hpp" />
     <ClInclude Include="wnode.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
