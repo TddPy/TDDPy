@@ -141,13 +141,13 @@ namespace tdd {
 		}
 	public:
 
-
-		static void reset(bool device_cuda = false, double new_eps = DEFAULT_EPS) {
+		static void setting_update(bool device_cuda = false, double new_eps = DEFAULT_EPS) {
 			CUDAcpl::reset(device_cuda);
 			weight::EPS = new_eps;
+		}
+
+		static void reset() {
 			node::Node<W>::reset();
-			cache::Global_Cache<W>::p_duplicate_cache->clear();
-			cache::Global_Cache<W>::p_append_cache->clear();
 			cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
 			cache::Global_Cache<W>::p_sum_cache->clear();
 			cache::Global_Cache<W>::p_trace_cache->clear();
@@ -284,7 +284,7 @@ namespace tdd {
 		/// </summary>
 		/// <returns></returns>
 		CUDAcpl::Tensor CUDAcpl() const {
-			auto&& res = wnode<W>::to_CUDAcpl(m_wnode, m_inner_data_shape);
+			auto&& res = wnode<W>::to_CUDAcpl(m_wnode, m_para_shape, m_inner_data_shape);
 			// permute to the right index order
 			res = res.permute(m_inversed_global_order);
 			return res;

@@ -38,14 +38,44 @@ namespace CUDAcpl {
 			t.index({ "...",1 }).cpu().item().toDouble());
 	}
 
+	inline Tensor norm(const Tensor& t) {
+		auto&& t_dim = t.dim() - 1;
+		auto&& t_real = t.select(t_dim, 0);
+		auto&& t_imag = t.select(t_dim, 1);
+		return t_real * t_real + t_imag * t_imag;
+	}
+
 	inline Tensor ones(c10::IntArrayRef size) {
 		auto&& real = torch::ones(size, tensor_opt);
 		auto&& imag = torch::zeros(size, tensor_opt);
 		return torch::stack({ real, imag }, size.size());
 	}
 
+	inline Tensor ones_like(const Tensor& tensor) {
+		std::vector<int64_t> temp_size(tensor.sizes().begin(), tensor.sizes().end());
+		temp_size.erase(temp_size.end() - 1);
+		auto&& real = torch::ones(temp_size, tensor_opt);
+		auto&& imag = torch::zeros(temp_size, tensor_opt);
+		return torch::stack({ real, imag }, temp_size.size());
+	}
+
+	inline Tensor zeros(c10::IntArrayRef size) {
+		std::vector<int64_t> temp_shape(size.begin(), size.end());
+		temp_shape.push_back(2);
+		return torch::zeros(temp_shape, tensor_opt);
+	}
+
+	inline Tensor zeros_like(const Tensor& tensor) {
+		return torch::zeros_like(tensor, tensor_opt);
+	}
+
 	Tensor tensordot(const Tensor& a, const Tensor& b,
 		c10::IntArrayRef dim_self, c10::IntArrayRef dim_other);
 
-	CUDAcpl::Tensor mul_element_wise(const Tensor& t, Complex s);
+	Tensor mul_element_wise(const Tensor& t, Complex s);
+
+	Tensor mul_element_wise(const Tensor& a, const Tensor& b);
+
+	Tensor reciprocal(const Tensor& a);
+	
 }

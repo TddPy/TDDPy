@@ -97,9 +97,7 @@ def test5():
     expected = CUDAcpl.tensordot(a,b,[[1,3],[3,2]])
     
     tdd_a = TDD.as_tensor(((a,0,[]),None))
-    tdd_a.show("A")
     tdd_b = TDD.as_tensor(((b,0,[]),None))
-    tdd_b.show("B")
     actual = TDD.tensordot(tdd_a, tdd_b, [[1,3],[3,2]]).CUDAcpl()
 
     compare(expected,actual)

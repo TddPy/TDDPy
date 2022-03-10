@@ -13,6 +13,24 @@ Tensor CUDAcpl::mul_element_wise(const Tensor& t, Complex s) {
 	return torch::stack({ res_real, res_imag }, dim);
 }
 
+CUDAcpl::Tensor CUDAcpl::mul_element_wise(const Tensor& a, const Tensor& b) {
+	auto&& a_dim = a.dim() - 1;
+	auto&& a_real = a.select(a_dim, 0);
+	auto&& a_imag = a.select(a_dim, 1);
+	auto&& b_dim = b.dim() - 1;
+	auto&& b_real = b.select(b_dim, 0);
+	auto&& b_imag = b.select(b_dim, 1);
+	return torch::stack({ a_real * b_real - a_imag * b_imag, a_real * b_imag + a_imag * b_real }, a_dim);
+}
+
+CUDAcpl::Tensor CUDAcpl::reciprocal(const Tensor& a) {
+	auto&& a_dim = a.dim() - 1;
+	auto&& a_real = a.select(a_dim, 0);
+	auto&& a_imag = a.select(a_dim, 1);
+	auto&& res = torch::stack({ a_real, -a_imag }, a_dim);
+	return res / (a_real * a_real + a_imag * a_imag);
+}
+
 Tensor CUDAcpl::tensordot(const Tensor& a, const Tensor& b,
 	c10::IntArrayRef dim_self, c10::IntArrayRef dim_other) {
 	auto&& a_dim = a.dim() - 1;

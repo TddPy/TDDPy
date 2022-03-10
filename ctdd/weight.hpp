@@ -11,21 +11,32 @@ namespace weight {
 	}
 
 	inline void get_int_key(WCode* p_vec, CUDAcpl::Tensor weight) {
-		auto&& temp = torch::round(weight / EPS);
-		auto&& ptr = temp.data_ptr<WCode>();
+		auto&& temp = torch::round(weight / EPS).toType(c10::ScalarType::Int);
+		auto ptr = (WCode*)temp.data_ptr();
 
 		for (int i = 0; i < temp.numel(); i++) {
 			p_vec[i] = ptr[i];
 		}
 	}
 
-	inline bool is_equal(wcomplex a, wcomplex b) {
-		return abs(a.real() - b.real()) < EPS && abs(a.imag() - b.imag()) < EPS;
-	}
 
-	inline bool is_zero(wcomplex a) {
-		return abs(a.real()) < EPS && abs(a.imag()) < EPS;
-	}
+	template <class W>
+	class func {
+	public:
+		static inline void as_weight(const CUDAcpl::Tensor& t, W& weight, const std::vector<int64_t>& data_shape);
+		static inline CUDAcpl::Tensor from_weight(const W& weight);
+
+		static inline bool is_equal(const W& a, const W& b);
+		static inline bool is_zero(const W& a);
+
+		static inline W ones(const std::vector<int64_t>& data_shape);
+		static inline W zeros(const std::vector<int64_t>& data_shape);
+		static inline W zeros_like(const W& weight);
+
+		static inline W mul(const W& a, const W& b);
+		static inline W reciprocal(const W& a);
+	};
+
 
 	/// <summary>
 	/// structure of normalized sum weights

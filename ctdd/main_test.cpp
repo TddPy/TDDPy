@@ -15,6 +15,8 @@ void compare(const torch::Tensor& a, const torch::Tensor& b) {
 }
 
 int main() {
+	TDD<wcomplex>::setting_update();
+	TDD<wcomplex>::reset();
 	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }).reshape({ 2,2,2 });
 	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }).reshape({ 2,2,2 });
 	auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }).reshape({ 2,2,2 }) / sqrt(2);
@@ -26,13 +28,13 @@ int main() {
 	auto&& cz = torch::tensor({ 1., 0., 0., 0., 0., 0., 0., 0.,
 								 0., 0., 1., 0., 0., 0., 0., 0.,
 								 0., 0., 0., 0., 1., 0., 0., 0.,
-								 0., 0., 0., 0., 0., 0., 0., 1. }).reshape({ 2,2,2,2,2 });
+								 0., 0., 0., 0., 0., 0., -1., 0. }, c10::ScalarType::Double).reshape({ 2,2,2,2,2 });
 	auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }).reshape({ 2,2,2 });
 
 
 
 	double start = clock();
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < 10; i++) {
 		cout << "=================== " << i << " ===================" << endl;
 		/*
 		int w = 4;
@@ -49,13 +51,14 @@ int main() {
 		*/
 
 
-		auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
+		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
+		auto t1 = cz;
 
-		auto t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {});
-		auto indices = cache::pair_cmd(1);
-		indices[0] = make_pair(0, 2);
-		auto res = t1_tdd.trace(indices);
-		cout << res.CUDAcpl() << endl;
+		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 2, {});
+		cout << t1_tdd.CUDAcpl() << endl;
+		//auto indices = cache::pair_cmd(1);
+		//indices[0] = make_pair(0, 2);
+		//cout << res.CUDAcpl() << endl;
 
 
 

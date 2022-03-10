@@ -45,6 +45,9 @@
     <ClCompile Include="simpletools.cpp">
       <Filter>dependency</Filter>
     </ClCompile>
+    <ClCompile Include="wnode.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h">

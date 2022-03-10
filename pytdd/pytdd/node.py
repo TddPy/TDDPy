@@ -15,11 +15,21 @@ from IPython.display import Image
 TERMINAL_ID = -1
 
 class Node:
-    def __init__(self, _pointer):
-        self.__pointer : int = _pointer
-        if self.pointer != 0:
-            self.__info = ctdd.get_node_info(self.__pointer)
+    def get_node_info(self):
+        if self.__tensor_weight:
+            return ctdd.get_node_info_T(self.__pointer)
+        else:
+            return ctdd.get_node_info(self.__pointer)
 
+    def __init__(self, _pointer, _tensor_weight : bool):
+        self.__pointer : int = _pointer
+        self.__tensor_weight : bool = _tensor_weight
+        if self.pointer != 0:
+            self.__info = self.get_node_info()
+
+    @property
+    def tensor_weight(self)->bool:
+        return self.__tensor_weight
 
     @property
     def pointer(self)->int:
@@ -81,7 +91,7 @@ class Node:
                     else:
                         label1 = str(parallel_shape)
                 
-                temp_node = Node(node_successors[k]["node"])
+                temp_node = Node(node_successors[k]["node"], self.tensor_weight)
                 if (temp_node.pointer == 0):
                     id_str = str(TERMINAL_ID)
                 else:

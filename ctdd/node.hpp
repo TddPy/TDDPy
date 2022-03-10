@@ -190,26 +190,5 @@ namespace node {
 			// the terminal node is counted
 			return id_ls.size() + 1;
 		}
-
-		/// <summary>
-		/// Get the corresponding key structure of this node.
-		/// </summary>
-		/// <returns></returns>
-		inline cache::unique_table_key<W> get_key_struct() const {
-			return unique_table_key(m_order, m_successors);
-		}
-
-		/// <summary>
-		/// Calculate and return the Hash value of the node (can be nullptr).
-		/// </summary>
-		/// <param name="p_node"></param>
-		/// <returns></returns>
-		inline static std::size_t get_hash(const Node<W>* p_node) {
-			if (p_node == nullptr) {
-				return 0;
-			}
-			std::size_t seed = 0;
-			return cache::hash_value(p_node->get_key_struct());
-		}
 	};
 }

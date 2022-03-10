@@ -24,7 +24,7 @@ private:
 		return insert_pos;
 	}
 
-
+	static W get_normalizer(const node::succ_ls<W>& successors);
 
 public:
 	/// <summary>
@@ -61,7 +61,7 @@ public:
 	}
 
 	inline static bool is_equal(const node::weightednode<W>& a, const node::weightednode<W>& b) {
-		return (a.node == b.node && weight::is_equal(a.weight, b.weight));
+		return (a.node == b.node && weight::func<W>::is_equal(a.weight, b.weight));
 	}
 
 	/// <summary>
@@ -69,7 +69,7 @@ public:
 	/// </summary>
 	/// <returns></returns>
 	static node::weightednode<W> as_tensor_iterate(const CUDAcpl::Tensor& t,
-		const std::vector<int64_t>& parallel_shape,
+		const std::vector<int64_t>& para_shape,
 		const std::vector<int64_t>& data_shape,
 		const std::vector<int64_t>& storage_order, int depth) {
 
@@ -77,12 +77,7 @@ public:
 		// checks whether the tensor is reduced to the [[...[val]...]] form
 		auto&& dim_data = data_shape.size() - 1;
 		if (depth == dim_data) {
-			if (dim_data == 0) {
-				res.weight = CUDAcpl::item(t);
-			}
-			else {
-				res.weight = CUDAcpl::item(t);
-			}
+			weight::func<W>::as_weight(t, res.weight, para_shape);
 			res.node = nullptr;
 			return res;
 		}
@@ -98,11 +93,11 @@ public:
 			new_successors[i] = as_tensor_iterate(
 				// -1 is because the extra inner dim for real and imag
 				t.select(axe_pos, i).unsqueeze(axe_pos),
-				parallel_shape, data_shape, storage_order, depth + 1);
+				para_shape, data_shape, storage_order, depth + 1);
 		}
 		auto&& temp_node = node::Node<W>(depth, std::move(new_successors));
 		// normalize this depth
-		return normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
+		return normalize(node::weightednode<W>(weight::func<W>::ones(para_shape), &temp_node));
 	}
 
 	/// <summary>
@@ -117,8 +112,8 @@ public:
 		}
 
 		// redirect zero weighted nodes to the terminal node
-		if (weight::is_zero(w_node.weight)) {
-			return node::weightednode<W>(wcomplex(0., 0.), nullptr);
+		if (weight::func<W>::is_zero(w_node.weight)) {
+			return node::weightednode<W>(weight::func<W>::zeros_like(w_node.weight), nullptr);
 		}
 
 		auto&& successors = w_node.node->get_successors();
@@ -133,7 +128,7 @@ public:
 		}
 		if (all_equal) {
 			return node::weightednode<W>(
-				w_node.weight * successors[0].weight,
+				weight::func<W>::mul(w_node.weight, successors[0].weight),
 				successors[0].node
 				);
 		}
@@ -141,34 +136,27 @@ public:
 		// check whether all successor weights are zero, and redirect to terminal node if so
 		bool all_zero = true;
 		for (const auto& succ : successors) {
-			if (!weight::is_zero(succ.weight)) {
+			if (!weight::func<W>::is_zero(succ.weight)) {
 				all_zero = false;
 				break;
 			}
 		}
 		if (all_zero) {
-			return node::weightednode<W>(wcomplex(0., 0.), nullptr);
+			return node::weightednode<W>(weight::func<W>::zeros_like(w_node.weight), nullptr);
 		}
 
 
 		// start to normalize the weights
-		int i_max = 0;
-		double norm_max = norm(successors[0].weight);
-		for (int i = 1; i < successors.size(); i++) {
-			double temp_norm = norm(successors[i].weight);
-			// alter the maximum according to EPS, to avoid arbitrary normalization
-			if (temp_norm - norm_max > weight::EPS) {
-				i_max = i;
-				norm_max = temp_norm;
-			}
-		}
-		wcomplex weig_max = successors[i_max].weight;
+		W weig_max = get_normalizer(successors);
+		W reciprocal = weight::func<W>::reciprocal(weig_max);
+
 		auto&& new_successors = std::vector<node::weightednode<W>>(successors);
+
 		for (auto&& succ : new_successors) {
-			succ.weight = succ.weight / weig_max;
+			succ.weight = weight::func<W>::mul(succ.weight, reciprocal);
 		}
 		auto&& new_node = node::Node<W>::get_unique_node(w_node.node->get_order(), new_successors);
-		return node::weightednode<W>{ weig_max* w_node.weight, new_node };
+		return node::weightednode<W>{ weight::func<W>::mul(weig_max, w_node.weight), new_node };
 	}
 
 	/// <summary>
@@ -176,7 +164,9 @@ public:
 	/// </summary>
 	/// <param name="w_node">Note that w_node.node should not be nullptr</param>
 	/// <returns>tensor of dim (dim_data - node.order + 1)</returns>
-	static CUDAcpl::Tensor to_CUDAcpl_iterate(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape) {
+	static CUDAcpl::Tensor to_CUDAcpl_iterate(const node::weightednode<W>& w_node, 
+		const std::vector<int64_t>& para_shape,
+		const std::vector<int64_t>& data_shape) {
 		// w_node.node is guaranteed not to be null
 
 		auto&& current_order = w_node.node->get_order();
@@ -186,10 +176,6 @@ public:
 
 		auto&& dim_data = data_shape.size() - 1;
 
-		// The temp shape for adjustment.(shape of the successors of this node)
-		auto&& p_temp_shape = std::vector<int64_t>(dim_data - current_order);
-		p_temp_shape[dim_data - current_order - 1] = 2;
-
 
 		CUDAcpl::Tensor temp_tensor;
 		CUDAcpl::Tensor uniform_tensor;
@@ -198,7 +184,7 @@ public:
 		for (auto&& i = successors.cbegin(); i != successors.cend(); i++, i_par++) {
 			// detect terminal nodes, or iterate on the next node
 			if (i->node == nullptr) {
-				temp_tensor = CUDAcpl::from_complex(i->weight);
+				temp_tensor = weight::func<W>::from_weight(i->weight);
 				next_order = dim_data;
 			}
 			else {
@@ -209,8 +195,8 @@ public:
 					uniform_tensor = p_find_res->second;
 				}
 				else {
-					auto&& next_wnode = node::weightednode<W>(wcomplex(1., 0.), i->node);
-					uniform_tensor = to_CUDAcpl_iterate(next_wnode, data_shape);
+					auto&& next_wnode = node::weightednode<W>(weight::func<W>::ones(para_shape), i->node);
+					uniform_tensor = to_CUDAcpl_iterate(next_wnode, para_shape, data_shape);
 					// add into the dictionary
 					cache::Global_Cache<W>::p_CUDAcpl_cache->insert(std::make_pair(std::move(key), uniform_tensor));
 				}
@@ -221,16 +207,23 @@ public:
 
 			// broadcast according to the index distance
 			if (next_order - current_order > 1) {
+				auto dim_para = para_shape.size();
 				// prepare the new data shape
-				for (int i = 0; i < next_order - current_order - 1; i++) {
-					p_temp_shape[i] = 1;
+				// The temp shape for adjustment.(shape of the successors of this node)
+				auto&& p_temp_shape = std::vector<int64_t>(dim_para + dim_data - current_order);
+				p_temp_shape[dim_para + dim_data - current_order - 1] = 2;
+				for (int i = 0; i < dim_para; i++) {
+					p_temp_shape[i] = para_shape[i];
 				}
-				for (int i = 0; i < temp_tensor.dim() - 1; i++) {
+				for (int i = 0; i < next_order - current_order - 1; i++) {
+					p_temp_shape[i + dim_para] = 1;
+				}
+				for (int i = dim_para; i < temp_tensor.dim() - 1; i++) {
 					p_temp_shape[i + next_order - current_order - 1] = temp_tensor.size(i);
 				}
 				temp_tensor = temp_tensor.view(c10::IntArrayRef(p_temp_shape));
 				for (int i = 0; i < next_order - current_order - 1; i++) {
-					p_temp_shape[i] = data_shape[i + current_order + 1];
+					p_temp_shape[i + dim_para] = data_shape[i + current_order + 1];
 				}
 				temp_tensor = temp_tensor.expand(c10::IntArrayRef(p_temp_shape));
 			}
@@ -249,7 +242,9 @@ public:
 	/// <param name="inner_data_shape">data_shape(in the corresponding inner index order) is required, for the result should broadcast at reduced nodes of indices.
 	/// Note that an *extra dimension* of 2 is needed at the end of p_inner_data_shape.</param>
 	/// <returns></returns>
-	static CUDAcpl::Tensor to_CUDAcpl(const node::weightednode<W>& w_node, const std::vector<int64_t>& inner_data_shape) {
+	static CUDAcpl::Tensor to_CUDAcpl(const node::weightednode<W>& w_node, 
+		const std::vector<int64_t>& para_shape,
+		const std::vector<int64_t>& inner_data_shape) {
 		int n_extra_one = 0;
 		auto&& dim_data = inner_data_shape.size() - 1;
 		CUDAcpl::Tensor res;
@@ -258,45 +253,23 @@ public:
 			n_extra_one = dim_data;
 		}
 		else {
-			res = to_CUDAcpl_iterate(w_node, inner_data_shape);
+			res = to_CUDAcpl_iterate(w_node, para_shape, inner_data_shape);
 			n_extra_one = w_node.node->get_order();
 		}
+
+		auto dim_para = para_shape.size();
 		// this extra layer is for adding the reduced dimensions at the front
 		// prepare the real data shape
-		auto&& full_data_shape = std::vector<int64_t>(dim_data + 1);
-		full_data_shape[dim_data] = 2;
-		// res.dim() == dim_data + 1 - n_extra_one should hold
-		auto&& cur_data_shape = res.sizes();
+		std::vector<int64_t> global_shape(para_shape);
+		global_shape.insert(global_shape.end(), inner_data_shape.begin(), inner_data_shape.end());
+		auto&& full_data_shape = std::vector<int64_t>(global_shape);
 		for (int i = 0; i < n_extra_one; i++) {
-			full_data_shape[i] = 1;
-		}
-		for (int i = 0; i < cur_data_shape.size(); i++) {
-			full_data_shape[i + n_extra_one] = cur_data_shape[i];
+			full_data_shape[dim_para + i] = 1;
 		}
 		res = res.view(c10::IntArrayRef(full_data_shape));
-		res = res.expand(c10::IntArrayRef(inner_data_shape));
+		res = res.expand(c10::IntArrayRef(global_shape));
 		return res;
 	}
-
-	/*
-	static node::weightednode<W> direct_product(const node::weightednode<W>& a, int a_depth,
-		const node::weightednode<W>& b,
-		const std::vector<int64_t>& parallel_shape,
-		const std::vector<int64_t>& shape_front,
-		const std::vector<int64_t>& shape_back,
-		bool parallel_tensor) {
-		wcomplex weight;
-		if (parallel_tensor) {
-			// not implemented yet
-			throw - 10;
-		}
-		else {
-			weight = a.weight * b.weight;
-		}
-		auto&& p_res_node = node::Node<W>::append(a.node, a_depth, b.node, parallel_shape, shape_front, shape_back, parallel_tensor);
-		return node::weightednode<W>(std::move(weight), p_res_node);
-	}
-	*/
 
 
 	/// <summary>

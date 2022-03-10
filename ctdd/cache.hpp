@@ -424,8 +424,6 @@ namespace cache {
 
 	template <class W>
 	struct Global_Cache {
-		static duplicate_table<W>* p_duplicate_cache;
-		static append_table<W>* p_append_cache;
 		static CUDAcpl_table<W>* p_CUDAcpl_cache;
 		static sum_table<W>* p_sum_cache;
 		static trace_table<W>* p_trace_cache;

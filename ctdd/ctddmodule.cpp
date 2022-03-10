@@ -39,7 +39,11 @@ reset(PyObject* self, PyObject* args) {
 	double new_eps;
 	if (!PyArg_ParseTuple(args, "id", &device_cuda, &new_eps))
 		return NULL;
-	TDD<wcomplex>::reset(device_cuda, new_eps);
+
+	// note that the settings here are shared between scalar and tensor weight.
+	TDD<wcomplex>::setting_update(device_cuda, new_eps);
+	TDD<wcomplex>::reset();
+	//TDD<CUDAcpl::Tensor>::reset();
 	return Py_BuildValue("");
 }
 
@@ -280,7 +284,7 @@ get_tdd_info(PyObject* self, PyObject* args) {
 	auto&& tdd_p_storage_order = p_tdd->storage_order();
 
 	// prepare the objects
-	auto&& py_weight = THPVariable_Wrap(CUDAcpl::from_complex(tdd_weight));
+	auto&& py_weight = THPVariable_Wrap(weight::func<W>::from_weight(tdd_weight));
 
 	auto&& py_parallel_shape = PyTuple_New(tdd_dim_parallel);
 	for (int i = 0; i < tdd_dim_parallel; i++) {
@@ -356,7 +360,7 @@ get_node_info(PyObject* self, PyObject* args) {
 	auto&& py_successors = PyTuple_New(node_range);
 	for (int i = 0; i < node_range; i++) {
 		auto&& temp_succ = Py_BuildValue("{sOsO}",
-			"weight", THPVariable_Wrap(CUDAcpl::from_complex(node_successors[i].weight)),
+			"weight", THPVariable_Wrap(weight::func<W>::from_weight(node_successors[i].weight)),
 			"node", PyLong_FromLongLong((int64_t)node_successors[i].node));
 		
 		PyTuple_SetItem(py_successors, i, temp_succ);
@@ -375,17 +379,24 @@ get_node_info(PyObject* self, PyObject* args) {
 
 static PyMethodDef ctdd_methods[] = {
 	{ "delete_tdd", (PyCFunction)delete_tdd<wcomplex>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
+	{ "delete_tdd_T", (PyCFunction)delete_tdd<CUDAcpl::Tensor>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "reset", (PyCFunction)reset, METH_VARARGS, " reset the unique table and all the caches, designate the device." },
 	{ "as_tensor", (PyCFunction)as_tensor<wcomplex>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },
+	{ "as_tensor_T", (PyCFunction)as_tensor<CUDAcpl::Tensor>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },
 	{ "as_tensor_clone", (PyCFunction)as_tensor_clone<wcomplex>, METH_VARARGS, "Return the cloned tdd." },
+	{ "as_tensor_clone_T", (PyCFunction)as_tensor_clone<CUDAcpl::Tensor>, METH_VARARGS, "Return the cloned tdd." },
 	{ "to_CUDAcpl", (PyCFunction)to_CUDAcpl<wcomplex>, METH_VARARGS, "Return the python torch tensor of the given tdd." },
+	{ "to_CUDAcpl_T", (PyCFunction)to_CUDAcpl<CUDAcpl::Tensor>, METH_VARARGS, "Return the python torch tensor of the given tdd." },
 	{ "trace", (PyCFunction)trace<wcomplex>, METH_VARARGS, "Trace the designated indices of the given tdd." },
 	{ "tensordot_num", (PyCFunction)tensordot_num<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
 	{ "tensordot_ls", (PyCFunction)tensordot_ls<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
 	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "return the permuted tdd." },
 	{ "get_tdd_info", (PyCFunction)get_tdd_info<wcomplex>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },
+	{ "get_tdd_info_T", (PyCFunction)get_tdd_info<CUDAcpl::Tensor>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },
 	{ "get_tdd_size", (PyCFunction)get_tdd_size<wcomplex>, METH_VARARGS, "Get the size (non-terminal nodes) of the tdd." },
+	{ "get_tdd_size_T", (PyCFunction)get_tdd_size<CUDAcpl::Tensor>, METH_VARARGS, "Get the size (non-terminal nodes) of the tdd." },
 	{ "get_node_info", (PyCFunction)get_node_info<wcomplex>, METH_VARARGS, "Get the information of a node. Return a dictionary." },
+	{ "get_node_info_T", (PyCFunction)get_node_info<CUDAcpl::Tensor>, METH_VARARGS, "Get the information of a node. Return a dictionary." },
 	// Terminate the array with an object containing nulls.
 	{ nullptr, nullptr, 0, nullptr }
 };
@@ -399,6 +410,8 @@ static PyModuleDef ctdd = {
 };
 
 PyMODINIT_FUNC PyInit_ctdd() {
+	TDD<wcomplex>::setting_update();
 	TDD<wcomplex>::reset();
+	//TDD<CUDAcpl::Tensor>::reset();
 	return PyModule_Create(&ctdd);
 }

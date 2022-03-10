@@ -302,6 +302,7 @@
     <ClCompile Include="simpletools.cpp" />
     <ClCompile Include="tdd.cpp" />
     <ClCompile Include="weight.cpp" />
+    <ClCompile Include="wnode.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cache.hpp" />
