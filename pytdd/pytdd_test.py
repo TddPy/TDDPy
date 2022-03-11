@@ -26,10 +26,39 @@ def test1():
 
     compare(expected,actual)
 
+def test1_T():
+    '''
+    direct contraction
+    '''
+    a = CUDAcpl.quantum_basic.sigmax
+    b = torch.rand((2,2,2), dtype=torch.double)
+    expected = CUDAcpl.einsum("ia,ia->i",a,b)
+
+    tdd_a = TDD.as_tensor(((a,1,[]),None))
+    tdd_a.show(full_output = True)
+    tdd_b = TDD.as_tensor(((b,1,[]),None))
+    actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], False).CUDAcpl()
+
+    compare(expected,actual)
+
+def test1_T2():
+    '''
+    direct contraction
+    '''
+    a = CUDAcpl.quantum_basic.sigmax
+    b = torch.rand((2,2,2), dtype=torch.double)
+    expected = CUDAcpl.einsum("ia,ja->ij",a,b)
+
+    tdd_a = TDD.as_tensor(((a,1,[]),None))
+    tdd_a.show(full_output = True)
+    tdd_b = TDD.as_tensor(((b,1,[]),None))
+    actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], True).CUDAcpl()
+
+    compare(expected,actual)
 
 def test2():
     '''
-    permutation and contraction
+    permutation
     '''
     a = torch.rand((2,4,1,3,2))
     expected = a.permute((0,2,3,1,4))
@@ -38,6 +67,7 @@ def test2():
     actual = TDD.permute(tdd_a, (0,2,3,1)).CUDAcpl()
 
     compare(expected, actual)
+
 
 
 def test3():
@@ -61,6 +91,19 @@ def test3_q():
     expected = torch.einsum("ijijklm->klm",a)
     
     tdd_a = TDD.as_tensor((a,None))
+    actual = TDD.trace(tdd_a, [[0,1],[2,3]]).CUDAcpl()
+
+    compare(expected, actual)
+    
+def test3_q_T():
+    '''
+    tracing (quantum tensors)
+    '''
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmay, CUDAcpl.quantum_basic.sigmax, 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard, a, 0)
+    expected = torch.einsum("klijijm->klm",a)
+    
+    tdd_a = TDD.as_tensor(((a,2,[]),None))
     actual = TDD.trace(tdd_a, [[0,1],[2,3]]).CUDAcpl()
 
     compare(expected, actual)

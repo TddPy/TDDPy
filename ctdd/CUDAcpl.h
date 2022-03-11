@@ -72,6 +72,8 @@ namespace CUDAcpl {
 	Tensor tensordot(const Tensor& a, const Tensor& b,
 		c10::IntArrayRef dim_self, c10::IntArrayRef dim_other);
 
+	Tensor einsum(c10::string_view equation, at::TensorList tensors);
+
 	Tensor mul_element_wise(const Tensor& t, Complex s);
 
 	Tensor mul_element_wise(const Tensor& a, const Tensor& b);

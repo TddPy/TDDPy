@@ -235,32 +235,43 @@ class TDD:
 
     @staticmethod
     def tensordot(a: TDD, b: TDD, 
-                  axes: int|Sequence[Sequence[int]], rearrangement: Sequence[bool] = []) -> TDD:
+                  axes: int|Sequence[Sequence[int]], rearrangement: Sequence[bool] = [], parallel_tensor: bool = False) -> TDD:
         
         '''
             The pytorch-like tensordot method. Note that indices should be counted with data indices only.
             rearrangement: If not [], then will rearrange according to the parameter. Otherwise, it will rearrange according to the coordinator.
             parallel_tensor: Whether to tensor on the parallel indices.
         '''
+        parallel_tensor = 1 if parallel_tensor else 0
         if rearrangement == []:
             rearrangement = TDD.coordinator.tensordot_rearrangement(a._coordinator_info, b._coordinator_info, axes)
 
         new_coordinator_info = TDD.coordinator.tensordot_order_info(a._coordinator_info, b._coordinator_info, axes)
         if isinstance(axes, int):
-            pointer = ctdd.tensordot_num(a.pointer, b.pointer, axes, rearrangement)
+            if a.tensor_weight:
+                pointer = ctdd.tensordot_num_T(a.pointer, b.pointer, axes, rearrangement, parallel_tensor)
+            else:
+                pointer = ctdd.tensordot_num(a.pointer, b.pointer, axes, rearrangement, parallel_tensor)
         else:
             i1 = list(axes[0])
             i2 = list(axes[1])
             if len(i1) != len(i2):
                 raise Exception("The list of indices provided")
             
-            pointer = ctdd.tensordot_ls(a.pointer, b.pointer, i1, i2, rearrangement)
+            if a.tensor_weight:
+                pointer = ctdd.tensordot_ls_T(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
+            else:
+                pointer = ctdd.tensordot_ls(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
         
-        res = TDD(pointer, False, new_coordinator_info)
+        res = TDD(pointer, a.tensor_weight, new_coordinator_info)
         return res
 
 
     @staticmethod
     def permute(tensor: TDD, perm: Sequence[int]) -> TDD:
-        return TDD(ctdd.permute(tensor.pointer, list(perm)), False,
+        if tensor.tensor_weight:
+            return TDD(ctdd.permute_T(tensor.pointer, list(perm)), True,
+                   TDD.coordinator.permute_order_info(tensor._coordinator_info, perm));
+        else:
+            return TDD(ctdd.permute(tensor.pointer, list(perm)), False,
                    TDD.coordinator.permute_order_info(tensor._coordinator_info, perm));

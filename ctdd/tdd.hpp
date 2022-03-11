@@ -492,7 +492,12 @@ namespace tdd {
 				a.m_inner_data_shape, b.m_inner_data_shape,
 				inner_indices_cmd, a_inner_order, b_inner_order, parallel_tensor);
 
-			return TDD(std::move(res_wnode), std::vector<int64_t>(a.m_para_shape),
+			std::vector<int64_t> new_para_shape(a.m_para_shape);
+			if (parallel_tensor) {
+				new_para_shape.insert(new_para_shape.end(), b.m_para_shape.begin(), b.m_para_shape.end());
+			}
+
+			return TDD(std::move(res_wnode), std::move(new_para_shape),
 				std::move(total_shape), std::move(total_order));
 		}
 

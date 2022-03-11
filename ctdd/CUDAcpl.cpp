@@ -48,3 +48,16 @@ Tensor CUDAcpl::tensordot(const Tensor& a, const Tensor& b,
 	return torch::stack({ res_real, res_imag }, res_real.dim());
 }
 
+Tensor CUDAcpl::einsum(c10::string_view equation, at::TensorList tensors) {
+	auto&& a = tensors[0];
+	auto&& b = tensors[1];
+	auto&& a_dim = a.dim() - 1;
+	auto&& a_real = a.select(a_dim, 0);
+	auto&& a_imag = a.select(a_dim, 1);
+	auto&& b_dim = b.dim() - 1;
+	auto&& b_real = b.select(b_dim, 0);
+	auto&& b_imag = b.select(b_dim, 1);
+	auto&& res_real = torch::einsum(equation, { a_real, b_real }) - torch::einsum(equation, { a_imag, b_imag });
+	auto&& res_imag = torch::einsum(equation, { a_real, b_imag }) + torch::einsum(equation, { a_imag, b_real });
+	return torch::stack({ res_real, res_imag }, res_real.dim());
+}

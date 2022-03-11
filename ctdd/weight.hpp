@@ -32,11 +32,23 @@ namespace weight {
 		static inline bool is_zero(const W& a);
 
 		static inline W ones(const std::vector<int64_t>& data_shape);
+		// produce tensor_ones according to parallel_tensor
+		static inline W ones_like(const W& weight);
 		static inline W zeros(const std::vector<int64_t>& data_shape);
 		static inline W zeros_like(const W& weight);
 
 		static inline W mul(const W& a, const W& b);
 		static inline W reciprocal(const W& a);
+
+
+		static inline W prepare_weight(const W& a, const W& b, bool parallel_tensor);
+
+		// expand the dimensions at the back of the tensor weight
+		static inline W weight_expanded_back(const W& weight, const std::vector<int64_t>& para_shape_b, bool parallel_tensor);
+
+		// expand the dimensions at the front of the tensor weight
+		static inline W weight_expanded_front(const W& weight, const std::vector<int64_t>& para_shape_a, bool parallel_tensor);
+
 	};
 
 

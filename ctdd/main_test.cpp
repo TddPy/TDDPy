@@ -52,22 +52,19 @@ int main() {
 
 
 		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
-		auto t1 = cz;
-		auto t2 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
-		auto expected = t1 + t2;
+		auto t1 = sigmax;
+		auto t2 = torch::rand({ 2,2,2 }, c10::ScalarType::Double);
+		auto expected = CUDAcpl::einsum("ia,ja->ij", { t1, t2 });
+		//auto expected = t1 + t2;
 
-		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 2, {});
-		auto t2_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t2, 2, {});
-		auto sum_r = TDD<CUDAcpl::Tensor>::sum(t1_tdd, t2_tdd);
-		auto actual = sum_r.CUDAcpl();
+		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
+		auto t2_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t2, 1, {});
+		auto tdd_res = TDD<CUDAcpl::Tensor>::tensordot(t1_tdd, t2_tdd, { 0 }, { 0 }, {}, true);
+		auto actual = tdd_res.CUDAcpl();
+
 		//auto indices = cache::pair_cmd(1);
 		//indices[0] = make_pair(0, 2);
 		//cout << res.CUDAcpl() << endl;
-		compare(t1, t1_tdd.CUDAcpl());
-		compare(t2, t2_tdd.CUDAcpl());
-		cout << expected << endl;
-		cout << actual << endl;
-
 		compare(expected, actual);
 
 

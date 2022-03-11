@@ -335,9 +335,11 @@ namespace cache {
 		std::vector<int64_t> a_new_order;
 		std::vector<int64_t> b_new_order;
 
+		bool parallel_tensor;
+
 		inline cont_key(const node::Node<W>* _p_a, const node::Node<W>* _p_b, const pair_cmd& _remained_ls, 
 			const pair_cmd& _a_waiting_ls, const pair_cmd& _b_waiting_ls,
-			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b) {
+			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b, bool _parallel_tensor) {
 
 			// in theory, we can further increase the reuseage of cont_cache, by eliminating the swaping freedom
 			// but it is time consuming and maybe not that worthy.
@@ -348,11 +350,12 @@ namespace cache {
 			b_waiting_ls = _b_waiting_ls;
 			a_new_order = std::vector<int64_t>(_a_new_order.begin() + pos_a, _a_new_order.end());
 			b_new_order = std::vector<int64_t>(_b_new_order.begin() + pos_b, _b_new_order.end());
+			parallel_tensor = _parallel_tensor;
 		}
 
 		inline cont_key(const node::Node<W>* _p_a, const node::Node<W>* _p_b, pair_cmd&& _remained_ls, 
 			pair_cmd&& _a_waiting_ls, pair_cmd&& _b_waiting_ls,
-			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b) {
+			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b, bool _parallel_tensor) {
 			p_a = _p_a;
 			p_b = _p_b;
 			remained_ls = std::move(_remained_ls);
@@ -360,6 +363,7 @@ namespace cache {
 			b_waiting_ls = std::move(_b_waiting_ls);
 			a_new_order = std::vector<int64_t>(_a_new_order.begin() + pos_a, _a_new_order.end());
 			b_new_order = std::vector<int64_t>(_b_new_order.begin() + pos_b, _b_new_order.end());
+			parallel_tensor = _parallel_tensor;
 		}
 
 		inline cont_key(const cont_key& other) {
@@ -370,6 +374,7 @@ namespace cache {
 			b_waiting_ls = other.b_waiting_ls;
 			a_new_order = other.a_new_order;
 			b_new_order = other.b_new_order;
+			parallel_tensor = other.parallel_tensor;
 		}
 		inline cont_key& operator =(cont_key&& other) {
 			p_a = other.p_a;
@@ -379,6 +384,7 @@ namespace cache {
 			b_waiting_ls = std::move(other.b_waiting_ls);
 			a_new_order = std::move(other.a_new_order);
 			b_new_order = std::move(other.b_new_order);
+			parallel_tensor = std::move(other.parallel_tensor);
 			return *this;
 		}
 	};
@@ -387,7 +393,7 @@ namespace cache {
 	inline bool operator == (const cont_key<W>& a, const cont_key<W>& b) {
 		return (a.p_a == b.p_a && a.p_b == b.p_b &&
 			a.remained_ls == b.remained_ls && a.a_waiting_ls == b.a_waiting_ls && a.b_waiting_ls == b.b_waiting_ls &&
-			a.a_new_order == b.a_new_order && a.b_new_order == b.b_new_order);
+			a.a_new_order == b.a_new_order && a.b_new_order == b.b_new_order && a.parallel_tensor == b.parallel_tensor);
 	}
 
 	template <class W>
@@ -413,6 +419,7 @@ namespace cache {
 		for (const auto& order_b : key.b_new_order) {
 			boost::hash_combine(seed, order_b);
 		}
+		boost::hash_combine(seed, key.parallel_tensor);
 		return seed;
 	}
 
