@@ -174,6 +174,7 @@ public:
 		auto&& par_tensor = std::vector<CUDAcpl::Tensor>(w_node.node->get_range());
 		auto&& successors = w_node.node->get_successors();
 
+		auto dim_para = para_shape.size();
 		auto&& dim_data = data_shape.size() - 1;
 
 
@@ -202,12 +203,11 @@ public:
 				}
 				next_order = i->node->get_order();
 				// multiply the dangling weight
-				temp_tensor = CUDAcpl::mul_element_wise(uniform_tensor, i->weight);
+				temp_tensor = weight::func<W>::res_mul_weight(uniform_tensor, i->weight);
 			}
 
 			// broadcast according to the index distance
 			if (next_order - current_order > 1) {
-				auto dim_para = para_shape.size();
 				// prepare the new data shape
 				// The temp shape for adjustment.(shape of the successors of this node)
 				auto&& p_temp_shape = std::vector<int64_t>(dim_para + dim_data - current_order);
@@ -229,9 +229,9 @@ public:
 			}
 			*i_par = std::move(temp_tensor);
 		}
-		auto&& res = torch::stack(par_tensor, 0);
+		auto&& res = torch::stack(par_tensor, dim_para);
 		// multiply the dangling weight and return
-		return CUDAcpl::mul_element_wise(res, w_node.weight);
+		return weight::func<W>::res_mul_weight(res, w_node.weight);
 	}
 
 	/// <summary>
@@ -249,7 +249,7 @@ public:
 		auto&& dim_data = inner_data_shape.size() - 1;
 		CUDAcpl::Tensor res;
 		if (w_node.node == nullptr) {
-			res = CUDAcpl::mul_element_wise(CUDAcpl::ones({}), w_node.weight);
+			res = CUDAcpl::mul_element_wise(CUDAcpl::ones(para_shape), w_node.weight);
 			n_extra_one = dim_data;
 		}
 		else {
@@ -283,24 +283,7 @@ public:
 	/// <param name="weight1"></param>
 	/// <param name="weight2"></param>
 	/// <returns></returns>
-	inline static weight::sum_nweights<W> weights_normalize(const W& weight1, const W& weight2) {
-		wcomplex renorm_coef = (norm(weight1) > norm(weight2)) ? weight1 : weight2;
-
-		auto&& nweight1 = wcomplex(0., 0.);
-		auto&& nweight2 = wcomplex(0., 0.);
-		if (norm(renorm_coef) > weight::EPS) {
-			nweight1 = weight1 / renorm_coef;
-			nweight2 = weight2 / renorm_coef;
-		}
-		else {
-			renorm_coef = wcomplex(1., 0.);
-		}
-		return weight::sum_nweights<W>(
-			std::move(nweight1),
-			std::move(nweight2),
-			std::move(renorm_coef)
-			);
-	}
+	inline static weight::sum_nweights<W> weights_normalize(const W& weight1, const W& weight2);
 
 
 	/// <summary>
@@ -313,10 +296,12 @@ public:
 	/// <param name="renorm_coef"></param>
 	/// <param name="sum_cache"></param>
 	/// <returns></returns>
-	static node::weightednode<W> sum_iterate(const node::weightednode<W>& w_node1,
-		const node::weightednode<W>& w_node2, const W& renorm_coef) {
+	static node::weightednode<W> sum_iterate(
+		const node::weightednode<W>& w_node1,
+		const node::weightednode<W>& w_node2, const W& renorm_coef, const std::vector<int64_t>& para_shape) {
+
 		if (w_node1.node == nullptr && w_node2.node == nullptr) {
-			return node::weightednode<W>((w_node1.weight + w_node2.weight) * renorm_coef, nullptr);
+			return node::weightednode<W>(weight::func<W>::mul((w_node1.weight + w_node2.weight), renorm_coef), nullptr);
 		}
 
 		// produce the unique key and look up in the cache
@@ -327,7 +312,7 @@ public:
 		auto&& p_find_res = cache::Global_Cache<W>::p_sum_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_sum_cache->end()) {
 			node::weightednode<W> res = p_find_res->second;
-			res.weight = res.weight * renorm_coef;
+			res.weight = weight::func<W>::mul(res.weight, renorm_coef);
 			return res;
 		}
 		else {
@@ -372,13 +357,16 @@ public:
 					auto&& i_new = new_successors.begin();
 					for (; i_1 != successors_1.end(); i_1++, i_2++, i_new++) {
 						// normalize as a whole
-						auto&& renorm_res = weights_normalize(p_wnode_1->weight * i_1->weight, p_wnode_2->weight * i_2->weight);
+						auto&& renorm_res = weights_normalize(
+							weight::func<W>::mul(p_wnode_1->weight, i_1->weight),
+							weight::func<W>::mul(p_wnode_2->weight, i_2->weight)
+						);
 						auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
 						auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->node);
-						*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef);
+						*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 					}
 					auto&& temp_node = node::Node<W>(p_wnode_1->node->get_order(), std::move(new_successors));
-					res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
+					res = normalize(node::weightednode<W>(weight::func<W>::ones(para_shape), &temp_node));
 					not_operated = false;
 				}
 			}
@@ -396,13 +384,14 @@ public:
 				auto&& i_1 = successors.begin();
 				auto&& i_new = new_successors.begin();
 				for (; i_1 != successors.end(); i_1++, i_new++) {
-					auto&& renorm_res = weights_normalize(p_wnode_1->weight * i_1->weight, p_wnode_2->weight);
+					auto&& renorm_res = weights_normalize(
+						weight::func<W>::mul(p_wnode_1->weight, i_1->weight), p_wnode_2->weight);
 					auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
 					auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), p_wnode_2->node);
-					*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef);
+					*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 				}
 				auto&& temp_node = node::Node<W>(p_wnode_1->node->get_order(), std::move(new_successors));
-				res = normalize(node::weightednode<W>(wcomplex(1., 0.), &temp_node));
+				res = normalize(node::weightednode<W>(weight::func<W>::ones(para_shape), &temp_node));
 			}
 
 
@@ -410,7 +399,7 @@ public:
 			cache::Global_Cache<W>::p_sum_cache->insert(std::make_pair(std::move(key), res));
 
 			// multiply the renorm_coef and return
-			res.weight = res.weight * renorm_coef;
+			res.weight = weight::func<W>::mul(res.weight, renorm_coef);
 			return res;
 		}
 	}
@@ -421,12 +410,14 @@ public:
 	/// <param name="w_node1"></param>
 	/// <param name="w_node2"></param>
 	/// <returns></returns>
-	static node::weightednode<W> sum(const node::weightednode<W>& w_node1, const node::weightednode<W>& w_node2) {
+	static node::weightednode<W> sum(
+		const node::weightednode<W>& w_node1,
+		const node::weightednode<W>& w_node2, const std::vector<int64_t>& para_shape) {
 		// normalize as a whole
 		auto&& renorm_res = weights_normalize(w_node1.weight, w_node2.weight);
 		auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), w_node1.node);
 		auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), w_node2.node);
-		return sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef);
+		return sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 	}
 
 	/// <summary>
@@ -437,7 +428,9 @@ public:
 	///	3. The returning weighted nodes are NOT shifted. (node.order not adjusted)
 	/// </summary>
 	/// <returns></returns>
-	static node::weightednode<W> trace_iterate(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
+	static node::weightednode<W> trace_iterate(const node::weightednode<W>& w_node, 
+		const std::vector<int64_t>& para_shape,
+		const std::vector<int64_t>& data_shape,
 		const cache::pair_cmd& remained_ls, const cache::pair_cmd& waiting_ls, const std::vector<int64_t>& new_order) {
 
 		if (w_node.node == nullptr) {
@@ -499,7 +492,7 @@ public:
 					auto&& index_val = waiting_ls_pd[0].second;
 					// close the waiting index
 					auto&& next_waiting_ls = removed<std::pair<int, int>>(waiting_ls_pd, 0);
-					res = trace_iterate(successors[index_val], data_shape, remained_ls_pd, next_waiting_ls, new_order);
+					res = trace_iterate(successors[index_val], para_shape, data_shape, remained_ls_pd, next_waiting_ls, new_order);
 					not_operated = false;
 				}
 			}
@@ -536,7 +529,7 @@ public:
 							else {
 								// adjust the new index value
 								next_waiting_ls[insert_pos].second = index_val;
-								*i_new = trace_iterate(*i, data_shape, next_remained_ls, next_waiting_ls, new_order);
+								*i_new = trace_iterate(*i, para_shape, data_shape, next_remained_ls, next_waiting_ls, new_order);
 							}
 						}
 					}
@@ -546,7 +539,7 @@ public:
 						for (auto&& succ_new : new_successors) {
 							next_waiting_ls[insert_pos].second = index_val;
 							succ_new = trace_iterate(node::weightednode<W>(wcomplex(1., 0.), w_node.node),
-								data_shape, next_remained_ls, next_waiting_ls, new_order);
+								para_shape, data_shape, next_remained_ls, next_waiting_ls, new_order);
 							index_val++;
 						}
 					}
@@ -554,7 +547,7 @@ public:
 					// however the subnode outcomes are calculated, sum them over.
 					res = new_successors[0];
 					for (auto&& i = new_successors.begin() + 1; i != new_successors.end(); i++) {
-						res = sum(res, *i);
+						res = sum(res, *i, para_shape);
 					}
 					not_operated = false;
 				}
@@ -570,7 +563,7 @@ public:
 						i_new->weight = i->weight;
 					}
 					else {
-						*i_new = trace_iterate(*i, data_shape, remained_ls_pd, waiting_ls_pd, new_order);
+						*i_new = trace_iterate(*i, para_shape, data_shape, remained_ls_pd, waiting_ls_pd, new_order);
 					}
 				}
 				auto&& temp_node = node::Node<W>(new_order[order], std::move(new_successors));
@@ -596,7 +589,9 @@ public:
 	/// <param name="remained_ls">data_indices should be counted in the data indices only.(smaller indices are required to be in the first place.)</param>
 	/// <param name="reduced_indices"> must be sorted </param>
 	/// <returns></returns>
-	static node::weightednode<W> trace(const node::weightednode<W>& w_node, const std::vector<int64_t>& data_shape,
+	static node::weightednode<W> trace(const node::weightednode<W>& w_node, 
+		const std::vector<int64_t>& para_shape,
+		const std::vector<int64_t>& data_shape,
 		const cache::pair_cmd& remained_ls, const std::vector<int64_t> reduced_indices) {
 
 		// sort the remained_ls by first element, to keep the key unique
@@ -614,7 +609,7 @@ public:
 		auto&& new_order = get_new_order(data_shape.size() - 1, reduced_indices);
 		////////////////////////////////
 
-		auto&& res = trace_iterate(w_node, data_shape, sorted_remained_ls, cache::pair_cmd(), new_order);
+		auto&& res = trace_iterate(w_node, para_shape, data_shape, sorted_remained_ls, cache::pair_cmd(), new_order);
 
 		return res;
 	}
@@ -636,6 +631,7 @@ public:
 	/// <returns></returns>
 	static node::weightednode<W> contract_iterate(
 		const node::Node<W>* p_node_a, const node::Node<W>* p_node_b, const W& weight,
+		const std::vector<int64_t>& para_shape_a, const std::vector<int64_t>& para_shape_b,
 		const std::vector<int64_t>& data_shape_a, const std::vector<int64_t>& data_shape_b,
 		const cache::pair_cmd& remained_ls,
 		const cache::pair_cmd& a_waiting_ls, const cache::pair_cmd& b_waiting_ls,
@@ -720,7 +716,7 @@ public:
 					// close the waiting index
 					auto&& next_a_waiting_ls = removed(a_waiting_ls_pd, 0);
 					auto&& succ = p_node_a->get_successors()[index_val];
-					res = contract_iterate(succ.node, p_node_b, succ.weight,
+					res = contract_iterate(succ.node, p_node_b, succ.weight, para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, next_a_waiting_ls, b_waiting_ls_pd,
 						a_new_order, b_new_order, parallel_tensor);
 					goto RETURN;
@@ -734,7 +730,7 @@ public:
 					// close the waiting index
 					auto&& next_b_waiting_ls = removed(b_waiting_ls_pd, 0);
 					auto&& succ = p_node_b->get_successors()[index_val];
-					res = contract_iterate(p_node_a, succ.node, succ.weight,
+					res = contract_iterate(p_node_a, succ.node, succ.weight, para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, a_waiting_ls_pd, next_b_waiting_ls,
 						a_new_order, b_new_order, parallel_tensor);
 					goto RETURN;
@@ -763,7 +759,8 @@ public:
 					auto&& i_new = new_successors.begin();
 					for (auto&& i_a = successors_a.begin(); i_a != successors_a.end(); i_new++, i_a++) {
 
-						*i_new = contract_iterate(i_a->node, p_node_b, i_a->weight, data_shape_a, data_shape_b,
+						*i_new = contract_iterate(i_a->node, p_node_b, i_a->weight,
+							para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
 							a_new_order, b_new_order, parallel_tensor);
 					}
@@ -780,7 +777,8 @@ public:
 					new_successors = std::vector<node::weightednode<W>>(data_shape_b[order_b]);
 					auto&& i_new = new_successors.begin();
 					for (auto&& i_b = successors_b.begin(); i_b != successors_b.end(); i_new++, i_b++) {
-						*i_new = contract_iterate(p_node_a, i_b->node, i_b->weight, data_shape_a, data_shape_b,
+						*i_new = contract_iterate(p_node_a, i_b->node, i_b->weight,
+							para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
 							a_new_order, b_new_order, parallel_tensor);
 					}
@@ -814,7 +812,8 @@ public:
 						for (auto&& i_a = successors_a.begin(); i_a != successors_a.end();
 							i_new++, i_a++, index_val++) {
 							next_b_waiting_ls[insert_pos].second = index_val;
-							*i_new = contract_iterate(i_a->node, p_node_b, i_a->weight, data_shape_a, data_shape_b,
+							*i_new = contract_iterate(i_a->node, p_node_b, i_a->weight,
+								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
 								a_new_order, b_new_order, parallel_tensor);
 						}
@@ -824,7 +823,7 @@ public:
 						int index_val = 0;
 						for (auto&& succ_new : new_successors) {
 							next_b_waiting_ls[insert_pos].second = index_val;
-							succ_new = contract_iterate(p_node_a, p_node_b, wcomplex(1.,0.),
+							succ_new = contract_iterate(p_node_a, p_node_b, wcomplex(1.,0.), para_shape_a, para_shape_b,
 								data_shape_a, data_shape_b, next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
 								a_new_order, b_new_order, parallel_tensor
 							);
@@ -850,7 +849,8 @@ public:
 						for (auto&& i_b = successors_b.begin(); i_b != successors_b.end();
 							i_new++, i_b++, index_val++) {
 							next_a_waiting_ls[insert_pos].second = index_val;
-							*i_new = contract_iterate(p_node_a, i_b->node, i_b->weight, data_shape_a, data_shape_b,
+							*i_new = contract_iterate(p_node_a, i_b->node, i_b->weight,
+								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd, 
 								a_new_order, b_new_order, parallel_tensor);
 						}
@@ -861,7 +861,7 @@ public:
 						for (auto&& succ_new : new_successors) {
 							next_a_waiting_ls[insert_pos].second = index_val;
 							succ_new = contract_iterate(
-								p_node_a, p_node_b, wcomplex(1.,0.),
+								p_node_a, p_node_b, wcomplex(1.,0.), para_shape_a, para_shape_b,
 								data_shape_a, data_shape_b, next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd,
 								a_new_order, b_new_order, parallel_tensor
 							);
@@ -873,7 +873,7 @@ public:
 				// sum up
 				res = new_successors[0];
 				for (auto&& i = new_successors.begin() + 1; i != new_successors.end(); i++) {
-					res = sum(res, *i);
+					res = sum(res, *i, para_shape_a);
 				}
 			}
 
@@ -899,6 +899,7 @@ public:
 	/// <returns></returns>
 	static node::weightednode<W> contract(
 		const node::weightednode<W>& w_node_a, const node::weightednode<W>& w_node_b,
+		const std::vector<int64_t>& para_shape_a, const std::vector<int64_t>& para_shape_b,
 		const std::vector<int64_t>& data_shape_a, const std::vector<int64_t>& data_shape_b,
 		const cache::pair_cmd& cont_indices, 
 		const std::vector<int64_t>& a_new_order,
@@ -915,6 +916,7 @@ public:
 		//std::cout << sorted_remained_ls << std::endl;
 
 		return contract_iterate(w_node_a.node, w_node_b.node, w_node_a.weight * w_node_b.weight,
+			para_shape_a, para_shape_b,
 			data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
 			a_new_order, b_new_order, parallel_tensor);
 	}

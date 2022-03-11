@@ -26,6 +26,8 @@ namespace weight {
 		static inline void as_weight(const CUDAcpl::Tensor& t, W& weight, const std::vector<int64_t>& data_shape);
 		static inline CUDAcpl::Tensor from_weight(const W& weight);
 
+		static inline CUDAcpl::Tensor res_mul_weight(const CUDAcpl::Tensor& tensor, const W& weight);
+
 		static inline bool is_equal(const W& a, const W& b);
 		static inline bool is_zero(const W& a);
 

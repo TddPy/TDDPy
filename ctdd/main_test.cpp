@@ -17,24 +17,24 @@ void compare(const torch::Tensor& a, const torch::Tensor& b) {
 int main() {
 	TDD<wcomplex>::setting_update();
 	TDD<wcomplex>::reset();
-	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }).reshape({ 2,2,2 });
-	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }).reshape({ 2,2,2 });
-	auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }).reshape({ 2,2,2 }) / sqrt(2);
+	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 });
+	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 });
+	auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 }) / sqrt(2);
 	auto&& cnot = torch::tensor({ 1., 0., 0., 0., 0., 0., 0., 0.,
 								 0., 0., 1., 0., 0., 0., 0., 0.,
 								 0., 0., 0., 0., 0., 0., 1., 0.,
-								 0., 0., 0., 0., 1., 0., 0., 0. }).reshape({ 2,2,2,2,2 });
+								 0., 0., 0., 0., 1., 0., 0., 0. }, c10::ScalarType::Double).reshape({ 2,2,2,2,2 });
 
 	auto&& cz = torch::tensor({ 1., 0., 0., 0., 0., 0., 0., 0.,
 								 0., 0., 1., 0., 0., 0., 0., 0.,
 								 0., 0., 0., 0., 1., 0., 0., 0.,
 								 0., 0., 0., 0., 0., 0., -1., 0. }, c10::ScalarType::Double).reshape({ 2,2,2,2,2 });
-	auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }).reshape({ 2,2,2 });
+	auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }, c10::ScalarType::Double).reshape({ 2,2,2 });
 
 
 
 	double start = clock();
-	for (int i = 0; i < 10; i++) {
+	for (int i = 0; i < 1; i++) {
 		cout << "=================== " << i << " ===================" << endl;
 		/*
 		int w = 4;
@@ -53,12 +53,22 @@ int main() {
 
 		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
 		auto t1 = cz;
+		auto t2 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
+		auto expected = t1 + t2;
 
 		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 2, {});
-		cout << t1_tdd.CUDAcpl() << endl;
+		auto t2_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t2, 2, {});
+		auto sum_r = TDD<CUDAcpl::Tensor>::sum(t1_tdd, t2_tdd);
+		auto actual = sum_r.CUDAcpl();
 		//auto indices = cache::pair_cmd(1);
 		//indices[0] = make_pair(0, 2);
 		//cout << res.CUDAcpl() << endl;
+		compare(t1, t1_tdd.CUDAcpl());
+		compare(t2, t2_tdd.CUDAcpl());
+		cout << expected << endl;
+		cout << actual << endl;
+
+		compare(expected, actual);
 
 
 

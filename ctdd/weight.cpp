@@ -9,7 +9,7 @@ void weight::func<wcomplex>::as_weight(const CUDAcpl::Tensor& t, wcomplex& weigh
 void weight::func<CUDAcpl::Tensor>::as_weight(const CUDAcpl::Tensor& t, CUDAcpl::Tensor& weight, const std::vector<int64_t>& data_shape) {
 	std::vector<int64_t> temp_shape{ data_shape };
 	temp_shape.push_back(2);
-	weight = t.reshape(temp_shape).clone();
+	weight = t.view(temp_shape).clone();
 }
 
 CUDAcpl::Tensor weight::func<wcomplex>::from_weight(const wcomplex& weight) {
@@ -18,6 +18,21 @@ CUDAcpl::Tensor weight::func<wcomplex>::from_weight(const wcomplex& weight) {
 
 CUDAcpl::Tensor weight::func<CUDAcpl::Tensor>::from_weight(const CUDAcpl::Tensor& weight) {
 	return weight;
+}
+
+CUDAcpl::Tensor weight::func<wcomplex>::res_mul_weight(const CUDAcpl::Tensor& tensor, const wcomplex& weight) {
+	return CUDAcpl::mul_element_wise(tensor, weight);
+}
+
+CUDAcpl::Tensor weight::func<CUDAcpl::Tensor>::res_mul_weight(
+	const CUDAcpl::Tensor& tensor, const CUDAcpl::Tensor& weight) {
+	auto&& sizes = tensor.sizes();
+	std::vector<int64_t> temp_shape(sizes.begin(), sizes.end());
+	for (int i = weight.dim() - 1; i < temp_shape.size() - 1; i++) {
+		temp_shape[i] = 1;
+	}
+	auto weight_expanded = weight.view(temp_shape);
+	return CUDAcpl::mul_element_wise(tensor, weight_expanded.expand_as(tensor));
 }
 
 wcomplex weight::func<wcomplex>::ones(const std::vector<int64_t>& data_shape) {

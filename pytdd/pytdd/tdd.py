@@ -98,7 +98,7 @@ class TDD:
             return ctdd.to_CUDAcpl(self._pointer)
 
     def numpy(self) -> np.ndarray:
-        return CUDAcpl.CUDAcpl2np(self.to_CUDAcpl())
+        return CUDAcpl.CUDAcpl2np(self.CUDAcpl())
 
     def __str__(self):
         return str(self.numpy())

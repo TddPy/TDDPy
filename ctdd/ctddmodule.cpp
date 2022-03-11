@@ -43,7 +43,7 @@ reset(PyObject* self, PyObject* args) {
 	// note that the settings here are shared between scalar and tensor weight.
 	TDD<wcomplex>::setting_update(device_cuda, new_eps);
 	TDD<wcomplex>::reset();
-	//TDD<CUDAcpl::Tensor>::reset();
+	TDD<CUDAcpl::Tensor>::reset();
 	return Py_BuildValue("");
 }
 
@@ -388,9 +388,11 @@ static PyMethodDef ctdd_methods[] = {
 	{ "to_CUDAcpl", (PyCFunction)to_CUDAcpl<wcomplex>, METH_VARARGS, "Return the python torch tensor of the given tdd." },
 	{ "to_CUDAcpl_T", (PyCFunction)to_CUDAcpl<CUDAcpl::Tensor>, METH_VARARGS, "Return the python torch tensor of the given tdd." },
 	{ "trace", (PyCFunction)trace<wcomplex>, METH_VARARGS, "Trace the designated indices of the given tdd." },
+	//{ "trace_T", (PyCFunction)trace<wcomplex>, METH_VARARGS, "Trace the designated indices of the given tdd." },
 	{ "tensordot_num", (PyCFunction)tensordot_num<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
 	{ "tensordot_ls", (PyCFunction)tensordot_ls<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
 	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "return the permuted tdd." },
+	{ "permute_T", (PyCFunction)permute<CUDAcpl::Tensor>, METH_VARARGS, "return the permuted tdd." },
 	{ "get_tdd_info", (PyCFunction)get_tdd_info<wcomplex>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },
 	{ "get_tdd_info_T", (PyCFunction)get_tdd_info<CUDAcpl::Tensor>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },
 	{ "get_tdd_size", (PyCFunction)get_tdd_size<wcomplex>, METH_VARARGS, "Get the size (non-terminal nodes) of the tdd." },
@@ -412,6 +414,6 @@ static PyModuleDef ctdd = {
 PyMODINIT_FUNC PyInit_ctdd() {
 	TDD<wcomplex>::setting_update();
 	TDD<wcomplex>::reset();
-	//TDD<CUDAcpl::Tensor>::reset();
+	TDD<CUDAcpl::Tensor>::reset();
 	return PyModule_Create(&ctdd);
 }

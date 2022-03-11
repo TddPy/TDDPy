@@ -28,7 +28,9 @@ CUDAcpl::Tensor CUDAcpl::reciprocal(const Tensor& a) {
 	auto&& a_real = a.select(a_dim, 0);
 	auto&& a_imag = a.select(a_dim, 1);
 	auto&& res = torch::stack({ a_real, -a_imag }, a_dim);
-	return res / (a_real * a_real + a_imag * a_imag);
+	auto&& denominator = (a_real * a_real + a_imag * a_imag).unsqueeze(a_dim);
+	denominator = denominator.expand_as(res);
+	return res / denominator;
 }
 
 Tensor CUDAcpl::tensordot(const Tensor& a, const Tensor& b,
