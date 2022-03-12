@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{5f5efa84-b7f3-4cd6-afeb-60291febebb3}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>test.py</StartupFile>
+    <StartupFile>experiments\test_contract\test_contract _T_width.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -28,6 +28,8 @@
     <OutputPath>bin\build\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="experiments\test_contract\test_contract _T_count.py" />
+    <Compile Include="experiments\test_contract\test_contract _T_width.py" />
     <Compile Include="experiments\test_contract\test_contract.py" />
     <Compile Include="experiments\test_order\test_order.py" />
     <Compile Include="pytdd\abstract_coordinator.py" />

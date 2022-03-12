@@ -28,9 +28,9 @@ unique_table_key<CUDAcpl::Tensor>::unique_table_key(int _order, const node::succ
 		get_int_key(code1.data() + i * numel, successors[i].weight);
 		nodes[i] = successors[i].node;
 	}
-	code2 = vector<WCode>(successors[0].weight.dim());
+	code2 = vector<WCode>(successors[0].weight.dim() - 1);
 	auto&& sizes = successors[0].weight.sizes();
-	for (int i = 0; i < successors[0].weight.dim(); i++) {
+	for (int i = 0; i < successors[0].weight.dim() - 1; i++) {
 		code2[i] = sizes[i];
 	}
 }
@@ -72,9 +72,9 @@ sum_key<CUDAcpl::Tensor>::sum_key(int id_a, const CUDAcpl::Tensor& weight_a, int
 		get_int_key(nweight1_code1.data(), weight_a);
 
 		// store the shape
-		nweight1_code2 = std::vector<WCode>(weight_a.dim());
+		nweight1_code2 = std::vector<WCode>(weight_a.dim() - 1);
 		auto&& sizes = weight_a.sizes();
-		for (int i = 0; i < weight_a.dim(); i++) {
+		for (int i = 0; i < weight_a.dim() - 1; i++) {
 			nweight1_code2[i] = sizes[i];
 		}
 
@@ -91,9 +91,9 @@ sum_key<CUDAcpl::Tensor>::sum_key(int id_a, const CUDAcpl::Tensor& weight_a, int
 		get_int_key(nweight1_code1.data(), weight_b);
 
 		// store the shape
-		nweight1_code2 = std::vector<WCode>(weight_b.dim());
+		nweight1_code2 = std::vector<WCode>(weight_b.dim() - 1);
 		auto&& sizes = weight_b.sizes();
-		for (int i = 0; i < weight_b.dim(); i++) {
+		for (int i = 0; i < weight_b.dim() - 1; i++) {
 			nweight1_code2[i] = sizes[i];
 		}
 

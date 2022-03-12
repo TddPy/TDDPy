@@ -4,14 +4,14 @@
 namespace weight {
 	extern double EPS;
 
-	typedef long long WCode;
+	typedef int64_t WCode;
 
 	inline void get_int_key(WCode* p_vec, double weight) {
 		*p_vec = (WCode)round(weight / EPS);
 	}
 
 	inline void get_int_key(WCode* p_vec, CUDAcpl::Tensor weight) {
-		auto&& temp = torch::round(weight / EPS).toType(c10::ScalarType::Int);
+		auto&& temp = torch::round(weight / EPS).toType(c10::ScalarType::Long);
 		auto ptr = (WCode*)temp.data_ptr();
 
 		for (int i = 0; i < temp.numel(); i++) {
