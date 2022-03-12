@@ -2,16 +2,10 @@
 #include "node.hpp"
 
 
-template <class W>
-class wnode {
-private:
-	inline static bool cmd_first_smaller(const std::pair<int, int>& a, const std::pair<int, int>& b) {
-		return a.first < b.first;
-	}
-	inline static bool cmd_second_smaller(const std::pair<int, int>& a, const std::pair<int, int>& b) {
-		return a.second < b.second;
-	}
-	inline static int get_cmd_insert_pos(const cache::pair_cmd& cmd_ls, int order) {
+
+namespace wnode {
+	
+	inline int get_cmd_insert_pos(const cache::pair_cmd& cmd_ls, int order) {
 		int insert_pos = 0;
 		for (; insert_pos < cmd_ls.size(); insert_pos++) {
 			if (cmd_ls[insert_pos].first < order) {
@@ -24,16 +18,54 @@ private:
 		return insert_pos;
 	}
 
-	static W get_normalizer(const node::succ_ls<W>& successors);
+	template <class W>
+	W get_normalizer(const node::succ_ls<W>& successors) {
+		if constexpr (std::is_same_v<W, wcomplex>) {
+			int i_max = 0;
+			double norm_max = norm(successors[0].weight);
+			for (int i = 1; i < successors.size(); i++) {
+				double temp_norm = norm(successors[i].weight);
+				// alter the maximum according to EPS, to avoid arbitrary normalization
+				if (temp_norm - norm_max > weight::EPS) {
+					i_max = i;
+					norm_max = temp_norm;
+				}
+			}
+			return successors[i_max].weight;
+		}
+		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+			auto&& sizes = successors[0].weight.sizes();
+			auto norm_max = CUDAcpl::norm(successors[0].weight);
 
-public:
+			auto&& normalizer = successors[0].weight.clone();
+
+			for (int i = 1; i < successors.size(); i++) {
+				auto temp_norm = CUDAcpl::norm(successors[i].weight);
+				auto alter_matrix = temp_norm - norm_max > weight::EPS;
+				norm_max = torch::where(alter_matrix, temp_norm, norm_max);
+
+				auto all_alter_matrix = alter_matrix.unsqueeze(alter_matrix.dim());
+				all_alter_matrix = all_alter_matrix.expand_as(normalizer);
+				normalizer = torch::where(all_alter_matrix, successors[i].weight, normalizer);
+			}
+
+			// process the 0-elements
+			auto zero_item = (norm_max < weight::EPS).unsqueeze(normalizer.dim() - 1);
+			zero_item = zero_item.expand_as(normalizer);
+			normalizer = torch::where(zero_item, CUDAcpl::ones_like(normalizer), normalizer);
+			return normalizer;
+		}
+	}
+
+
+
 	/// <summary>
 	/// Get the new order, when reduced indices are removed, and the left indices in order.
 	/// </summary>
 	/// <param name="length"></param>
 	/// <param name="reduced_indices">must be in order</param>
 	/// <returns></returns>
-	inline static std::vector<int64_t> get_new_order(int length, const std::vector<int64_t>& reduced_indices) {
+	inline std::vector<int64_t> get_new_order(int length, const std::vector<int64_t>& reduced_indices) {
 		////////////////////////////////
 		// prepare the new index order
 		if (reduced_indices.empty()) {
@@ -60,60 +92,26 @@ public:
 		return new_order;
 	}
 
-	inline static bool is_equal(const node::weightednode<W>& a, const node::weightednode<W>& b) {
-		return (a.node == b.node && weight::func<W>::is_equal(a.weight, b.weight));
+	template <class W>
+	inline bool is_equal(const node::weightednode<W>& a, const node::weightednode<W>& b) {
+		return (a.node == b.node && weight::is_equal(a.weight, b.weight));
 	}
 
 	/// <summary>
-	/// To create the weighted node iteratively according to the instructions.
-	/// </summary>
-	/// <returns></returns>
-	static node::weightednode<W> as_tensor_iterate(const CUDAcpl::Tensor& t,
-		const std::vector<int64_t>& para_shape,
-		const std::vector<int64_t>& data_shape,
-		const std::vector<int64_t>& storage_order, int depth) {
-
-		node::weightednode<W> res;
-		// checks whether the tensor is reduced to the [[...[val]...]] form
-		auto&& dim_data = data_shape.size() - 1;
-		if (depth == dim_data) {
-			weight::func<W>::as_weight(t, res.weight, para_shape);
-			res.node = nullptr;
-			return res;
-		}
-
-
-		int split_pos = storage_order[depth];
-		int axe_pos = t.dim() - dim_data + split_pos - 1;
-
-		//note: torch::chunk does not work here
-
-		auto&& new_successors = std::vector<node::weightednode<W>>(data_shape[split_pos]);
-		for (int i = 0; i < data_shape[split_pos]; i++) {
-			new_successors[i] = as_tensor_iterate(
-				// -1 is because the extra inner dim for real and imag
-				t.select(axe_pos, i).unsqueeze(axe_pos),
-				para_shape, data_shape, storage_order, depth + 1);
-		}
-		auto&& temp_node = node::Node<W>(depth, std::move(new_successors));
-		// normalize this depth
-		return normalize(node::weightednode<W>(weight::func<W>::ones(para_shape), &temp_node));
-	}
-
-	/// <summary>
-	/// Conduct the normalization of this wnode.
-	/// This method only normalize the given wnode, and assumes the wnodes under it are already normalized.
-	/// </summary>
-	/// <param name="w_node"></param>
-	/// <returns>Return the normalized node and normalization coefficients as a wnode.</returns>
-	static node::weightednode<W> normalize(const node::weightednode<W>& w_node) {
+/// Conduct the normalization of this wnode.
+/// This method only normalize the given wnode, and assumes the wnodes under it are already normalized.
+/// </summary>
+/// <param name="w_node"></param>
+/// <returns>Return the normalized node and normalization coefficients as a wnode.</returns>
+	template <class W>
+	node::weightednode<W> normalize(const node::weightednode<W>& w_node) {
 		if (w_node.node == nullptr) {
 			return node::weightednode<W>(w_node);
 		}
 
 		// redirect zero weighted nodes to the terminal node
-		if (weight::func<W>::is_zero(w_node.weight)) {
-			return node::weightednode<W>(weight::func<W>::zeros_like(w_node.weight), nullptr);
+		if (weight::is_zero(w_node.weight)) {
+			return node::weightednode<W>(weight::zeros_like(w_node.weight), nullptr);
 		}
 
 		auto&& successors = w_node.node->get_successors();
@@ -128,7 +126,7 @@ public:
 		}
 		if (all_equal) {
 			return node::weightednode<W>(
-				weight::func<W>::mul(w_node.weight, successors[0].weight),
+				weight::mul(w_node.weight, successors[0].weight),
 				successors[0].node
 				);
 		}
@@ -136,35 +134,75 @@ public:
 		// check whether all successor weights are zero, and redirect to terminal node if so
 		bool all_zero = true;
 		for (const auto& succ : successors) {
-			if (!weight::func<W>::is_zero(succ.weight)) {
+			if (!weight::is_zero(succ.weight)) {
 				all_zero = false;
 				break;
 			}
 		}
 		if (all_zero) {
-			return node::weightednode<W>(weight::func<W>::zeros_like(w_node.weight), nullptr);
+			return node::weightednode<W>(weight::zeros_like(w_node.weight), nullptr);
 		}
 
 
 		// start to normalize the weights
 		W weig_max = get_normalizer(successors);
-		W reciprocal = weight::func<W>::reciprocal(weig_max);
+		W reciprocal = weight::reciprocal(weig_max);
 
 		auto&& new_successors = std::vector<node::weightednode<W>>(successors);
 
 		for (auto&& succ : new_successors) {
-			succ.weight = weight::func<W>::mul(succ.weight, reciprocal);
+			succ.weight = weight::mul(succ.weight, reciprocal);
 		}
 		auto&& new_node = node::Node<W>::get_unique_node(w_node.node->get_order(), new_successors);
-		return node::weightednode<W>{ weight::func<W>::mul(weig_max, w_node.weight), new_node };
+		return node::weightednode<W>{ weight::mul(weig_max, w_node.weight), new_node };
 	}
+
+
+	/// <summary>
+	/// To create the weighted node iteratively according to the instructions.
+	/// </summary>
+	/// <returns></returns>
+	template <class W>
+	node::weightednode<W> as_tensor_iterate(const CUDAcpl::Tensor& t,
+		const std::vector<int64_t>& para_shape,
+		const std::vector<int64_t>& data_shape,
+		const std::vector<int64_t>& storage_order, int depth) {
+
+		node::weightednode<W> res;
+		// checks whether the tensor is reduced to the [[...[val]...]] form
+		auto&& dim_data = data_shape.size() - 1;
+		if (depth == dim_data) {
+			weight::as_weight(t, res.weight, para_shape);
+			res.node = nullptr;
+			return res;
+		}
+
+
+		int split_pos = storage_order[depth];
+		int axe_pos = t.dim() - dim_data + split_pos - 1;
+
+		//note: torch::chunk does not work here
+
+		auto&& new_successors = std::vector<node::weightednode<W>>(data_shape[split_pos]);
+		for (int i = 0; i < data_shape[split_pos]; i++) {
+			new_successors[i] = as_tensor_iterate<W>(
+				// -1 is because the extra inner dim for real and imag
+				t.select(axe_pos, i).unsqueeze(axe_pos),
+				para_shape, data_shape, storage_order, depth + 1);
+		}
+		auto&& temp_node = node::Node<W>(depth, std::move(new_successors));
+		// normalize this depth
+		return normalize(node::weightednode<W>(weight::ones<W>(para_shape), &temp_node));
+	}
+
 
 	/// <summary>
 	/// 
 	/// </summary>
 	/// <param name="w_node">Note that w_node.node should not be nullptr</param>
 	/// <returns>tensor of dim (dim_data - node.order + 1)</returns>
-	static CUDAcpl::Tensor to_CUDAcpl_iterate(const node::weightednode<W>& w_node, 
+	template <class W>
+	CUDAcpl::Tensor to_CUDAcpl_iterate(const node::weightednode<W>& w_node,
 		const std::vector<int64_t>& para_shape,
 		const std::vector<int64_t>& data_shape) {
 		// w_node.node is guaranteed not to be null
@@ -185,7 +223,7 @@ public:
 		for (auto&& i = successors.cbegin(); i != successors.cend(); i++, i_par++) {
 			// detect terminal nodes, or iterate on the next node
 			if (i->node == nullptr) {
-				temp_tensor = weight::func<W>::from_weight(i->weight);
+				temp_tensor = weight::from_weight(i->weight);
 				next_order = dim_data;
 			}
 			else {
@@ -196,14 +234,14 @@ public:
 					uniform_tensor = p_find_res->second;
 				}
 				else {
-					auto&& next_wnode = node::weightednode<W>(weight::func<W>::ones(para_shape), i->node);
+					auto&& next_wnode = node::weightednode<W>(weight::ones<W>(para_shape), i->node);
 					uniform_tensor = to_CUDAcpl_iterate(next_wnode, para_shape, data_shape);
 					// add into the dictionary
 					cache::Global_Cache<W>::p_CUDAcpl_cache->insert(std::make_pair(std::move(key), uniform_tensor));
 				}
 				next_order = i->node->get_order();
 				// multiply the dangling weight
-				temp_tensor = weight::func<W>::res_mul_weight(uniform_tensor, i->weight);
+				temp_tensor = weight::res_mul_weight(uniform_tensor, i->weight);
 			}
 
 			// broadcast according to the index distance
@@ -231,7 +269,7 @@ public:
 		}
 		auto&& res = torch::stack(par_tensor, dim_para);
 		// multiply the dangling weight and return
-		return weight::func<W>::res_mul_weight(res, w_node.weight);
+		return weight::res_mul_weight(res, w_node.weight);
 	}
 
 	/// <summary>
@@ -242,7 +280,8 @@ public:
 	/// <param name="inner_data_shape">data_shape(in the corresponding inner index order) is required, for the result should broadcast at reduced nodes of indices.
 	/// Note that an *extra dimension* of 2 is needed at the end of p_inner_data_shape.</param>
 	/// <returns></returns>
-	static CUDAcpl::Tensor to_CUDAcpl(const node::weightednode<W>& w_node, 
+	template <class W>
+	CUDAcpl::Tensor to_CUDAcpl(const node::weightednode<W>& w_node,
 		const std::vector<int64_t>& para_shape,
 		const std::vector<int64_t>& inner_data_shape) {
 		int n_extra_one = 0;
@@ -283,7 +322,54 @@ public:
 	/// <param name="weight1"></param>
 	/// <param name="weight2"></param>
 	/// <returns></returns>
-	inline static weight::sum_nweights<W> weights_normalize(const W& weight1, const W& weight2);
+	template <class W>
+	inline weight::sum_nweights<W> weights_normalize(const W& weight1, const W& weight2) {
+		if constexpr (std::is_same_v<W, wcomplex>) {
+			wcomplex renorm_coef = (norm(weight2) - norm(weight1) > weight::EPS) ? weight2 : weight1;
+
+			auto&& nweight1 = wcomplex(0., 0.);
+			auto&& nweight2 = wcomplex(0., 0.);
+			if (norm(renorm_coef) > weight::EPS) {
+				nweight1 = weight1 / renorm_coef;
+				nweight2 = weight2 / renorm_coef;
+			}
+			else {
+				renorm_coef = wcomplex(1., 0.);
+			}
+			return weight::sum_nweights<wcomplex>(
+				std::move(nweight1),
+				std::move(nweight2),
+				std::move(renorm_coef)
+				);
+		}
+		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+			auto norm2 = CUDAcpl::norm(weight2);
+			auto norm1 = CUDAcpl::norm(weight1);
+			auto chose_2 = norm2 - norm1 > weight::EPS;
+			auto norm_max = torch::where(chose_2, norm2, norm1);
+
+			auto all_chose_2 = chose_2.unsqueeze(chose_2.dim());
+			all_chose_2 = all_chose_2.expand_as(weight1);
+
+			auto renorm_coef = where(all_chose_2, weight2, weight1);
+
+			// process the 0-elements
+			auto zero_item = (norm_max < weight::EPS).unsqueeze(renorm_coef.dim() - 1);
+			zero_item = zero_item.expand_as(renorm_coef);
+
+			renorm_coef = where(zero_item, CUDAcpl::ones_like(renorm_coef), renorm_coef);
+			auto reciprocal = CUDAcpl::reciprocal(renorm_coef);
+
+			auto nweight1 = CUDAcpl::mul_element_wise(weight1, reciprocal);
+			auto nweight2 = CUDAcpl::mul_element_wise(weight2, reciprocal);
+
+			return weight::sum_nweights<CUDAcpl::Tensor>(
+				std::move(nweight1),
+				std::move(nweight2),
+				std::move(renorm_coef)
+				);
+		}
+	}
 
 
 	/// <summary>
@@ -296,12 +382,13 @@ public:
 	/// <param name="renorm_coef"></param>
 	/// <param name="sum_cache"></param>
 	/// <returns></returns>
-	static node::weightednode<W> sum_iterate(
+	template <class W>
+	node::weightednode<W> sum_iterate(
 		const node::weightednode<W>& w_node1,
 		const node::weightednode<W>& w_node2, const W& renorm_coef, const std::vector<int64_t>& para_shape) {
 
 		if (w_node1.node == nullptr && w_node2.node == nullptr) {
-			return node::weightednode<W>(weight::func<W>::mul((w_node1.weight + w_node2.weight), renorm_coef), nullptr);
+			return node::weightednode<W>(weight::mul((w_node1.weight + w_node2.weight), renorm_coef), nullptr);
 		}
 
 		// produce the unique key and look up in the cache
@@ -312,7 +399,7 @@ public:
 		auto&& p_find_res = cache::Global_Cache<W>::p_sum_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_sum_cache->end()) {
 			node::weightednode<W> res = p_find_res->second;
-			res.weight = weight::func<W>::mul(res.weight, renorm_coef);
+			res.weight = weight::mul(res.weight, renorm_coef);
 			return res;
 		}
 		else {
@@ -358,15 +445,15 @@ public:
 					for (; i_1 != successors_1.end(); i_1++, i_2++, i_new++) {
 						// normalize as a whole
 						auto&& renorm_res = weights_normalize(
-							weight::func<W>::mul(p_wnode_1->weight, i_1->weight),
-							weight::func<W>::mul(p_wnode_2->weight, i_2->weight)
+							weight::mul(p_wnode_1->weight, i_1->weight),
+							weight::mul(p_wnode_2->weight, i_2->weight)
 						);
 						auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
 						auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->node);
 						*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 					}
 					auto&& temp_node = node::Node<W>(p_wnode_1->node->get_order(), std::move(new_successors));
-					res = normalize(node::weightednode<W>(weight::func<W>::ones(para_shape), &temp_node));
+					res = normalize(node::weightednode<W>(weight::ones<W>(para_shape), &temp_node));
 					not_operated = false;
 				}
 			}
@@ -385,13 +472,13 @@ public:
 				auto&& i_new = new_successors.begin();
 				for (; i_1 != successors.end(); i_1++, i_new++) {
 					auto&& renorm_res = weights_normalize(
-						weight::func<W>::mul(p_wnode_1->weight, i_1->weight), p_wnode_2->weight);
+						weight::mul(p_wnode_1->weight, i_1->weight), p_wnode_2->weight);
 					auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
 					auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), p_wnode_2->node);
 					*i_new = sum_iterate(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 				}
 				auto&& temp_node = node::Node<W>(p_wnode_1->node->get_order(), std::move(new_successors));
-				res = normalize(node::weightednode<W>(weight::func<W>::ones(para_shape), &temp_node));
+				res = normalize(node::weightednode<W>(weight::ones<W>(para_shape), &temp_node));
 			}
 
 
@@ -399,7 +486,7 @@ public:
 			cache::Global_Cache<W>::p_sum_cache->insert(std::make_pair(std::move(key), res));
 
 			// multiply the renorm_coef and return
-			res.weight = weight::func<W>::mul(res.weight, renorm_coef);
+			res.weight = weight::mul(res.weight, renorm_coef);
 			return res;
 		}
 	}
@@ -410,7 +497,8 @@ public:
 	/// <param name="w_node1"></param>
 	/// <param name="w_node2"></param>
 	/// <returns></returns>
-	static node::weightednode<W> sum(
+	template <class W>
+	node::weightednode<W> sum(
 		const node::weightednode<W>& w_node1,
 		const node::weightednode<W>& w_node2, const std::vector<int64_t>& para_shape) {
 		// normalize as a whole
@@ -427,7 +515,8 @@ public:
 	///	2. indices in waiting_ls must be sorted in the asscending order to keep the cache key unique.
 	/// </summary>
 	/// <returns></returns>
-	static node::weightednode<W> trace_iterate(const node::weightednode<W>& w_node, 
+	template <class W>
+	node::weightednode<W> trace_iterate(const node::weightednode<W>& w_node,
 		const std::vector<int64_t>& para_shape,
 		const std::vector<int64_t>& data_shape,
 		const cache::pair_cmd& remained_ls, const cache::pair_cmd& waiting_ls, const std::vector<int64_t>& new_order) {
@@ -448,7 +537,7 @@ public:
 		auto&& p_find_res = cache::Global_Cache<W>::p_trace_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_trace_cache->end()) {
 			res = p_find_res->second;
-			res.weight = weight::func<W>::mul(res.weight, w_node.weight);
+			res.weight = weight::mul(res.weight, w_node.weight);
 			return res;
 		}
 		else {
@@ -537,7 +626,7 @@ public:
 						int index_val = 0;
 						for (auto&& succ_new : new_successors) {
 							next_waiting_ls[insert_pos].second = index_val;
-							succ_new = trace_iterate(node::weightednode<W>(weight::func<W>::ones(para_shape), w_node.node),
+							succ_new = trace_iterate(node::weightednode<W>(weight::ones<W>(para_shape), w_node.node),
 								para_shape, data_shape, next_remained_ls, next_waiting_ls, new_order);
 							index_val++;
 						}
@@ -566,13 +655,13 @@ public:
 					}
 				}
 				auto&& temp_node = node::Node<W>(new_order[order], std::move(new_successors));
-				res = normalize(node::weightednode<W>(weight::func<W>::ones(para_shape), &temp_node));
+				res = normalize(node::weightednode<W>(weight::ones<W>(para_shape), &temp_node));
 			}
 
 			// add to the cache
 			res.weight = res.weight * scale;
 			cache::Global_Cache<W>::p_trace_cache->insert(std::make_pair(std::move(key), res));
-			res.weight = weight::func<W>::mul(res.weight, w_node.weight);
+			res.weight = weight::mul(res.weight, w_node.weight);
 			return res;
 		}
 	}
@@ -588,7 +677,8 @@ public:
 	/// <param name="remained_ls">data_indices should be counted in the data indices only.(smaller indices are required to be in the first place.)</param>
 	/// <param name="reduced_indices"> must be sorted </param>
 	/// <returns></returns>
-	static node::weightednode<W> trace(const node::weightednode<W>& w_node, 
+	template <class W>
+	node::weightednode<W> trace(const node::weightednode<W>& w_node,
 		const std::vector<int64_t>& para_shape,
 		const std::vector<int64_t>& data_shape,
 		const cache::pair_cmd& remained_ls, const std::vector<int64_t> reduced_indices) {
@@ -628,7 +718,8 @@ public:
 	/// <param name="b_new_order">the new order of each node in B</param>
 	/// <param name="parallel_tensor">whether to tensor on the parallel indices</param>
 	/// <returns></returns>
-	static node::weightednode<W> contract_iterate(
+	template <class W>
+	node::weightednode<W> contract_iterate(
 		const node::Node<W>* p_node_a, const node::Node<W>* p_node_b, const W& weight,
 		const std::vector<int64_t>& para_shape_a, const std::vector<int64_t>& para_shape_b,
 		const std::vector<int64_t>& data_shape_a, const std::vector<int64_t>& data_shape_b,
@@ -656,7 +747,7 @@ public:
 		auto&& p_find_res = cache::Global_Cache<W>::p_cont_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_cont_cache->end()) {
 			res = p_find_res->second;
-			res.weight = weight::func<W>::mul(res.weight, weight);
+			res.weight = weight::mul(res.weight, weight);
 			return res;
 		}
 		else {
@@ -717,7 +808,7 @@ public:
 					auto&& next_a_waiting_ls = removed(a_waiting_ls_pd, 0);
 					auto&& succ = p_node_a->get_successors()[index_val];
 					res = contract_iterate(succ.node, p_node_b, 
-						weight::func<W>::weight_expanded_back(succ.weight, para_shape_b, parallel_tensor),
+						weight::weight_expanded_back(succ.weight, para_shape_b, parallel_tensor),
 						para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, next_a_waiting_ls, b_waiting_ls_pd,
 						a_new_order, b_new_order, parallel_tensor);
@@ -733,7 +824,7 @@ public:
 					auto&& next_b_waiting_ls = removed(b_waiting_ls_pd, 0);
 					auto&& succ = p_node_b->get_successors()[index_val];
 					res = contract_iterate(p_node_a, succ.node, 
-						weight::func<W>::weight_expanded_front(succ.weight, para_shape_a, parallel_tensor),
+						weight::weight_expanded_front(succ.weight, para_shape_a, parallel_tensor),
 						para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, a_waiting_ls_pd, next_b_waiting_ls,
 						a_new_order, b_new_order, parallel_tensor);
@@ -764,14 +855,14 @@ public:
 					for (auto&& i_a = successors_a.begin(); i_a != successors_a.end(); i_new++, i_a++) {
 
 						*i_new = contract_iterate(i_a->node, p_node_b, 
-							weight::func<W>::weight_expanded_back(i_a->weight, para_shape_b, parallel_tensor),
+							weight::weight_expanded_back(i_a->weight, para_shape_b, parallel_tensor),
 							para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
 							a_new_order, b_new_order, parallel_tensor);
 					}
 					auto&& temp_node = node::Node<W>(a_new_order[order_a], std::move(new_successors));
 					res = normalize(node::weightednode<W>(
-						weight::func<W>::ones_like(weight),
+						weight::ones_like(weight),
 						&temp_node)
 					);
 					goto RETURN;
@@ -786,14 +877,14 @@ public:
 					auto&& i_new = new_successors.begin();
 					for (auto&& i_b = successors_b.begin(); i_b != successors_b.end(); i_new++, i_b++) {
 						*i_new = contract_iterate(p_node_a, i_b->node,
-							weight::func<W>::weight_expanded_front(i_b->weight, para_shape_a, parallel_tensor),
+							weight::weight_expanded_front(i_b->weight, para_shape_a, parallel_tensor),
 							para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
 							a_new_order, b_new_order, parallel_tensor);
 					}
 					auto&& temp_node = node::Node<W>(b_new_order[order_b], std::move(new_successors));
 					res = normalize(node::weightednode<W>(
-						weight::func<W>::ones_like(weight),
+						weight::ones_like(weight),
 						&temp_node));
 					goto RETURN;
 				}
@@ -824,7 +915,7 @@ public:
 							i_new++, i_a++, index_val++) {
 							next_b_waiting_ls[insert_pos].second = index_val;
 							*i_new = contract_iterate(i_a->node, p_node_b,
-								weight::func<W>::weight_expanded_back(i_a->weight, para_shape_b, parallel_tensor),
+								weight::weight_expanded_back(i_a->weight, para_shape_b, parallel_tensor),
 								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
 								a_new_order, b_new_order, parallel_tensor);
@@ -836,7 +927,7 @@ public:
 						for (auto&& succ_new : new_successors) {
 							next_b_waiting_ls[insert_pos].second = index_val;
 							succ_new = contract_iterate(p_node_a, p_node_b, 
-								weight::func<W>::ones_like(weight), para_shape_a, para_shape_b,
+								weight::ones_like(weight), para_shape_a, para_shape_b,
 								data_shape_a, data_shape_b, next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
 								a_new_order, b_new_order, parallel_tensor
 							);
@@ -863,7 +954,7 @@ public:
 							i_new++, i_b++, index_val++) {
 							next_a_waiting_ls[insert_pos].second = index_val;
 							*i_new = contract_iterate(p_node_a, i_b->node,
-								weight::func<W>::weight_expanded_front(i_b->weight, para_shape_a, parallel_tensor),
+								weight::weight_expanded_front(i_b->weight, para_shape_a, parallel_tensor),
 								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd, 
 								a_new_order, b_new_order, parallel_tensor);
@@ -875,7 +966,7 @@ public:
 						for (auto&& succ_new : new_successors) {
 							next_a_waiting_ls[insert_pos].second = index_val;
 							succ_new = contract_iterate(
-								p_node_a, p_node_b, weight::func<W>::ones_like(weight), para_shape_a, para_shape_b,
+								p_node_a, p_node_b, weight::ones_like(weight), para_shape_a, para_shape_b,
 								data_shape_a, data_shape_b, next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd,
 								a_new_order, b_new_order, parallel_tensor
 							);
@@ -902,7 +993,7 @@ public:
 			// add to the cache
 			res.weight = res.weight * scale;
 			cache::Global_Cache<W>::p_cont_cache->insert(std::make_pair(std::move(key), res));
-			res.weight = weight::func<W>::mul(res.weight, weight);
+			res.weight = weight::mul(res.weight, weight);
 			return res;
 		}
 	}
@@ -917,7 +1008,8 @@ public:
 	/// <param name="cont_indices">given in the inner order. list of (first, second). first: indices of a, second: indices of b </param>
 	/// <param name="parallel_tensor"></param>
 	/// <returns></returns>
-	static node::weightednode<W> contract(
+	template <class W>
+	node::weightednode<W> contract(
 		const node::weightednode<W>& w_node_a, const node::weightednode<W>& w_node_b,
 		const std::vector<int64_t>& para_shape_a, const std::vector<int64_t>& para_shape_b,
 		const std::vector<int64_t>& data_shape_a, const std::vector<int64_t>& data_shape_b,
@@ -936,7 +1028,7 @@ public:
 		//std::cout << sorted_remained_ls << std::endl;
 
 		return contract_iterate(w_node_a.node, w_node_b.node, 
-			weight::func<W>::prepare_weight(w_node_a.weight, w_node_b.weight, parallel_tensor),
+			weight::prepare_weight(w_node_a.weight, w_node_b.weight, parallel_tensor),
 			para_shape_a, para_shape_b,
 			data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
 			a_new_order, b_new_order, parallel_tensor);

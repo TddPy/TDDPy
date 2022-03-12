@@ -273,7 +273,7 @@ namespace tdd {
 			for (int i = 0; i < dim_data; i++) {
 				temp_data[i] = t.size(i + dim_parallel);
 			}
-			auto&& w_node = wnode<W>::as_tensor_iterate(t, temp_para, temp_data, storage_order_pd, 0);
+			auto&& w_node = wnode::as_tensor_iterate<W>(t, temp_para, temp_data, storage_order_pd, 0);
 			return TDD(std::move(w_node), std::move(temp_para), std::move(temp_data), std::move(storage_order_pd));
 		}
 
@@ -284,7 +284,7 @@ namespace tdd {
 		/// </summary>
 		/// <returns></returns>
 		CUDAcpl::Tensor CUDAcpl() const {
-			auto&& res = wnode<W>::to_CUDAcpl(m_wnode, m_para_shape, m_inner_data_shape);
+			auto&& res = wnode::to_CUDAcpl(m_wnode, m_para_shape, m_inner_data_shape);
 			// permute to the right index order
 			res = res.permute(m_inversed_global_order);
 			return res;
@@ -299,7 +299,7 @@ namespace tdd {
 		/// <param name="b"></param>
 		/// <returns></returns>
 		inline static TDD<W> sum(const TDD<W>& a, const TDD<W>& b) {
-			auto&& res_wnode = wnode<W>::sum(a.m_wnode, b.m_wnode, a.m_para_shape);
+			auto&& res_wnode = wnode::sum(a.m_wnode, b.m_wnode, a.m_para_shape);
 			return TDD(std::move(res_wnode),
 				std::vector<int64_t>(a.m_para_shape),
 				std::vector<int64_t>(a.m_data_shape),
@@ -341,7 +341,7 @@ namespace tdd {
 				std::sort(inner_i_reduced.begin(), inner_i_reduced.end());
 
 				//note that inner_indices.first < innier_indices.second should hold for every i
-				auto&& res_wnode = wnode<W>::trace(m_wnode, m_para_shape, m_inner_data_shape, inner_indices_cmd, inner_i_reduced);
+				auto&& res_wnode = wnode::trace(m_wnode, m_para_shape, m_inner_data_shape, inner_indices_cmd, inner_i_reduced);
 
 				auto&& reduced_info = index_reduced_info(inner_i_reduced);
 
@@ -488,7 +488,7 @@ namespace tdd {
 			}
 
 			// note that rearrangement does not need be processed.
-			auto&& res_wnode = wnode<W>::contract(a.m_wnode, b.m_wnode, a.m_para_shape, b.m_para_shape,
+			auto&& res_wnode = wnode::contract(a.m_wnode, b.m_wnode, a.m_para_shape, b.m_para_shape,
 				a.m_inner_data_shape, b.m_inner_data_shape,
 				inner_indices_cmd, a_inner_order, b_inner_order, parallel_tensor);
 

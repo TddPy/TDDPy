@@ -286,7 +286,7 @@ get_tdd_info(PyObject* self, PyObject* args) {
 	auto&& tdd_p_storage_order = p_tdd->storage_order();
 
 	// prepare the objects
-	auto&& py_weight = THPVariable_Wrap(weight::func<W>::from_weight(tdd_weight));
+	auto&& py_weight = THPVariable_Wrap(weight::from_weight(tdd_weight));
 
 	auto&& py_parallel_shape = PyTuple_New(tdd_dim_parallel);
 	for (int i = 0; i < tdd_dim_parallel; i++) {
@@ -362,7 +362,7 @@ get_node_info(PyObject* self, PyObject* args) {
 	auto&& py_successors = PyTuple_New(node_range);
 	for (int i = 0; i < node_range; i++) {
 		auto&& temp_succ = Py_BuildValue("{sOsO}",
-			"weight", THPVariable_Wrap(weight::func<W>::from_weight(node_successors[i].weight)),
+			"weight", THPVariable_Wrap(weight::from_weight(node_successors[i].weight)),
 			"node", PyLong_FromLongLong((int64_t)node_successors[i].node));
 		
 		PyTuple_SetItem(py_successors, i, temp_succ);

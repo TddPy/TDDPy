@@ -288,7 +288,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="cache.cpp" />
     <ClCompile Include="ctddmodule.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">false</ExcludedFromBuild>
@@ -301,8 +300,6 @@
     </ClCompile>
     <ClCompile Include="simpletools.cpp" />
     <ClCompile Include="tdd.cpp" />
-    <ClCompile Include="weight.cpp" />
-    <ClCompile Include="wnode.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cache.hpp" />

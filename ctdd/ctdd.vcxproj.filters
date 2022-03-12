@@ -33,20 +33,11 @@
     <ClCompile Include="main_test.cpp">
       <Filter>interface</Filter>
     </ClCompile>
-    <ClCompile Include="weight.cpp">
-      <Filter>sources</Filter>
-    </ClCompile>
-    <ClCompile Include="cache.cpp">
-      <Filter>sources</Filter>
-    </ClCompile>
     <ClCompile Include="tdd.cpp">
       <Filter>sources</Filter>
     </ClCompile>
     <ClCompile Include="simpletools.cpp">
       <Filter>dependency</Filter>
-    </ClCompile>
-    <ClCompile Include="wnode.cpp">
-      <Filter>sources</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
