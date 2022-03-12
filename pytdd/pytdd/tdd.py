@@ -248,22 +248,40 @@ class TDD:
 
         new_coordinator_info = TDD.coordinator.tensordot_order_info(a._coordinator_info, b._coordinator_info, axes)
         if isinstance(axes, int):
-            if a.tensor_weight:
-                pointer = ctdd.tensordot_num_T(a.pointer, b.pointer, axes, rearrangement, parallel_tensor)
+            # conditioning on the weight version
+            if not a.tensor_weight and not b.tensor_weight:
+                pointer = ctdd.tensordot_num_WW(a.pointer, b.pointer, axes, rearrangement, parallel_tensor)
+                res_tensor_weight = False
+            elif a.tensor_weight and b.tensor_weight:
+                pointer = ctdd.tensordot_num_TT(a.pointer, b.pointer, axes, rearrangement, parallel_tensor)
+                res_tensor_weight = True
+            elif a.tensor_weight and not b.tensor_weight:
+                pointer = ctdd.tensordot_num_TW(a.pointer, b.pointer, axes, rearrangement, parallel_tensor)
+                res_tensor_weight = True
             else:
-                pointer = ctdd.tensordot_num(a.pointer, b.pointer, axes, rearrangement, parallel_tensor)
+                pointer = ctdd.tensordot_num_WT(a.pointer, b.pointer, axes, rearrangement, parallel_tensor)
+                res_tensor_weight = True
         else:
             i1 = list(axes[0])
             i2 = list(axes[1])
             if len(i1) != len(i2):
                 raise Exception("The list of indices provided")
             
-            if a.tensor_weight:
-                pointer = ctdd.tensordot_ls_T(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
+            # conditioning on the weight version
+            if not a.tensor_weight and not b.tensor_weight:
+                pointer = ctdd.tensordot_ls_WW(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
+                res_tensor_weight = False
+            elif a.tensor_weight and b.tensor_weight:
+                pointer = ctdd.tensordot_ls_TT(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
+                res_tensor_weight = True
+            elif a.tensor_weight and not b.tensor_weight:
+                pointer = ctdd.tensordot_ls_TW(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
+                res_tensor_weight = True
             else:
-                pointer = ctdd.tensordot_ls(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
+                pointer = ctdd.tensordot_ls_WT(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
+                res_tensor_weight = True
         
-        res = TDD(pointer, a.tensor_weight, new_coordinator_info)
+        res = TDD(pointer, res_tensor_weight, new_coordinator_info)
         return res
 
 

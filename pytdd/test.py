@@ -25,4 +25,6 @@ pytdd_test.test1_T()
 pytdd_test.test1_T2()
 pytdd_test.test3_q_T()
 
+pytdd_test.test1_H()
+
 os.system('pause')

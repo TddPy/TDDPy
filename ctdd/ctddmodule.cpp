@@ -163,7 +163,7 @@ trace(PyObject* self, PyObject* args) {
 /// <param name="self"></param>
 /// <param name="args"></param>
 /// <returns></returns>
-template <class W>
+template <typename W1, typename W2>
 static PyObject*
 tensordot_num(PyObject* self, PyObject* args) {
 	int64_t code_a, code_b;
@@ -173,8 +173,8 @@ tensordot_num(PyObject* self, PyObject* args) {
 	if (!PyArg_ParseTuple(args, "LLiOi", &code_a, &code_b, &dim, &p_rearrangement_pyo, &parallel_tensor)) {
 		return NULL;
 	}
-	TDD<W>* p_tdda = (TDD<W>*)code_a;
-	TDD<W>* p_tddb = (TDD<W>*)code_b;
+	TDD<W1>* p_tdda = (TDD<W1>*)code_a;
+	TDD<W2>* p_tddb = (TDD<W2>*)code_b;
 
 	auto&& size = PyList_GET_SIZE(p_rearrangement_pyo);
 	std::vector<int> rearrangement(size);
@@ -182,7 +182,8 @@ tensordot_num(PyObject* self, PyObject* args) {
 		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i));
 	}
 
-	auto&& p_res = new TDD<W>(TDD<W>::tensordot_num(*p_tdda, *p_tddb, dim, rearrangement, parallel_tensor));
+	auto&& p_res = new TDD<weight::W_C<W1, W2>>
+		(tdd::tensordot_num(*p_tdda, *p_tddb, dim, rearrangement, parallel_tensor));
 	// convert to long long
 	int64_t code = (int64_t)p_res;
 	return Py_BuildValue("L", code);
@@ -194,7 +195,7 @@ tensordot_num(PyObject* self, PyObject* args) {
 /// <param name="self"></param>
 /// <param name="args"></param>
 /// <returns></returns>
-template <class W>
+template <typename W1, typename W2>
 static PyObject*
 tensordot_ls(PyObject* self, PyObject* args) {
 	int64_t code_a, code_b;
@@ -203,8 +204,8 @@ tensordot_ls(PyObject* self, PyObject* args) {
 	if (!PyArg_ParseTuple(args, "LLOOOi", &code_a, &code_b, &p_i1_pyo, &p_i2_pyo, &p_rearrangement_pyo, &parallel_tensor)) {
 		return NULL;
 	}
-	TDD<W>* p_tdda = (TDD<W>*)code_a;
-	TDD<W>* p_tddb = (TDD<W>*)code_b;
+	TDD<W1>* p_tdda = (TDD<W1>*)code_a;
+	TDD<W2>* p_tddb = (TDD<W2>*)code_b;
 
 	auto size = PyList_GET_SIZE(p_i1_pyo);
 	std::vector<int64_t> i1(size);
@@ -220,7 +221,8 @@ tensordot_ls(PyObject* self, PyObject* args) {
 		rearrangement[i] = PyLong_AsLong(PyList_GetItem(p_rearrangement_pyo, i));
 	}
 
-	auto&& p_res = new TDD<W>(TDD<W>::tensordot(*p_tdda, *p_tddb, i1, i2, rearrangement, parallel_tensor));
+	auto&& p_res = new TDD<weight::W_C<W1, W2>>
+		(tdd::tensordot(*p_tdda, *p_tddb, i1, i2, rearrangement, parallel_tensor));
 
 	// convert to long long
 	int64_t code = (int64_t)p_res;
@@ -391,10 +393,14 @@ static PyMethodDef ctdd_methods[] = {
 	{ "to_CUDAcpl_T", (PyCFunction)to_CUDAcpl<CUDAcpl::Tensor>, METH_VARARGS, "Return the python torch tensor of the given tdd." },
 	{ "trace", (PyCFunction)trace<wcomplex>, METH_VARARGS, "Trace the designated indices of the given tdd." },
 	{ "trace_T", (PyCFunction)trace<CUDAcpl::Tensor>, METH_VARARGS, "Trace the designated indices of the given tdd." },
-	{ "tensordot_num", (PyCFunction)tensordot_num<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_num_T", (PyCFunction)tensordot_num<CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_ls", (PyCFunction)tensordot_ls<wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "tensordot_ls_T", (PyCFunction)tensordot_ls<CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "tensordot_num_WW", (PyCFunction)tensordot_num<wcomplex, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
+	{ "tensordot_num_WT", (PyCFunction)tensordot_num<wcomplex, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
+	{ "tensordot_num_TW", (PyCFunction)tensordot_num<CUDAcpl::Tensor, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
+	{ "tensordot_num_TT", (PyCFunction)tensordot_num<CUDAcpl::Tensor, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
+	{ "tensordot_ls_WW", (PyCFunction)tensordot_ls<wcomplex, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "tensordot_ls_WT", (PyCFunction)tensordot_ls<wcomplex, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "tensordot_ls_TW", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "tensordot_ls_TT", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
 	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "return the permuted tdd." },
 	{ "permute_T", (PyCFunction)permute<CUDAcpl::Tensor>, METH_VARARGS, "return the permuted tdd." },
 	{ "get_tdd_info", (PyCFunction)get_tdd_info<wcomplex>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },

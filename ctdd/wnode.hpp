@@ -718,9 +718,10 @@ namespace wnode {
 	/// <param name="b_new_order">the new order of each node in B</param>
 	/// <param name="parallel_tensor">whether to tensor on the parallel indices</param>
 	/// <returns></returns>
-	template <class W>
-	node::weightednode<W> contract_iterate(
-		const node::Node<W>* p_node_a, const node::Node<W>* p_node_b, const W& weight,
+	template <typename W1, typename W2>
+	node::weightednode<weight::W_C<W1, W2>> contract_iterate(
+		const node::Node<W1>* p_node_a, const node::Node<W2>* p_node_b,
+		const weight::W_C<W1, W2>& weight,
 		const std::vector<int64_t>& para_shape_a, const std::vector<int64_t>& para_shape_b,
 		const std::vector<int64_t>& data_shape_a, const std::vector<int64_t>& data_shape_b,
 		const cache::pair_cmd& remained_ls,
@@ -733,19 +734,19 @@ namespace wnode {
 			for (const auto& cmd : remained_ls) {
 				scale *= data_shape_a[cmd.first];
 			}
-			return node::weightednode<W>(weight * scale, nullptr);
+			return node::weightednode<weight::W_C<W1, W2>>(weight * scale, nullptr);
 		}
 
-		node::weightednode<W> res;
+		node::weightednode<weight::W_C<W1, W2>> res;
 
 		auto&& order_a = p_node_a == nullptr ? data_shape_a.size() - 1 : p_node_a->get_order();
 		auto&& order_b = p_node_b == nullptr ? data_shape_b.size() - 1 : p_node_b->get_order();
 		// first look up in the dictionary
 		// note that the results stored in cache is calculated with the uniformed (1., w_node_a.node) and (1., w_node_b.node)
-		auto&& key = cache::cont_key<W>(p_node_a, p_node_b, remained_ls,
+		auto&& key = cache::cont_key<W1, W2>(p_node_a, p_node_b, remained_ls,
 			a_waiting_ls, b_waiting_ls, a_new_order, order_a, b_new_order, order_b, parallel_tensor);
-		auto&& p_find_res = cache::Global_Cache<W>::p_cont_cache->find(key);
-		if (p_find_res != cache::Global_Cache<W>::p_cont_cache->end()) {
+		auto&& p_find_res = cache::Cont_Cache<W1, W2>::p_cont_cache->find(key);
+		if (p_find_res != cache::Cont_Cache<W1, W2>::p_cont_cache->end()) {
 			res = p_find_res->second;
 			res.weight = weight::mul(res.weight, weight);
 			return res;
@@ -807,8 +808,8 @@ namespace wnode {
 					// close the waiting index
 					auto&& next_a_waiting_ls = removed(a_waiting_ls_pd, 0);
 					auto&& succ = p_node_a->get_successors()[index_val];
-					res = contract_iterate(succ.node, p_node_b, 
-						weight::weight_expanded_back(succ.weight, para_shape_b, parallel_tensor),
+					res = contract_iterate(succ.node, p_node_b,
+						weight::weight_expanded_back<W1, W2>(succ.weight, para_shape_b, parallel_tensor),
 						para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, next_a_waiting_ls, b_waiting_ls_pd,
 						a_new_order, b_new_order, parallel_tensor);
@@ -823,8 +824,8 @@ namespace wnode {
 					// close the waiting index
 					auto&& next_b_waiting_ls = removed(b_waiting_ls_pd, 0);
 					auto&& succ = p_node_b->get_successors()[index_val];
-					res = contract_iterate(p_node_a, succ.node, 
-						weight::weight_expanded_front(succ.weight, para_shape_a, parallel_tensor),
+					res = contract_iterate(p_node_a, succ.node,
+						weight::weight_expanded_front<W1, W2>(succ.weight, para_shape_a, parallel_tensor),
 						para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, a_waiting_ls_pd, next_b_waiting_ls,
 						a_new_order, b_new_order, parallel_tensor);
@@ -847,21 +848,23 @@ namespace wnode {
 
 			if (choice_A) {
 				if (a_node_uncontracted) {
-					std::vector<node::weightednode<W>> new_successors;
+					std::vector<node::weightednode<weight::W_C<W1, W2>>> new_successors;
 					// w_node_a.node will not be null
 					auto&& successors_a = p_node_a->get_successors();
-					new_successors = std::vector<node::weightednode<W>>(data_shape_a[order_a]);
+					new_successors = std::vector<node::weightednode<weight::W_C<W1, W2>>>
+						(data_shape_a[order_a]);
 					auto&& i_new = new_successors.begin();
 					for (auto&& i_a = successors_a.begin(); i_a != successors_a.end(); i_new++, i_a++) {
 
 						*i_new = contract_iterate(i_a->node, p_node_b, 
-							weight::weight_expanded_back(i_a->weight, para_shape_b, parallel_tensor),
+							weight::weight_expanded_back<W1, W2>(i_a->weight, para_shape_b, parallel_tensor),
 							para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
 							a_new_order, b_new_order, parallel_tensor);
 					}
-					auto&& temp_node = node::Node<W>(a_new_order[order_a], std::move(new_successors));
-					res = normalize(node::weightednode<W>(
+					auto&& temp_node = node::Node<weight::W_C<W1, W2>>
+						(a_new_order[order_a], std::move(new_successors));
+					res = normalize(node::weightednode<weight::W_C<W1, W2>>(
 						weight::ones_like(weight),
 						&temp_node)
 					);
@@ -870,20 +873,22 @@ namespace wnode {
 			}
 			else {
 				if (b_node_uncontracted) {
-					std::vector<node::weightednode<W>> new_successors;
+					std::vector<node::weightednode<weight::W_C<W1, W2>>> new_successors;
 					// w_node_b.node will not be null
 					auto&& successors_b = p_node_b->get_successors();
-					new_successors = std::vector<node::weightednode<W>>(data_shape_b[order_b]);
+					new_successors = std::vector<node::weightednode<weight::W_C<W1, W2>>>
+						(data_shape_b[order_b]);
 					auto&& i_new = new_successors.begin();
 					for (auto&& i_b = successors_b.begin(); i_b != successors_b.end(); i_new++, i_b++) {
 						*i_new = contract_iterate(p_node_a, i_b->node,
-							weight::weight_expanded_front(i_b->weight, para_shape_a, parallel_tensor),
+							weight::weight_expanded_front<W1, W2>(i_b->weight, para_shape_a, parallel_tensor),
 							para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 							remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
 							a_new_order, b_new_order, parallel_tensor);
 					}
-					auto&& temp_node = node::Node<W>(b_new_order[order_b], std::move(new_successors));
-					res = normalize(node::weightednode<W>(
+					auto&& temp_node = node::Node<weight::W_C<W1, W2>>
+						(b_new_order[order_b], std::move(new_successors));
+					res = normalize(node::weightednode<weight::W_C<W1, W2>>(
 						weight::ones_like(weight),
 						&temp_node));
 					goto RETURN;
@@ -894,7 +899,7 @@ namespace wnode {
 
 			// remained_ls not empty holds in this situation
 			{
-				std::vector<node::weightednode<W>> new_successors;
+				std::vector<node::weightednode<weight::W_C<W1, W2>>> new_successors;
 
 				if (order_a >= remained_ls_pd[0].first) {
 					auto&& next_remained_ls = removed(remained_ls_pd, 0);
@@ -905,7 +910,8 @@ namespace wnode {
 						remained_ls_pd[0].second, 0)
 					);
 
-					new_successors = std::vector<node::weightednode<W>>(data_shape_a[remained_ls_pd[0].first]);
+					new_successors = std::vector<node::weightednode<weight::W_C<W1, W2>>>
+						(data_shape_a[remained_ls_pd[0].first]);
 					if (order_a == remained_ls_pd[0].first) {
 						// w_node_a.node is not null in this case
 						auto&& successors_a = p_node_a->get_successors();
@@ -915,7 +921,7 @@ namespace wnode {
 							i_new++, i_a++, index_val++) {
 							next_b_waiting_ls[insert_pos].second = index_val;
 							*i_new = contract_iterate(i_a->node, p_node_b,
-								weight::weight_expanded_back(i_a->weight, para_shape_b, parallel_tensor),
+								weight::weight_expanded_back<W1, W2>(i_a->weight, para_shape_b, parallel_tensor),
 								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
 								a_new_order, b_new_order, parallel_tensor);
@@ -944,7 +950,8 @@ namespace wnode {
 						remained_ls_pd[next_b_min_i].first, 0)
 					);
 
-					new_successors = std::vector<node::weightednode<W>>(data_shape_b[remained_ls_pd[next_b_min_i].second]);
+					new_successors = std::vector<node::weightednode<weight::W_C<W1, W2>>>
+						(data_shape_b[remained_ls_pd[next_b_min_i].second]);
 					if (order_b == remained_ls_pd[next_b_min_i].second) {
 						// w_node_b.node is not null in this case
 						auto&& successors_b = p_node_b->get_successors();
@@ -954,7 +961,7 @@ namespace wnode {
 							i_new++, i_b++, index_val++) {
 							next_a_waiting_ls[insert_pos].second = index_val;
 							*i_new = contract_iterate(p_node_a, i_b->node,
-								weight::weight_expanded_front(i_b->weight, para_shape_a, parallel_tensor),
+								weight::weight_expanded_front<W1, W2>(i_b->weight, para_shape_a, parallel_tensor),
 								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd, 
 								a_new_order, b_new_order, parallel_tensor);
@@ -992,7 +999,7 @@ namespace wnode {
 			RETURN:
 			// add to the cache
 			res.weight = res.weight * scale;
-			cache::Global_Cache<W>::p_cont_cache->insert(std::make_pair(std::move(key), res));
+			cache::Cont_Cache<W1, W2>::p_cont_cache->insert(std::make_pair(std::move(key), res));
 			res.weight = weight::mul(res.weight, weight);
 			return res;
 		}
@@ -1008,9 +1015,9 @@ namespace wnode {
 	/// <param name="cont_indices">given in the inner order. list of (first, second). first: indices of a, second: indices of b </param>
 	/// <param name="parallel_tensor"></param>
 	/// <returns></returns>
-	template <class W>
-	node::weightednode<W> contract(
-		const node::weightednode<W>& w_node_a, const node::weightednode<W>& w_node_b,
+	template <typename W1, typename W2>
+	node::weightednode<weight::W_C<W1, W2>> contract(
+		const node::weightednode<W1>& w_node_a, const node::weightednode<W2>& w_node_b,
 		const std::vector<int64_t>& para_shape_a, const std::vector<int64_t>& para_shape_b,
 		const std::vector<int64_t>& data_shape_a, const std::vector<int64_t>& data_shape_b,
 		const cache::pair_cmd& cont_indices, 

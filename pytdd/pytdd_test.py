@@ -35,7 +35,6 @@ def test1_T():
     expected = CUDAcpl.einsum("ia,ia->i",a,b)
 
     tdd_a = TDD.as_tensor(((a,1,[]),None))
-    tdd_a.show(full_output = True)
     tdd_b = TDD.as_tensor(((b,1,[]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], False).CUDAcpl()
 
@@ -50,7 +49,6 @@ def test1_T2():
     expected = CUDAcpl.einsum("ia,ja->ij",a,b)
 
     tdd_a = TDD.as_tensor(((a,1,[]),None))
-    tdd_a.show(full_output = True)
     tdd_b = TDD.as_tensor(((b,1,[]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], True).CUDAcpl()
 
@@ -239,3 +237,16 @@ def test8():
     tdd_res = TDD.permute(tdd_t4,[0,3,1,2])
     compare(res, tdd_res.CUDAcpl())
 
+def test1_H():
+    '''
+    hybrid direct contraction
+    '''
+    a = CUDAcpl.quantum_basic.sigmax
+    b = torch.rand((2,2,2), dtype=torch.double)
+    expected = CUDAcpl.einsum("ia,aj->ij",a,b)
+
+    tdd_a = TDD.as_tensor(((a,1,[]),None))
+    tdd_b = TDD.as_tensor(((b,0,[]),None))
+    actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], False).CUDAcpl()
+
+    compare(expected,actual)

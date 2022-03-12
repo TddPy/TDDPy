@@ -11,11 +11,15 @@ cache::unique_table<CUDAcpl::Tensor> node::Node<CUDAcpl::Tensor>::m_unique_table
 cache::CUDAcpl_table<wcomplex>* cache::Global_Cache<wcomplex>::p_CUDAcpl_cache = new cache::CUDAcpl_table<wcomplex>();
 cache::sum_table<wcomplex>* cache::Global_Cache<wcomplex>::p_sum_cache = new cache::sum_table<wcomplex>();
 cache::trace_table<wcomplex>* cache::Global_Cache<wcomplex>::p_trace_cache = new cache::trace_table<wcomplex>();
-cache::cont_table<wcomplex>* cache::Global_Cache<wcomplex>::p_cont_cache = new cache::cont_table<wcomplex>();
 cache::CUDAcpl_table<CUDAcpl::Tensor>* cache::Global_Cache<CUDAcpl::Tensor>::p_CUDAcpl_cache = new cache::CUDAcpl_table<CUDAcpl::Tensor>();
 cache::sum_table<CUDAcpl::Tensor>* cache::Global_Cache<CUDAcpl::Tensor>::p_sum_cache = new cache::sum_table<CUDAcpl::Tensor>();
 cache::trace_table<CUDAcpl::Tensor>* cache::Global_Cache<CUDAcpl::Tensor>::p_trace_cache = new cache::trace_table<CUDAcpl::Tensor>();
-cache::cont_table<CUDAcpl::Tensor>* cache::Global_Cache<CUDAcpl::Tensor>::p_cont_cache = new cache::cont_table<CUDAcpl::Tensor>();
+
+
+cache::cont_table<wcomplex, wcomplex>* cache::Cont_Cache<wcomplex, wcomplex>::p_cont_cache = new cache::cont_table<wcomplex, wcomplex>();
+cache::cont_table<wcomplex, CUDAcpl::Tensor>* cache::Cont_Cache<wcomplex, CUDAcpl::Tensor>::p_cont_cache = new cache::cont_table<wcomplex, CUDAcpl::Tensor>();
+cache::cont_table<CUDAcpl::Tensor, wcomplex>* cache::Cont_Cache<CUDAcpl::Tensor, wcomplex>::p_cont_cache = new cache::cont_table<CUDAcpl::Tensor, wcomplex>();
+cache::cont_table<CUDAcpl::Tensor, CUDAcpl::Tensor>* cache::Cont_Cache<CUDAcpl::Tensor, CUDAcpl::Tensor>::p_cont_cache = new cache::cont_table<CUDAcpl::Tensor, CUDAcpl::Tensor>();
 
 
 c10::TensorOptions CUDAcpl::tensor_opt = c10::TensorOptions();

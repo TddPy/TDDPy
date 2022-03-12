@@ -74,9 +74,38 @@ namespace CUDAcpl {
 
 	Tensor einsum(c10::string_view equation, at::TensorList tensors);
 
-	Tensor mul_element_wise(const Tensor& t, Complex s);
+	template <typename W1, typename W2>
+	auto mul_element_wise(const W1& a, const W2& b) {
+		if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, CUDAcpl::Tensor>) {
+			auto&& a_dim = a.dim() - 1;
+			auto&& a_real = a.select(a_dim, 0);
+			auto&& a_imag = a.select(a_dim, 1);
+			auto&& b_dim = b.dim() - 1;
+			auto&& b_real = b.select(b_dim, 0);
+			auto&& b_imag = b.select(b_dim, 1);
+			return torch::stack({ a_real * b_real - a_imag * b_imag, a_real * b_imag + a_imag * b_real }, a_dim);
+		}
+		else if constexpr (std::is_same_v<W1, Complex> && std::is_same_v<W2, CUDAcpl::Tensor>) {
+			auto&& dim = b.dim() - 1;
+			auto&& b_real = b.select(dim, 0);
+			auto&& b_imag = b.select(dim, 1);
+			auto&& res_real = b_real * a.real() - b_imag * a.imag();
+			auto&& res_imag = b_real * a.imag() + b_imag * a.real();
+			return torch::stack({ res_real, res_imag }, dim);
+		}
+		else if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, Complex>) {
+			auto&& dim = a.dim() - 1;
+			auto&& a_real = a.select(dim, 0);
+			auto&& a_imag = a.select(dim, 1);
+			auto&& res_real = a_real * b.real() - a_imag * b.imag();
+			auto&& res_imag = a_real * b.imag() + a_imag * b.real();
+			return torch::stack({ res_real, res_imag }, dim);
+		}
+		else {
+			return a * b;
+		}
+	}
 
-	Tensor mul_element_wise(const Tensor& a, const Tensor& b);
 
 	Tensor reciprocal(const Tensor& a);
 	

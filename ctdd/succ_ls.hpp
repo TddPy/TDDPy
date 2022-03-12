@@ -2,10 +2,10 @@
 #include "stdafx.h"
 
 namespace node {
-	template <class W>
+	template <typename W>
 	class Node;
 
-	template <class W>
+	template <typename W>
 	struct weightednode {
 		W weight;
 		const Node<W>* node;

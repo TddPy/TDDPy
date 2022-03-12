@@ -54,12 +54,12 @@ int main() {
 		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
 		auto t1 = sigmax;
 		auto t2 = torch::rand({ 2,2,2 }, c10::ScalarType::Double);
-		auto expected = CUDAcpl::einsum("ia,ja->ij", { t1, t2 });
+		auto expected = CUDAcpl::einsum("ia,aj->ij", { t1, t2 });
 		//auto expected = t1 + t2;
 
 		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
-		auto t2_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t2, 1, {});
-		auto tdd_res = TDD<CUDAcpl::Tensor>::tensordot(t1_tdd, t2_tdd, { 0 }, { 0 }, {}, true);
+		auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
+		auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, { 0 }, { 0 }, {}, true);
 		auto actual = tdd_res.CUDAcpl();
 
 		//auto indices = cache::pair_cmd(1);

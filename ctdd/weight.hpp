@@ -6,6 +6,21 @@ namespace weight {
 
 	typedef int64_t WCode;
 
+	// template metaprogramming, return the weight type of combined cont with W1 and W2
+	template <typename W1, typename W2> class W_ {};
+
+	template <>
+	class W_ <wcomplex, wcomplex> { public:  typedef wcomplex reType; };
+	template <>
+	class W_ <wcomplex, CUDAcpl::Tensor> { public: typedef CUDAcpl::Tensor reType; };
+	template <>
+	class W_<CUDAcpl::Tensor, wcomplex> { public: typedef CUDAcpl::Tensor reType; };
+	template <>
+	class W_<CUDAcpl::Tensor, CUDAcpl::Tensor> { public: typedef CUDAcpl::Tensor reType; };
+
+	template <typename W1, typename W2>
+	using W_C = typename W_<W1, W2>::reType;
+
 	inline void get_int_key(WCode* p_vec, double weight) {
 		*p_vec = (WCode)round(weight / EPS);
 	}
@@ -120,14 +135,9 @@ namespace weight {
 		}
 	}
 
-	template <class W>
-	inline W mul(const W& a, const W& b) {
-		if constexpr (std::is_same_v<W, wcomplex>) {
-			return a * b;
-		}
-		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
-			return CUDAcpl::mul_element_wise(a, b);
-		}
+	template <typename W1, typename W2>
+	inline W_C<W1, W2> mul(const W1& a, const W2& b) {
+		return CUDAcpl::mul_element_wise(a, b);
 	}
 
 	template <class W>
@@ -141,12 +151,12 @@ namespace weight {
 	}
 
 
-	template <class W>
-	inline W prepare_weight(const W& a, const W& b, bool parallel_tensor) {
-		if constexpr (std::is_same_v<W, wcomplex>) {
+	template <typename W1, typename W2>
+	inline W_C<W1, W2> prepare_weight(const W1& a, const W2& b, bool parallel_tensor) {
+		if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, wcomplex>) {
 			return a * b;
 		}
-		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+		else if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, CUDAcpl::Tensor>) {
 			if (parallel_tensor) {
 				return CUDAcpl::tensordot(a, b, {}, {});
 			}
@@ -154,15 +164,18 @@ namespace weight {
 				return CUDAcpl::mul_element_wise(a, b);
 			}
 		}
+		else {
+			return CUDAcpl::mul_element_wise(a, b);
+		}
 	}
 
 	// expand the dimensions at the back of the tensor weight
-	template <class W>
-	inline W weight_expanded_back(const W& weight, const std::vector<int64_t>& para_shape_b, bool parallel_tensor) {
-		if constexpr (std::is_same_v<W, wcomplex>) {
+	template <typename W1, typename W2>
+	inline W_C<W1, W2> weight_expanded_back(const W1& weight, const std::vector<int64_t>& para_shape_b, bool parallel_tensor) {
+		if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, wcomplex>) {
 			return weight;
 		}
-		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+		else if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, CUDAcpl::Tensor>) {
 			if (parallel_tensor) {
 				auto&& sizes = weight.sizes();
 				auto size = sizes.size();
@@ -186,15 +199,21 @@ namespace weight {
 				return weight;
 			}
 		}
+		else if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, wcomplex>) {
+			return weight;
+		}
+		else if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, CUDAcpl::Tensor>) {
+			return CUDAcpl::mul_element_wise(CUDAcpl::ones(para_shape_b), weight);
+		}
 	}
 
 	// expand the dimensions at the front of the tensor weight
-	template <class W>
-	inline W weight_expanded_front(const W& weight, const std::vector<int64_t>& para_shape_a, bool parallel_tensor) {
-		if constexpr (std::is_same_v<W, wcomplex>) {
+	template <typename W1, typename W2>
+	inline W_C<W1, W2> weight_expanded_front(const W2& weight, const std::vector<int64_t>& para_shape_a, bool parallel_tensor) {
+		if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, wcomplex>) {
 			return weight;
 		}
-		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+		else if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, CUDAcpl::Tensor>) {
 			if (parallel_tensor) {
 				auto&& sizes = weight.sizes();
 				auto size = sizes.size();
@@ -216,6 +235,12 @@ namespace weight {
 			else {
 				return weight;
 			}
+		}
+		else if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, wcomplex>) {
+			return CUDAcpl::mul_element_wise(CUDAcpl::ones(para_shape_a), weight);
+		}
+		else if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, CUDAcpl::Tensor>) {
+			return weight;
 		}
 	}
 

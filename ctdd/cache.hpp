@@ -415,10 +415,10 @@ namespace cache {
 	// under extreame case this key is not secure, because the "data shape" information is not stored here.
 	// It is a potential flaw, but we can avoid it by using it only in quantum circuits.
 	// It is left for future, when quantum situation is devided from general situation.
-	template <class W>
+	template <class W1,class W2>
 	struct cont_key {
-		const node::Node<W>* p_a;
-		const node::Node<W>* p_b;
+		const node::Node<W1>* p_a;
+		const node::Node<W2>* p_b;
 		// first: the smaller index to trace, second: the larger index to trace
 		pair_cmd remained_ls;
 		// first: the larger index to trace, seconde; the index value to select
@@ -430,7 +430,7 @@ namespace cache {
 
 		bool parallel_tensor;
 
-		inline cont_key(const node::Node<W>* _p_a, const node::Node<W>* _p_b, const pair_cmd& _remained_ls, 
+		inline cont_key(const node::Node<W1>* _p_a, const node::Node<W2>* _p_b, const pair_cmd& _remained_ls, 
 			const pair_cmd& _a_waiting_ls, const pair_cmd& _b_waiting_ls,
 			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b, bool _parallel_tensor) {
 
@@ -446,7 +446,7 @@ namespace cache {
 			parallel_tensor = _parallel_tensor;
 		}
 
-		inline cont_key(const node::Node<W>* _p_a, const node::Node<W>* _p_b, pair_cmd&& _remained_ls, 
+		inline cont_key(const node::Node<W1>* _p_a, const node::Node<W2>* _p_b, pair_cmd&& _remained_ls, 
 			pair_cmd&& _a_waiting_ls, pair_cmd&& _b_waiting_ls,
 			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b, bool _parallel_tensor) {
 			p_a = _p_a;
@@ -482,15 +482,15 @@ namespace cache {
 		}
 	};
 
-	template <class W>
-	inline bool operator == (const cont_key<W>& a, const cont_key<W>& b) {
+	template <class W1, class W2>
+	inline bool operator == (const cont_key<W1, W2>& a, const cont_key<W1, W2>& b) {
 		return (a.p_a == b.p_a && a.p_b == b.p_b &&
 			a.remained_ls == b.remained_ls && a.a_waiting_ls == b.a_waiting_ls && a.b_waiting_ls == b.b_waiting_ls &&
 			a.a_new_order == b.a_new_order && a.b_new_order == b.b_new_order && a.parallel_tensor == b.parallel_tensor);
 	}
 
-	template <class W>
-	inline std::size_t hash_value(const cont_key<W>& key) {
+	template <class W1, class W2>
+	inline std::size_t hash_value(const cont_key<W1, W2>& key) {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.p_a);
 		boost::hash_combine(seed, key.p_b);
@@ -516,17 +516,23 @@ namespace cache {
 		return seed;
 	}
 
-	template <class W>
-	using cont_table = boost::unordered_map<cont_key<W>, node::weightednode<W>>;
+
+	template <typename W1, typename W2>
+	using cont_table = boost::unordered_map < cont_key<W1, W2>, node::weightednode<weight::W_C<W1, W2>>>;
 
 
 
 
-	template <class W>
+	template <typename W>
 	struct Global_Cache {
 		static CUDAcpl_table<W>* p_CUDAcpl_cache;
 		static sum_table<W>* p_sum_cache;
 		static trace_table<W>* p_trace_cache;
-		static cont_table<W>* p_cont_cache;
+
+	};
+
+	template <typename W1, typename W2>
+	struct Cont_Cache {
+		static cont_table<W1, W2>* p_cont_cache;
 	};
 }

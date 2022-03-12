@@ -6,7 +6,7 @@
 namespace node {
 
 	// The node used in tdd.
-	template <class W>
+	template <typename W>
 	class Node {
 	private:
 		/* record the size of m_unique_table
