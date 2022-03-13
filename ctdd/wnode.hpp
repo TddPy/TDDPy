@@ -310,6 +310,48 @@ namespace wnode {
 		return res;
 	}
 
+	/// <summary>
+	/// return the result of weightednode multiplied by the scalar (or tensor)
+	/// </summary>
+	/// <typeparam name="W1"></typeparam>
+	/// <typeparam name="W2"></typeparam>
+	/// <param name="w_node"></param>
+	/// <param name="s"></param>
+	/// <returns></returns>
+	template <typename W1, typename W2>
+	inline node::weightednode<weight::W_C<W1, W2>> operator *(const node::weightednode<W1>& w_node, const W2& s) {
+		if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, CUDAcpl::Tensor>) {
+			// not supported
+		}
+		else {
+			return node::weightednode<W1>(CUDAcpl::mul_element_wise(w_node.weight, s), w_node.node);
+		}
+	}
+
+	template <typename W>
+	node::weightednode<W> conj(const node::weightednode<W>& w_node) {
+		const node::Node<W>* new_node;
+
+		if (w_node.node == nullptr) {
+			new_node = nullptr;
+		}
+		else {
+			auto&& successors = w_node.node->get_successors();
+			std::vector<node::weightednode<W>> new_successors(successors.size());
+			for (int i = 0; i < successors.size(); i++) {
+				new_successors[i] = wnode::conj(successors[i]);
+			}
+
+			new_node = node::Node<W>::get_unique_node(w_node.node->get_order(), new_successors);
+		}
+
+		if constexpr (std::is_same_v<W, wcomplex>) {
+			return node::weightednode<W>(std::conj(w_node.weight), new_node);
+		}
+		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+			return node::weightednode<W>(CUDAcpl::conj(w_node.weight), new_node);
+		}
+	}
 
 	/// <summary>
 	/// Process the weights, and normalize them as a whole. Return (new_weights1, new_weights2, renorm_coef).

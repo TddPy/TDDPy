@@ -103,7 +103,7 @@ namespace tdd {
 		/// </summary>
 		/// <param name="indices_reduced">sorted. corresponds to inner data indices, not the indices of tensor it represents.</param>
 		/// <returns>first: data shape, second: orders (not inner)</returns>
-		std::pair<std::vector<int64_t>, std::vector<int64_t>> index_reduced_info(const std::vector<int64_t>& inner_indices_reduced) {
+		std::pair<std::vector<int64_t>, std::vector<int64_t>> index_reduced_info(const std::vector<int64_t>& inner_indices_reduced) const {
 			auto&& length = inner_indices_reduced.size();
 			std::vector<int64_t> orders(dim_data() - length);
 			std::vector<int64_t> data_shapes(dim_data() + 1 - length);
@@ -315,7 +315,7 @@ namespace tdd {
 		/// </summary>
 		/// <param name="indices">first less than second should hold for every pair</param>
 		/// <returns></returns>
-		TDD<W> trace(const cache::pair_cmd& indices) {
+		TDD<W> trace(const cache::pair_cmd& indices) const {
 			if (indices.empty()) {
 				return clone();
 			}
@@ -357,7 +357,7 @@ namespace tdd {
 		/// </summary>
 		/// <param name="new_index_order"></param>
 		/// <returns></returns>
-		inline TDD<W> permute(const std::vector<int64_t>& permutation) {
+		inline TDD<W> permute(const std::vector<int64_t>& permutation) const {
 			std::vector<int64_t> new_order(m_storage_order.size());
 			std::vector<int64_t> new_data_shape(m_storage_order.size() + 1);
 			new_data_shape[m_storage_order.size()] = 2;
@@ -370,6 +370,20 @@ namespace tdd {
 
 		}
 
+		/// <summary>
+		/// return the conjugate of this tensor
+		/// </summary>
+		/// <returns></returns>
+		inline TDD<W> conj() const {
+			return TDD(wnode::conj(m_wnode),
+				std::vector<int64_t>(m_para_shape),
+				std::vector<int64_t>(m_data_shape),
+				std::vector<int64_t>(m_storage_order));
+		}
+		
+		template <typename W1, typename W2>
+		friend TDD<weight::W_C<W1, W2>> operator *(const TDD<W1>& a, const W2& s);
+
 		template <typename W1, typename W2>
 		friend TDD<weight::W_C<W1, W2>>
 			tensordot_num(const TDD<W1>& a, const TDD<W2>& b, int num_indices,
@@ -381,6 +395,23 @@ namespace tdd {
 				const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
 				const std::vector<int>& rearrangement, bool parallel_tensor);
 	};
+
+	/// <summary>
+	///  multiply the weight element wise
+	/// Note that W1 == scalar && W2 == tensor is not supported
+	/// </summary>
+	/// <typeparam name="W1"></typeparam>
+	/// <typeparam name="W2"></typeparam>
+	/// <param name="a"></param>
+	/// <param name="s"></param>
+	/// <returns></returns>
+	template <typename W1, typename W2>
+	inline TDD<weight::W_C<W1, W2>> operator *(const TDD<W1>& a, const W2& s) {
+		return TDD<weight::W_C<W1, W2>>(wnode::operator*(a.m_wnode, s),
+			std::vector<int64_t>(a.m_para_shape),
+			std::vector<int64_t>(a.m_data_shape),
+			std::vector<int64_t>(a.m_storage_order));
+	}
 
 	/// <summary>
 	/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.

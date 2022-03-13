@@ -45,6 +45,13 @@ namespace CUDAcpl {
 		return t_real * t_real + t_imag * t_imag;
 	}
 
+	inline Tensor conj(const Tensor& t) {
+		auto&& t_dim = t.dim() - 1;
+		auto&& t_real = t.select(t_dim, 0);
+		auto&& t_imag = t.select(t_dim, 1);
+		return torch::stack({ t_real, -t_imag }, t_dim);
+	}
+
 	inline Tensor ones(c10::IntArrayRef size) {
 		auto&& real = torch::ones(size, tensor_opt);
 		auto&& imag = torch::zeros(size, tensor_opt);

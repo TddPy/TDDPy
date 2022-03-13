@@ -19,7 +19,8 @@ pytdd_test.test5()
 pytdd_test.test6()
 pytdd_test.test7()
 pytdd_test.test8()
-
+pytdd_test.test9()
+pytdd_test.test10()
 
 pytdd_test.test1_T()
 pytdd_test.test1_T2()

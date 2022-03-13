@@ -67,6 +67,13 @@ int main() {
 		//cout << res.CUDAcpl() << endl;
 		compare(expected, actual);
 
+		auto t1_tdd_2 = t1_tdd * wcomplex(2., 0.);
+		cout << t1_tdd_2.CUDAcpl() << endl;
+
+		cout << "=====" << endl;
+		cout << t2_tdd.CUDAcpl() << endl;
+
+		cout << t2_tdd.conj().CUDAcpl() << endl;
 
 
 

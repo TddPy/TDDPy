@@ -261,6 +261,82 @@ permute(PyObject* self, PyObject* args) {
 }
 
 
+/// <summary>
+/// Return the conjugate of the tdd.
+/// </summary>
+/// <typeparam name="W"></typeparam>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+template <class W>
+static PyObject*
+conj(PyObject* self, PyObject* args) {
+	int64_t code;
+	if (!PyArg_ParseTuple(args, "L", &code)) {
+		return NULL;
+	}
+	TDD<W>* p_tdd = (TDD<W>*)code;
+
+	auto&& p_res = new TDD<W>(p_tdd->conj());
+
+	// convert to long long
+	int64_t res_code = (int64_t)p_res;
+	return Py_BuildValue("L", res_code);
+}
+
+/// <summary>
+/// Return the tdd multiplied by the scalar.
+/// </summary>
+/// <typeparam name="W"></typeparam>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+template <class W>
+static PyObject*
+mul__w(PyObject* self, PyObject* args) {
+	int64_t code;
+	Py_complex py_weight;
+	if (!PyArg_ParseTuple(args, "LD", &code, &py_weight)) {
+		return NULL;
+	}
+	TDD<W>* p_tdd = (TDD<W>*)code;
+	wcomplex weight(py_weight.real, py_weight.imag);
+
+	auto&& p_res = new TDD<W>(tdd::operator*(*p_tdd, weight));
+
+	// convert to long long
+	int64_t res_code = (int64_t)p_res;
+	return Py_BuildValue("L", res_code);
+}
+
+/// <summary>
+/// Return the tdd multiplied by the tensor (element wise).
+/// </summary>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+static PyObject*
+mul_tt(PyObject* self, PyObject* args) {
+
+	PyObject* p_tensor;
+
+	int64_t code;
+	if (!PyArg_ParseTuple(args, "LO", &code, &p_tensor)) {
+		return NULL;
+	}
+	auto&& t = THPVariable_Unpack(p_tensor);
+	TDD<CUDAcpl::Tensor>* p_tdd = (TDD<CUDAcpl::Tensor>*)code;
+
+	auto&& p_res = new TDD<CUDAcpl::Tensor>(tdd::operator*(*p_tdd, t));
+
+	// convert to long long
+	int64_t res_code = (int64_t)p_res;
+	return Py_BuildValue("L", res_code);
+}
+
+
+
+
 
 
 /// <summary>
@@ -401,8 +477,13 @@ static PyMethodDef ctdd_methods[] = {
 	{ "tensordot_ls_WT", (PyCFunction)tensordot_ls<wcomplex, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
 	{ "tensordot_ls_TW", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
 	{ "tensordot_ls_TT", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "return the permuted tdd." },
-	{ "permute_T", (PyCFunction)permute<CUDAcpl::Tensor>, METH_VARARGS, "return the permuted tdd." },
+	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "Return the permuted tdd." },
+	{ "permute_T", (PyCFunction)permute<CUDAcpl::Tensor>, METH_VARARGS, "Return the permuted tdd." },
+	{ "conj", (PyCFunction)conj<wcomplex>, METH_VARARGS, "Return the conjugate of the tdd." },
+	{ "conj_T", (PyCFunction)conj<CUDAcpl::Tensor>, METH_VARARGS, "Return the conjugate of the tdd." },
+	{ "mul_WW", (PyCFunction)mul__w<wcomplex>, METH_VARARGS, "Return the tdd multiplied by the scalar." },
+	{ "mul_TW", (PyCFunction)mul__w<CUDAcpl::Tensor>, METH_VARARGS, "Return the tdd multiplied by the scalar." },
+	{ "mul_TT", (PyCFunction)mul_tt, METH_VARARGS, "Return the tdd multiplied by the tensor (element wise)." },
 	{ "get_tdd_info", (PyCFunction)get_tdd_info<wcomplex>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },
 	{ "get_tdd_info_T", (PyCFunction)get_tdd_info<CUDAcpl::Tensor>, METH_VARARGS, "Get the information of a tdd. Return a dictionary." },
 	{ "get_tdd_size", (PyCFunction)get_tdd_size<wcomplex>, METH_VARARGS, "Get the size (non-terminal nodes) of the tdd." },

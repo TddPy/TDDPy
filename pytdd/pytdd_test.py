@@ -237,6 +237,30 @@ def test8():
     tdd_res = TDD.permute(tdd_t4,[0,3,1,2])
     compare(res, tdd_res.CUDAcpl())
 
+def test9():
+    '''
+    conj
+    '''
+    a = torch.rand((2,3,4,2))
+    expected = CUDAcpl.np2CUDAcpl(CUDAcpl.CUDAcpl2np(a).conj())
+
+    a_tdd = TDD.as_tensor((a,None))
+    actual = TDD.conj(a_tdd).CUDAcpl()
+
+    compare(expected, actual)
+
+def test10():
+    '''
+    scalar multiply
+    '''
+    a = CUDAcpl.quantum_basic.CZ;
+    expected = CUDAcpl.tensordot(CUDAcpl._U_(torch.tensor, [0,1]), a, 0)
+
+    a_tdd = TDD.as_tensor((a,None))
+    actual = TDD.mul(a_tdd, 1j).CUDAcpl()
+
+    compare(expected, actual)
+
 def test1_H():
     '''
     hybrid direct contraction

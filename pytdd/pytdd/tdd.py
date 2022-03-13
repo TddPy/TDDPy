@@ -215,6 +215,39 @@ class TDD:
 
         return TDD(pointer, tensor_weight, coordinator_info)
 
+    @staticmethod
+    def conj(tensor: TDD) -> TDD:
+        '''
+            Return the conjugate of the tdd tensor.
+            # note that the coordinator information is not changed.
+        '''
+        if tensor._tensor_weight:
+            pointer = ctdd.conj_T(tensor.pointer)
+        else:
+            pointer = ctdd.conj(tensor.pointer)
+
+        return TDD(pointer, tensor.tensor_weight, tensor._coordinator_info)
+
+    @staticmethod
+    def mul(tensor: TDD, scalar: CUDAcpl_Tensor|complex) -> TDD:
+        '''
+            Return the tdd multiplied by the scalar (tensor).
+            Note that the coordinator information will not be changed.
+        '''
+        if tensor._tensor_weight:
+            if isinstance(scalar, complex):
+                pointer = ctdd.mul_TW(tensor.pointer, scalar)
+            elif isinstance (scalar, CUDAcpl_Tensor):
+                pointer = ctdd.mul_TT(tensor.pointer, scalar)
+            else:
+                raise "The scalar must be a python complex or a CUDAcpl tensor."
+        else:
+            if isinstance(scalar, complex):
+                pointer = ctdd.mul_WW(tensor.pointer, scalar)
+            else:
+                raise "The scalar must be a python complex for this scalar weight tdd."
+
+        return TDD(pointer, tensor._tensor_weight, tensor._coordinator_info)
 
     @staticmethod
     def trace(tensor: TDD, axes:Sequence[Sequence[int]]) -> TDD:
