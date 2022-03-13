@@ -122,7 +122,7 @@ class TDD:
 
         tdd_weight = self.info["weight"]
         if self.info["dim parallel"]==0:
-            label= str(complex(round(tdd_weight[0].cpu().item(),precision),round(tdd_weight[1].cpu().item(),precision)))
+            label= str(complex(tdd_weight[0].cpu().item(),tdd_weight[1].cpu().item()))
         else:
             if full_output == True:
                 label = str(CUDAcpl2np(tdd_weight))

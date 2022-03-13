@@ -113,7 +113,11 @@ namespace CUDAcpl {
 		}
 	}
 
-
-	Tensor reciprocal(const Tensor& a);
+	/// <summary>
+	/// get the reciprocal, and if the element in a is zero, the corresponding reciprocal element is zero.
+	/// </summary>
+	/// <param name="a"></param>
+	/// <returns></returns>
+	Tensor reciprocal_without_zero(const Tensor& a);
 	
 }

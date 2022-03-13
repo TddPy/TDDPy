@@ -28,4 +28,8 @@ pytdd_test.test3_q_T()
 
 pytdd_test.test1_H()
 
+a = torch.zeros((2,2,2,2),dtype=torch.double)
+a_tdd = TDD.as_tensor(((a,0,[]),None))
+print(a_tdd.CUDAcpl())
+
 os.system('pause')

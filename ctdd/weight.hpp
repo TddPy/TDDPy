@@ -74,16 +74,33 @@ namespace weight {
 		}
 	}
 
+	/// <summary>
+	/// check the relative equality (up the EPS difference)
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
+	/// <param name="a"></param>
+	/// <param name="b"></param>
+	/// <returns></returns>
 	template <class W>
 	inline bool is_equal(const W& a, const W& b) {
 		if constexpr (std::is_same_v<W, wcomplex>) {
-			return abs(a.real() - b.real()) < EPS && abs(a.imag() - b.imag()) < EPS;
+			auto this_eps = std::norm(a) * EPS;
+			return abs(a.real() - b.real()) < this_eps &&
+				abs(a.imag() - b.imag()) < this_eps;
 		}
 		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
-			return  torch::all(torch::abs(a - b) < EPS).item().toBool();
+			auto this_eps = CUDAcpl::norm(a) * EPS;
+			this_eps = torch::stack({ this_eps, this_eps }, this_eps.dim());
+			return  torch::all(torch::abs(a - b) < this_eps).item().toBool();
 		}
 	}
 
+	/// <summary>
+	/// check the equality directly, so input a should have already been normalized
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
+	/// <param name="a"></param>
+	/// <returns></returns>
 	template <class W>
 	inline bool is_zero(const W& a) {
 		if constexpr (std::is_same_v<W, wcomplex>) {
@@ -91,6 +108,16 @@ namespace weight {
 		}
 		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
 			return torch::all(torch::abs(a) < EPS).item().toBool();
+		}
+	}
+
+	template <class W>
+	inline bool is_exact_zero(const W& a) {
+		if constexpr (std::is_same_v<W, wcomplex>) {
+			return a.real() == 0. && a.imag() == 0.;
+		}
+		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+			return torch::all(a == 0.).item().toBool();
 		}
 	}
 
@@ -140,13 +167,24 @@ namespace weight {
 		return CUDAcpl::mul_element_wise(a, b);
 	}
 
+	/// <summary>
+	/// get the reciprocal, and if the element in a is zero, the corresponding reciprocal element is zero.
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
+	/// <param name="a"></param>
+	/// <returns></returns>
 	template <class W>
-	inline W reciprocal(const W& a) {
+	inline W reciprocal_without_zero(const W& a) {
 		if constexpr (std::is_same_v<W, wcomplex>) {
-			return wcomplex(1., 0.) / a;
+			if (is_exact_zero(a)) {
+				return wcomplex(0., 0.);
+			}
+			else {
+				return wcomplex(1., 0.) / a;
+			}
 		}
 		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
-			return CUDAcpl::reciprocal(a);
+			return CUDAcpl::reciprocal_without_zero(a);
 		}
 	}
 

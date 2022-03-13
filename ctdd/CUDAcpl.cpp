@@ -4,13 +4,15 @@ using namespace std;
 using namespace CUDAcpl;
 
 
-CUDAcpl::Tensor CUDAcpl::reciprocal(const Tensor& a) {
+CUDAcpl::Tensor CUDAcpl::reciprocal_without_zero(const Tensor& a) {
 	auto&& a_dim = a.dim() - 1;
 	auto&& a_real = a.select(a_dim, 0);
 	auto&& a_imag = a.select(a_dim, 1);
 	auto&& res = torch::stack({ a_real, -a_imag }, a_dim);
-	auto&& denominator = (a_real * a_real + a_imag * a_imag).unsqueeze(a_dim);
-	denominator = denominator.expand_as(res);
+	auto&& denominator = (a_real * a_real + a_imag * a_imag);
+	denominator = torch::where(denominator.toType(c10::ScalarType::Bool),
+		denominator, torch::ones_like(denominator, tensor_opt));
+	denominator = denominator.unsqueeze(a_dim).expand_as(res);
 	return res / denominator;
 }
 

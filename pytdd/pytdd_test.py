@@ -3,14 +3,14 @@ import torch
 from torch._C import dtype
 from pytdd import TDD, CUDAcpl
 
-def compare(expected: CUDAcpl.CUDAcpl_Tensor,
+def compare(title, expected: CUDAcpl.CUDAcpl_Tensor,
             actual: CUDAcpl.CUDAcpl_Tensor):
     max_diff = torch.max(abs(expected - actual))
 
     if ( max_diff > 1e-7):
-        print("not passed, diff: ",max_diff)
+        print(title+" not passed, diff: ",max_diff)
     else:
-        print("passed, diff: ",max_diff)
+        print(title+" passed, diff: ",max_diff)
 
 def test1():
     '''
@@ -24,7 +24,7 @@ def test1():
     tdd_b = TDD.as_tensor(((b,0,[1,0]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, 1).CUDAcpl()
 
-    compare(expected,actual)
+    compare("test1", expected, actual)
 
 def test1_T():
     '''
@@ -38,7 +38,7 @@ def test1_T():
     tdd_b = TDD.as_tensor(((b,1,[]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], False).CUDAcpl()
 
-    compare(expected,actual)
+    compare("test1_T",expected,actual)
 
 def test1_T2():
     '''
@@ -52,7 +52,7 @@ def test1_T2():
     tdd_b = TDD.as_tensor(((b,1,[]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], True).CUDAcpl()
 
-    compare(expected,actual)
+    compare("test1_T2",expected,actual)
 
 def test2():
     '''
@@ -64,7 +64,7 @@ def test2():
     tdd_a = TDD.as_tensor(((a,0,[0,2,3,1]),None))
     actual = TDD.permute(tdd_a, (0,2,3,1)).CUDAcpl()
 
-    compare(expected, actual)
+    compare("test2",expected, actual)
 
 
 
@@ -78,7 +78,7 @@ def test3():
     tdd_a = TDD.as_tensor((a,None))
     actual = TDD.trace(tdd_a, [[0,2],[1,3]]).CUDAcpl()
 
-    compare(expected, actual)
+    compare("test3",expected, actual)
 
 def test3_q():
     '''
@@ -91,7 +91,7 @@ def test3_q():
     tdd_a = TDD.as_tensor((a,None))
     actual = TDD.trace(tdd_a, [[0,1],[2,3]]).CUDAcpl()
 
-    compare(expected, actual)
+    compare("test3_q",expected, actual)
     
 def test3_q_T():
     '''
@@ -104,7 +104,7 @@ def test3_q_T():
     tdd_a = TDD.as_tensor(((a,2,[]),None))
     actual = TDD.trace(tdd_a, [[0,1],[2,3]]).CUDAcpl()
 
-    compare(expected, actual)
+    compare("test3_q_T",expected, actual)
 
 def test4():
     '''
@@ -123,7 +123,7 @@ def test4():
     tdd_b = TDD.as_tensor(((b,0,[]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, [[1,5,3],[4,0,5]]).CUDAcpl()
 
-    compare(expected,actual)
+    compare("test4",expected,actual)
 
 def test5():
 
@@ -140,8 +140,7 @@ def test5():
     tdd_a = TDD.as_tensor(((a,0,[]),None))
     tdd_b = TDD.as_tensor(((b,0,[]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, [[1,3],[3,2]]).CUDAcpl()
-
-    compare(expected,actual)
+    compare("test5",expected,actual)
 
 def test6():
 
@@ -159,7 +158,7 @@ def test6():
     tdd_b = TDD.as_tensor(((b,0,[]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0,1],[1,0]]).CUDAcpl()
 
-    compare(expected,actual)
+    compare("test6", expected,actual)
 
 def test7():
     '''
@@ -176,27 +175,27 @@ def test7():
     #step 1
     t1 = CUDAcpl.tensordot(h, I, [[0],[1]])
     tdd_t1 = TDD.tensordot(tdd_h, tdd_I, [[0],[1]])
-    compare(t1, tdd_t1.CUDAcpl())
+    compare("test7", t1, tdd_t1.CUDAcpl())
 
     #step 2
     t2 = CUDAcpl.tensordot(I, cz, [[1],[1]])
     tdd_t2 = TDD.tensordot(tdd_I, tdd_cz, [[1],[1]])
-    compare(t2, tdd_t2.CUDAcpl())
+    compare("test7", t2, tdd_t2.CUDAcpl())
 
     #step 3
     t3 = CUDAcpl.tensordot(h, t2, [[0],[3]])
     tdd_t3 = TDD.tensordot(tdd_h, tdd_t2, [[0],[3]])
-    compare(t3, tdd_t3.CUDAcpl())
+    compare("test7", t3, tdd_t3.CUDAcpl())
 
     #step4
     t4 = CUDAcpl.tensordot(t1, t3, [[0],[3]])
     tdd_t4 = TDD.tensordot(tdd_t1, tdd_t3, [[0],[3]])
-    compare(t4, tdd_t4.CUDAcpl())
+    compare("test7", t4, tdd_t4.CUDAcpl())
 
     #permute
     res = t4.permute((0,3,1,2,4))
     tdd_res = TDD.permute(tdd_t4,[0,3,1,2])
-    compare(res, tdd_res.CUDAcpl())
+    compare("test7", res, tdd_res.CUDAcpl())
 
 def test8():
     '''
@@ -215,27 +214,27 @@ def test8():
     #step 1
     t1 = CUDAcpl.tensordot(h, I, [[0],[1]])
     tdd_t1 = TDD.tensordot(tdd_h1, tdd_I1, [[0],[1]])
-    compare(t1, tdd_t1.CUDAcpl())
+    compare("test8", t1, tdd_t1.CUDAcpl())
 
     #step 2
     t2 = CUDAcpl.tensordot(I, cz, [[1],[1]])
     tdd_t2 = TDD.tensordot(tdd_I2, tdd_cz, [[1],[1]])
-    compare(t2, tdd_t2.CUDAcpl())
+    compare("test8", t2, tdd_t2.CUDAcpl())
 
     #step 3
     t3 = CUDAcpl.tensordot(h, t2, [[0],[3]])
     tdd_t3 = TDD.tensordot(tdd_h2, tdd_t2, [[0],[3]])
-    compare(t3, tdd_t3.CUDAcpl())
+    compare("test8", t3, tdd_t3.CUDAcpl())
 
     #step4
     t4 = CUDAcpl.tensordot(t1, t3, [[0],[3]])
     tdd_t4 = TDD.tensordot(tdd_t1, tdd_t3, [[0],[3]])
-    compare(t4, tdd_t4.CUDAcpl())
+    compare("test8", t4, tdd_t4.CUDAcpl())
 
     #permute
     res = t4.permute((0,3,1,2,4))
     tdd_res = TDD.permute(tdd_t4,[0,3,1,2])
-    compare(res, tdd_res.CUDAcpl())
+    compare("test8", res, tdd_res.CUDAcpl())
 
 def test9():
     '''
@@ -247,7 +246,7 @@ def test9():
     a_tdd = TDD.as_tensor((a,None))
     actual = TDD.conj(a_tdd).CUDAcpl()
 
-    compare(expected, actual)
+    compare("test9", expected, actual)
 
 def test10():
     '''
@@ -259,7 +258,7 @@ def test10():
     a_tdd = TDD.as_tensor((a,None))
     actual = TDD.mul(a_tdd, 1j).CUDAcpl()
 
-    compare(expected, actual)
+    compare("test10", expected, actual)
 
 def test1_H():
     '''
@@ -273,4 +272,4 @@ def test1_H():
     tdd_b = TDD.as_tensor(((b,0,[]),None))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], False).CUDAcpl()
 
-    compare(expected,actual)
+    compare("test1_H", expected,actual)

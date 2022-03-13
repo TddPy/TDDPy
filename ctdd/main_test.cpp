@@ -50,7 +50,16 @@ int main() {
 		}
 		*/
 
+		//auto t1 = CUDAcpl::zeros({ 2,2,2 });
+		auto t1 = torch::rand({ 2,2,2,2 }, c10::ScalarType::Double);
 
+
+		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
+
+		cout << t1_tdd.CUDAcpl() << endl;
+
+
+		/*
 		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
 		auto t1 = sigmax;
 		auto t2 = torch::rand({ 2,2,2 }, c10::ScalarType::Double);
@@ -75,7 +84,7 @@ int main() {
 
 		cout << t2_tdd.conj().CUDAcpl() << endl;
 
-
+		*/
 
 		//TDD<wcomplex>::reset();
 	}

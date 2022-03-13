@@ -26,7 +26,7 @@ namespace wnode {
 			for (int i = 1; i < successors.size(); i++) {
 				double temp_norm = norm(successors[i].weight);
 				// alter the maximum according to EPS, to avoid arbitrary normalization
-				if (temp_norm - norm_max > weight::EPS) {
+				if (temp_norm - norm_max > weight::EPS * norm_max) {
 					i_max = i;
 					norm_max = temp_norm;
 				}
@@ -41,7 +41,7 @@ namespace wnode {
 
 			for (int i = 1; i < successors.size(); i++) {
 				auto temp_norm = CUDAcpl::norm(successors[i].weight);
-				auto alter_matrix = temp_norm - norm_max > weight::EPS;
+				auto alter_matrix = temp_norm - norm_max > weight::EPS * norm_max;
 				norm_max = torch::where(alter_matrix, temp_norm, norm_max);
 
 				auto all_alter_matrix = alter_matrix.unsqueeze(alter_matrix.dim());
@@ -49,10 +49,6 @@ namespace wnode {
 				normalizer = torch::where(all_alter_matrix, successors[i].weight, normalizer);
 			}
 
-			// process the 0-elements
-			auto zero_item = (norm_max < weight::EPS).unsqueeze(normalizer.dim() - 1);
-			zero_item = zero_item.expand_as(normalizer);
-			normalizer = torch::where(zero_item, CUDAcpl::ones_like(normalizer), normalizer);
 			return normalizer;
 		}
 	}
@@ -106,17 +102,12 @@ namespace wnode {
 	template <class W>
 	node::weightednode<W> normalize(const node::weightednode<W>& w_node) {
 		if (w_node.node == nullptr) {
-			return node::weightednode<W>(w_node);
-		}
-
-		// redirect zero weighted nodes to the terminal node
-		if (weight::is_zero(w_node.weight)) {
-			return node::weightednode<W>(weight::zeros_like(w_node.weight), nullptr);
+			return w_node;
 		}
 
 		auto&& successors = w_node.node->get_successors();
 
-		// node reduction check (reduce when all equal)
+		// subnode equality check
 		bool all_equal = true;
 		for (auto p_succ = successors.begin() + 1; p_succ != successors.end(); p_succ++) {
 			if (!is_equal(successors[0], *p_succ)) {
@@ -131,29 +122,26 @@ namespace wnode {
 				);
 		}
 
-		// check whether all successor weights are zero, and redirect to terminal node if so
-		bool all_zero = true;
-		for (const auto& succ : successors) {
-			if (!weight::is_zero(succ.weight)) {
-				all_zero = false;
-				break;
-			}
-		}
-		if (all_zero) {
-			return node::weightednode<W>(weight::zeros_like(w_node.weight), nullptr);
-		}
-
-
 		// start to normalize the weights
 		W weig_max = get_normalizer(successors);
-		W reciprocal = weight::reciprocal(weig_max);
+		if (weight::is_exact_zero(weig_max)) {
+			return node::weightednode<W>{ weig_max, nullptr };
+		}
 
+		W reciprocal = weight::reciprocal_without_zero(weig_max);
 		auto&& new_successors = std::vector<node::weightednode<W>>(successors);
 
 		for (auto&& succ : new_successors) {
 			succ.weight = weight::mul(succ.weight, reciprocal);
+			// check whether the successor weight is zero, and redirect to terminal node if so
+			if (weight::is_zero(succ.weight)) {
+				succ.weight = weight::zeros_like(w_node.weight);
+				succ.node = nullptr;
+			}
 		}
+
 		auto&& new_node = node::Node<W>::get_unique_node(w_node.node->get_order(), new_successors);
+
 		return node::weightednode<W>{ weight::mul(weig_max, w_node.weight), new_node };
 	}
 
@@ -327,7 +315,7 @@ namespace wnode {
 			auto new_weight = CUDAcpl::mul_element_wise(w_node.weight, s);
 
 			// if the new weight is 0, then reduce all nodes.
-			if (weight::is_zero(new_weight)) {
+			if (weight::is_exact_zero(new_weight)) {
 				return node::weightednode<W1>(new_weight, nullptr);
 			}
 			else {
@@ -374,51 +362,38 @@ namespace wnode {
 	/// <returns></returns>
 	template <class W>
 	inline weight::sum_nweights<W> weights_normalize(const W& weight1, const W& weight2) {
-		if constexpr (std::is_same_v<W, wcomplex>) {
-			wcomplex renorm_coef = (norm(weight2) - norm(weight1) > weight::EPS) ? weight2 : weight1;
 
-			auto&& nweight1 = wcomplex(0., 0.);
-			auto&& nweight2 = wcomplex(0., 0.);
-			if (norm(renorm_coef) > weight::EPS) {
-				nweight1 = weight1 / renorm_coef;
-				nweight2 = weight2 / renorm_coef;
-			}
-			else {
-				renorm_coef = wcomplex(1., 0.);
-			}
-			return weight::sum_nweights<wcomplex>(
-				std::move(nweight1),
-				std::move(nweight2),
-				std::move(renorm_coef)
-				);
+		W renorm_coef;
+
+		// first get renorm_coef
+		if constexpr (std::is_same_v<W, wcomplex>) {
+			auto norm1 = norm(weight1);
+			auto norm2 = norm(weight2);
+			renorm_coef = (norm2 - norm1 > weight::EPS * norm1) ? weight2 : weight1;
 		}
 		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
 			auto norm2 = CUDAcpl::norm(weight2);
 			auto norm1 = CUDAcpl::norm(weight1);
-			auto chose_2 = norm2 - norm1 > weight::EPS;
+			auto chose_2 = norm2 - norm1 > weight::EPS * norm1;
 			auto norm_max = torch::where(chose_2, norm2, norm1);
 
 			auto all_chose_2 = chose_2.unsqueeze(chose_2.dim());
 			all_chose_2 = all_chose_2.expand_as(weight1);
 
-			auto renorm_coef = where(all_chose_2, weight2, weight1);
-
-			// process the 0-elements
-			auto zero_item = (norm_max < weight::EPS).unsqueeze(renorm_coef.dim() - 1);
-			zero_item = zero_item.expand_as(renorm_coef);
-
-			renorm_coef = where(zero_item, CUDAcpl::ones_like(renorm_coef), renorm_coef);
-			auto reciprocal = CUDAcpl::reciprocal(renorm_coef);
-
-			auto nweight1 = CUDAcpl::mul_element_wise(weight1, reciprocal);
-			auto nweight2 = CUDAcpl::mul_element_wise(weight2, reciprocal);
-
-			return weight::sum_nweights<CUDAcpl::Tensor>(
-				std::move(nweight1),
-				std::move(nweight2),
-				std::move(renorm_coef)
-				);
+			renorm_coef = where(all_chose_2, weight2, weight1);
 		}
+
+
+		auto reciprocal = weight::reciprocal_without_zero(renorm_coef);
+
+		auto nweight1 = weight::mul(weight1, reciprocal);
+		auto nweight2 = weight::mul(weight2, reciprocal);
+
+		return weight::sum_nweights<W>(
+			std::move(nweight1),
+			std::move(nweight2),
+			std::move(renorm_coef)
+			);
 	}
 
 

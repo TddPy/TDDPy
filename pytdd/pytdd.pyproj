@@ -28,6 +28,9 @@
     <OutputPath>bin\build\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="experiments\1D Heisenberg chain\ground_state.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="experiments\test_contract\test_contract _T_count.py" />
     <Compile Include="experiments\test_contract\test_contract _T_width.py" />
     <Compile Include="experiments\test_contract\test_contract.py" />
@@ -68,6 +71,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="experiments\" />
+    <Folder Include="experiments\1D Heisenberg chain\" />
     <Folder Include="experiments\test_contract\" />
     <Folder Include="experiments\test_order\" />
     <Folder Include="pytdd\" />
