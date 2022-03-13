@@ -324,7 +324,15 @@ namespace wnode {
 			// not supported
 		}
 		else {
-			return node::weightednode<W1>(CUDAcpl::mul_element_wise(w_node.weight, s), w_node.node);
+			auto new_weight = CUDAcpl::mul_element_wise(w_node.weight, s);
+
+			// if the new weight is 0, then reduce all nodes.
+			if (weight::is_zero(new_weight)) {
+				return node::weightednode<W1>(new_weight, nullptr);
+			}
+			else {
+				return node::weightednode<W1>(new_weight, w_node.node);
+			}
 		}
 	}
 
