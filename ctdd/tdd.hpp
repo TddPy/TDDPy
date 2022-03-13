@@ -155,6 +155,14 @@ namespace tdd {
 			cache::Cont_Cache<W, CUDAcpl::Tensor>:: p_cont_cache->clear();
 		}
 
+		static void clear_cache() {
+			cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
+			cache::Global_Cache<W>::p_sum_cache->clear();
+			cache::Global_Cache<W>::p_trace_cache->clear();
+			cache::Cont_Cache<W, wcomplex>::p_cont_cache->clear();
+			cache::Cont_Cache<W, CUDAcpl::Tensor>::p_cont_cache->clear();
+		}
+
 
 		TDD(TDD&& other) {
 			m_data_shape = std::move(other.m_data_shape);

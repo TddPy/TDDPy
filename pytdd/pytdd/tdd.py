@@ -249,6 +249,23 @@ class TDD:
 
         return TDD(pointer, tensor._tensor_weight, tensor._coordinator_info)
 
+    def __add__(self, other: TDD) -> TDD:
+        '''
+            return the summation of two tdds
+            Note that the coordinator information is not changed.
+        '''
+
+        if self.storage_order != other.storage_order \
+            or self.parallel_shape != other.parallel_shape \
+            or self.tensor_weight != other.tensor_weight:
+            raise "Only two tdds of the same storage order and the same parallel shape can be summed up."
+        if self.tensor_weight:
+            pointer = ctdd.sum_T(self.pointer, other.pointer)
+        else:
+            pointer = ctdd.sum_W(self.pointer, other.pointer)
+
+        return TDD(pointer, self._tensor_weight, self.coordinator_info)
+
     @staticmethod
     def trace(tensor: TDD, axes:Sequence[Sequence[int]]) -> TDD:
         '''

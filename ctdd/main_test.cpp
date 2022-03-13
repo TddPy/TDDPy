@@ -15,8 +15,12 @@ void compare(const torch::Tensor& a, const torch::Tensor& b) {
 }
 
 int main() {
-	TDD<wcomplex>::setting_update();
+	TDD<wcomplex>::setting_update(0, 1E-14);
+
 	TDD<wcomplex>::reset();
+
+	TDD<CUDAcpl::Tensor>::reset();
+
 	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 });
 	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 });
 	auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 }) / sqrt(2);
@@ -34,7 +38,7 @@ int main() {
 
 
 	double start = clock();
-	for (int i = 0; i < 1; i++) {
+	for (int i = 0; i < 100; i++) {
 		cout << "=================== " << i << " ===================" << endl;
 		/*
 		int w = 4;
@@ -50,16 +54,8 @@ int main() {
 		}
 		*/
 
-		//auto t1 = CUDAcpl::zeros({ 2,2,2 });
-		auto t1 = torch::rand({ 2,2,2,2 }, c10::ScalarType::Double);
 
-
-		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
-
-		cout << t1_tdd.CUDAcpl() << endl;
-
-
-		/*
+		
 		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
 		auto t1 = sigmax;
 		auto t2 = torch::rand({ 2,2,2 }, c10::ScalarType::Double);
@@ -84,7 +80,7 @@ int main() {
 
 		cout << t2_tdd.conj().CUDAcpl() << endl;
 
-		*/
+		
 
 		//TDD<wcomplex>::reset();
 	}
