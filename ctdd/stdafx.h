@@ -17,6 +17,7 @@
 #include <type_traits>
 #include <vector>
 #include <assert.h>
+#include <shared_mutex>
 
 #include <torch/script.h>
 #include <torch/torch.h>

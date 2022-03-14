@@ -1,5 +1,6 @@
 #include "tdd.hpp"
 #include <time.h>
+#include "ThreadPool.h"
 
 using namespace std;
 using namespace tdd;
@@ -15,7 +16,8 @@ void compare(const torch::Tensor& a, const torch::Tensor& b) {
 }
 
 int main() {
-	TDD<wcomplex>::setting_update(0, 1E-14);
+
+	TDD<wcomplex>::setting_update(4, 0, 1E-14);
 
 	TDD<wcomplex>::reset();
 
@@ -38,53 +40,52 @@ int main() {
 
 
 	double start = clock();
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < 10; i++) {
 		cout << "=================== " << i << " ===================" << endl;
-		/*
-		int w = 4;
-		std::vector<int64_t> shape(2 * w + 1);
-		for (int i = 0; i < 2 * w + 1; i++) {
-			shape[i] = 2;
-		}
-		std::vector<int64_t> i1(w);
-		std::vector<int64_t> i2(w);
-		for (int i = 0; i < w; i++) {
-			i1[i] = 2 * i;
-			i2[i] = 2 * i + 1;
-		}
-		*/
-
-
 		
 		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
-		auto t1 = sigmax;
-		auto t2 = torch::rand({ 2,2,2 }, c10::ScalarType::Double);
-		auto expected = CUDAcpl::einsum("ia,aj->ij", { t1, t2 });
+		auto t1 = torch::rand({ 2,2,2,2,2,2 }, c10::ScalarType::Double);
+		auto t2 = torch::rand({ 2,2,2,2,2,2 }, c10::ScalarType::Double);
 		//auto expected = t1 + t2;
 
 		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
 		auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
-		auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, { 0 }, { 0 }, {}, true);
+		auto tdd_res = tdd::tensordot<CUDAcpl::Tensor, wcomplex, false>(t1_tdd, t2_tdd, { 0,1,2 }, { 0,1,2 }, {}, true);
 		auto actual = tdd_res.CUDAcpl();
 
 		//auto indices = cache::pair_cmd(1);
 		//indices[0] = make_pair(0, 2);
 		//cout << res.CUDAcpl() << endl;
-		compare(expected, actual);
-
-		auto t1_tdd_2 = t1_tdd * wcomplex(2., 0.);
-		cout << t1_tdd_2.CUDAcpl() << endl;
-
-		cout << "=====" << endl;
-		cout << t2_tdd.CUDAcpl() << endl;
-
-		cout << t2_tdd.conj().CUDAcpl() << endl;
-
 		
 
 		//TDD<wcomplex>::reset();
 	}
 	double end = clock();
+
+	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
+
+	start = clock();
+	for (int i = 0; i < 10; i++) {
+		cout << "=================== " << i << " ===================" << endl;
+		
+		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
+		auto t1 = torch::rand({ 2,2,2,2,2,2 }, c10::ScalarType::Double);
+		auto t2 = torch::rand({ 2,2,2,2,2,2 }, c10::ScalarType::Double);
+		//auto expected = t1 + t2;
+
+		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
+		auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
+		auto tdd_res = tdd::tensordot<CUDAcpl::Tensor, wcomplex, true>(t1_tdd, t2_tdd, { 0,1,2 }, { 0,1,2 }, {}, true);
+		auto actual = tdd_res.CUDAcpl();
+
+		//auto indices = cache::pair_cmd(1);
+		//indices[0] = make_pair(0, 2);
+		//cout << res.CUDAcpl() << endl;
+		
+
+		//TDD<wcomplex>::reset();
+	}
+	end = clock();
 
 	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
 	return 0;

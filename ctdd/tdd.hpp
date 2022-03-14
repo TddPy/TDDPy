@@ -141,7 +141,10 @@ namespace tdd {
 		}
 	public:
 
-		static void setting_update(bool device_cuda = false, double new_eps = DEFAULT_EPS) {
+		static void setting_update(int thread_num = DEFAULT_THREAD_NUM, bool device_cuda = false, double new_eps = DEFAULT_EPS) {
+			delete wnode::iter_para::p_thread_pool;
+			wnode::iter_para::p_thread_pool = new ThreadPool(thread_num);
+
 			CUDAcpl::reset(device_cuda);
 			weight::EPS = new_eps;
 		}
@@ -165,14 +168,7 @@ namespace tdd {
 
 
 		TDD(TDD&& other) {
-			m_data_shape = std::move(other.m_data_shape);
-			m_storage_order = std::move(other.m_storage_order);
-			m_inner_data_shape = std::move(other.m_inner_data_shape);
-			m_inversed_order = std::move(other.m_inversed_order);
-			m_global_order = std::move(other.m_global_order);
-			m_inversed_global_order = std::move(other.m_inversed_global_order);
-			m_para_shape = std::move(other.m_para_shape);
-			m_wnode = std::move(other.m_wnode);
+			*this = std::move(other);
 		}
 
 		TDD(const TDD& other) {
@@ -308,7 +304,7 @@ namespace tdd {
 		/// <param name="b"></param>
 		/// <returns></returns>
 		inline static TDD<W> sum(const TDD<W>& a, const TDD<W>& b) {
-			auto&& res_wnode = wnode::sum(a.m_wnode, b.m_wnode, a.m_para_shape);
+			auto&& res_wnode = wnode::sum<W, false>(a.m_wnode, b.m_wnode, a.m_para_shape);
 			return TDD(std::move(res_wnode),
 				std::vector<int64_t>(a.m_para_shape),
 				std::vector<int64_t>(a.m_data_shape),
@@ -392,12 +388,12 @@ namespace tdd {
 		template <typename W1, typename W2>
 		friend TDD<weight::W_C<W1, W2>> operator *(const TDD<W1>& a, const W2& s);
 
-		template <typename W1, typename W2>
+		template <typename W1, typename W2, bool PL>
 		friend TDD<weight::W_C<W1, W2>>
 			tensordot_num(const TDD<W1>& a, const TDD<W2>& b, int num_indices,
 				const std::vector<int>& rearrangement, bool parallel_tensor);
 		
-		template <typename W1, typename W2>
+		template <typename W1, typename W2, bool PL>
 		friend TDD<weight::W_C<W1, W2>>
 			tensordot(const TDD<W1>& a, const TDD<W2>& b,
 				const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
@@ -421,33 +417,13 @@ namespace tdd {
 			std::vector<int64_t>(a.m_storage_order));
 	}
 
-	/// <summary>
-	/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.
-	/// </summary>
-	/// <param name="a"></param>
-	/// <param name="b"></param>
-	/// <param name="num_indices">contract the last num_indices indices of a and first of b</param>
-	/// <param name="parallel_tensor"></param>
-	/// <returns></returns>
-	template <typename W1, typename W2>
-	inline TDD<weight::W_C<W1, W2>> 
-		tensordot_num(const TDD<W1>& a, const TDD<W2>& b, int num_indices,
-		const std::vector<int>& rearrangement = {}, bool parallel_tensor = false) {
-		std::vector<int64_t> ia(num_indices);
-		std::vector<int64_t> ib(num_indices);
-		for (int i = 0; i < num_indices; i++) {
-			ia[i] = a.dim_data() - num_indices + i;
-			ib[i] = i;
-		}
-		return tensordot(a, b, ia, ib, rearrangement, parallel_tensor);
-	}
 
 	/// <summary>
 	/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.
 	/// Whether to tensor on the parallel indices.
 	/// </summary>
 	/// <typeparam name="W"></typeparam>
-	template <typename W1, typename W2>
+	template <typename W1, typename W2, bool PL>
 	TDD<weight::W_C<W1, W2>>
 		tensordot(const TDD<W1>& a, const TDD<W2>& b,
 		const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
@@ -561,7 +537,7 @@ namespace tdd {
 		}
 
 		// note that rearrangement does not need be processed.
-		auto&& res_wnode = wnode::contract(a.m_wnode, b.m_wnode, a.m_para_shape, b.m_para_shape,
+		auto&& res_wnode = wnode::contract<W1, W2, PL>(a.m_wnode, b.m_wnode, a.m_para_shape, b.m_para_shape,
 			a.m_inner_data_shape, b.m_inner_data_shape,
 			inner_indices_cmd, a_inner_order, b_inner_order, parallel_tensor);
 
@@ -572,5 +548,26 @@ namespace tdd {
 
 		return TDD<weight::W_C<W1, W2>>(std::move(res_wnode), std::move(new_para_shape),
 			std::move(total_shape), std::move(total_order));
+	}
+
+	/// <summary>
+	/// The pytorch-like tensordot method. Note that indices should be counted with data indices only.
+	/// </summary>
+	/// <param name="a"></param>
+	/// <param name="b"></param>
+	/// <param name="num_indices">contract the last num_indices indices of a and first of b</param>
+	/// <param name="parallel_tensor"></param>
+	/// <returns></returns>
+	template <typename W1, typename W2, bool PL>
+	inline TDD<weight::W_C<W1, W2>>
+		tensordot_num(const TDD<W1>& a, const TDD<W2>& b, int num_indices,
+			const std::vector<int>& rearrangement = {}, bool parallel_tensor = false) {
+		std::vector<int64_t> ia(num_indices);
+		std::vector<int64_t> ib(num_indices);
+		for (int i = 0; i < num_indices; i++) {
+			ia[i] = a.dim_data() - num_indices + i;
+			ib[i] = i;
+		}
+		return tensordot<W1, W2, PL>(a, b, ia, ib, rearrangement, parallel_tensor);
 	}
 }

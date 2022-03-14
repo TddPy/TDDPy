@@ -13,9 +13,11 @@ namespace node {
 		*  Note: id = 0 is reserved for terminal node (null).
 		*/
 		static int m_global_id;
+		static std::mutex global_id_m;
 
 		// The unique_table to store all the node instances used in tdd.
 		static cache::unique_table<W> m_unique_table;
+		static std::shared_mutex unique_table_m;
 
 		int m_id;
 
@@ -54,16 +56,30 @@ namespace node {
 			return m_unique_table;
 		}
 
+		Node(int id, int order, succ_ls<W>&& successors) :m_id(id), m_order(order), m_successors(std::move(successors)) {}
+
+		Node(Node<W>&& _node) {
+			*this = std::move(_node);
+		}
+
 		/// <summary>
 		/// Note: the memory of successors will be transfered to this node, therefore a right value is needed.
 		/// </summary>
 		/// <param name="order"></param>
 		/// <param name="successors"></param>
-		Node(int order, succ_ls<W>&& successors) {
-			m_global_id += 1;
-			m_id = m_global_id;
-			m_order = order;
-			m_successors = std::move(successors);
+		template <bool PL>
+		inline static Node<W> ConstructNode(int order, succ_ls<W>&& successors) {
+			if constexpr (PL) {
+				global_id_m.lock();
+				m_global_id += 1;
+				auto current_id = m_global_id;
+				global_id_m.unlock();
+				return Node<W>{ current_id, order, std::move(successors) };
+			}
+			else {
+				m_global_id += 1;
+				return Node<W>{ m_global_id, order, std::move(successors) };
+			}
 		}
 
 		static void reset() {
@@ -82,15 +98,32 @@ namespace node {
 		/// <param name="order"></param>
 		/// <param name="successors"></param>
 		/// <returns></returns>
+		template <bool PL>
 		static const Node<W>* get_unique_node(int order, const succ_ls<W>& successors) {
 			auto&& key = cache::unique_table_key<W>(order, successors);
+
+			//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			if constexpr (PL) {
+				unique_table_m.lock();
+			}
 			auto&& p_find_res = m_unique_table.find(key);
+
 			if (p_find_res != m_unique_table.end()) {
+				if constexpr (PL) {
+					unique_table_m.unlock();
+				}
+				//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 				return p_find_res->second;
 			}
 
-			node::Node<W>* p_node = new node::Node<W>(order, succ_ls<W>(successors));
-			m_unique_table.insert(std::make_pair(std::move(key), p_node));
+			node::Node<W>* p_node = new node::Node<W>(node::Node<W>::ConstructNode<PL>(order, succ_ls<W>(successors)));
+
+			m_unique_table[key] = p_node;
+			if constexpr (PL) {
+				unique_table_m.unlock();
+			}
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 			return p_node;
 		}
 
@@ -102,15 +135,32 @@ namespace node {
 		/// <param name="order"></param>
 		/// <param name="successors"></param>
 		/// <returns></returns>
+		template <bool PL>
 		static const Node<W>* get_unique_node(int order, succ_ls<W>&& successors) {
 			auto&& key = cache::unique_table_key<W>(order, successors);
+
+			//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			if constexpr (PL) {
+				unique_table_m.lock();
+			}
 			auto&& p_find_res = m_unique_table.find(key);
+
 			if (p_find_res != m_unique_table.end()) {
+				if constexpr (PL) {
+					unique_table_m.unlock();
+				}
+				//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 				return p_find_res->second;
 			}
 
-			node::Node<W>* p_node = new node::Node<W>(order, std::move(successors));
-			m_unique_table.insert(std::make_pair(std::move(key), p_node));
+			node::Node<W>* p_node = new node::Node<W>(node::Node<W>::ConstructNode<PL>(order, std::move(successors)));
+
+			m_unique_table[key] = p_node;
+			if constexpr (PL) {
+				unique_table_m.unlock();
+			}
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 			return p_node;
 		}
 

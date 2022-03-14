@@ -111,42 +111,6 @@ namespace cache {
 	template <typename W>
 	using unique_table = boost::unordered_map<unique_table_key<W>, const node::Node<W>*>;
 
-	/* the type for duplicate cache
-	*  first: id, second: order_shift
-	*/
-	template <typename W>
-	using duplicate_table = boost::unordered_map<std::pair<int, int>, const node::Node<W>*>;
-
-
-	template <class W>
-	struct append_table_key {
-		int id_a;
-		int id_b;
-		append_table_key(int _id_a, int _id_b) {
-			id_a = _id_a;
-			id_b = _id_b;
-		}
-	};
-
-
-	template <class W>
-	inline bool operator ==(const append_table_key<W>& a, const append_table_key<W>& b) {
-		return a.id_a == b.id_a && a.id_b == b.id_b;
-	}
-
-	template <class W>
-	inline std::size_t hash_value(const append_table_key<W>& key) {
-		std::size_t seed = 0;
-		boost::hash_combine(seed, key.id_a);
-		boost::hash_combine(seed, key.id_b);
-		return seed;
-	}
-
-	// the type for append cache
-	template <typename W>
-	using append_table = boost::unordered_map<append_table_key<W>, const node::Node<W>*>;
-
-
 
 
 	template <class W>
@@ -518,7 +482,7 @@ namespace cache {
 
 
 	template <typename W1, typename W2>
-	using cont_table = boost::unordered_map < cont_key<W1, W2>, node::weightednode<weight::W_C<W1, W2>>>;
+	using cont_table = boost::unordered_map<cont_key<W1, W2>, node::weightednode<weight::W_C<W1, W2>>>;
 
 
 
@@ -527,12 +491,13 @@ namespace cache {
 	struct Global_Cache {
 		static CUDAcpl_table<W>* p_CUDAcpl_cache;
 		static sum_table<W>* p_sum_cache;
+		static std::shared_mutex sum_m;
 		static trace_table<W>* p_trace_cache;
-
 	};
 
 	template <typename W1, typename W2>
 	struct Cont_Cache {
 		static cont_table<W1, W2>* p_cont_cache;
+		static std::shared_mutex m;
 	};
 }

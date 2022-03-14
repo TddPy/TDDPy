@@ -16,8 +16,7 @@ namespace node {
 		}
 
 		weightednode(weightednode<W>&& other) {
-			weight = std::move(other.weight);
-			node = other.node;
+			*this = std::move(other);
 		}
 
 		weightednode(const W& _weight, const node::Node<W>* _p_node) {
