@@ -5,11 +5,14 @@ import torch
 from pytdd import TDD
 from pytdd import CUDAcpl
 
+import pytdd
+
 import pytdd_test
 
 #interface.reset()
 
 for i in range(1):
+    
     pytdd_test.test1()
     pytdd_test.test2()
     pytdd_test.test3()
@@ -27,5 +30,8 @@ for i in range(1):
     pytdd_test.test3_q_T()
 
     pytdd_test.test1_H()
+    
+    pytdd.setting_update(1, True, True)
+    pytdd_test.test3_cuda();
 
 os.system('pause')

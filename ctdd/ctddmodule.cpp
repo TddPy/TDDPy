@@ -35,9 +35,8 @@ delete_tdd(PyObject* self, PyObject* args) {
 /// <returns>the pointer to the tdd</returns>
 static PyObject*
 reset(PyObject* self, PyObject* args) {
-	TDD<wcomplex>::reset();
-
-	TDD<CUDAcpl::Tensor>::reset();
+	reset<wcomplex>();
+	reset<CUDAcpl::Tensor>();
 	return Py_BuildValue("");
 }
 
@@ -50,9 +49,8 @@ reset(PyObject* self, PyObject* args) {
 /// <returns></returns>
 static PyObject*
 clear_cache(PyObject* self, PyObject* args) {
-	TDD<wcomplex>::clear_cache();
-
-	TDD<CUDAcpl::Tensor>::clear_cache();
+	clear_cache<wcomplex>();
+	clear_cache<CUDAcpl::Tensor>();
 	return Py_BuildValue("");
 }
 
@@ -66,13 +64,13 @@ clear_cache(PyObject* self, PyObject* args) {
 /// <returns></returns>
 static PyObject*
 setting_update(PyObject* self, PyObject* args) {
-	int thread_num, device_cuda;
+	int thread_num, device_cuda, double_type;
 	double new_eps;
-	if (!PyArg_ParseTuple(args, "iid", &thread_num, &device_cuda, &new_eps))
+	if (!PyArg_ParseTuple(args, "iiid", &thread_num, &device_cuda, &double_type, &new_eps))
 		return NULL;
 
 	// note that the settings here are shared between scalar and tensor weight.
-	TDD<wcomplex>::setting_update(thread_num, device_cuda, new_eps);
+	setting_update(thread_num, device_cuda, double_type, new_eps);
 
 	return Py_BuildValue("");
 }
@@ -570,8 +568,8 @@ static PyModuleDef ctdd = {
 };
 
 PyMODINIT_FUNC PyInit_ctdd() {
-	TDD<wcomplex>::setting_update();
-	TDD<wcomplex>::reset();
-	TDD<CUDAcpl::Tensor>::reset();
+	setting_update();
+	reset<wcomplex>();
+	reset<CUDAcpl::Tensor>();
 	return PyModule_Create(&ctdd);
 }

@@ -15,7 +15,7 @@ namespace CUDAcpl {
 
 	extern c10::TensorOptions tensor_opt;
 
-	inline void reset(bool device_cuda) {
+	inline void reset(bool device_cuda, bool double_type) {
 		if (device_cuda) {
 			tensor_opt = tensor_opt.device(c10::Device::Type::CUDA);
 		}
@@ -23,7 +23,12 @@ namespace CUDAcpl {
 			tensor_opt = tensor_opt.device(c10::Device::Type::CPU);
 		}
 
-		tensor_opt = tensor_opt.dtype(c10::ScalarType::Double);
+		if (double_type) {
+			tensor_opt = tensor_opt.dtype(c10::ScalarType::Double);
+		}
+		else {
+			tensor_opt = tensor_opt.dtype(c10::ScalarType::Float);
+		}
 	}
 
 	inline Tensor from_complex(Complex cpl) {

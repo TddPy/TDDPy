@@ -4,7 +4,7 @@
 
 
 namespace wnode {
-	
+
 	inline int get_cmd_insert_pos(const cache::pair_cmd& cmd_ls, int order) {
 		int insert_pos = 0;
 		for (; insert_pos < cmd_ls.size(); insert_pos++) {
@@ -730,7 +730,7 @@ namespace wnode {
 		cache::pair_cmd sorted_remained_ls(remained_ls);
 
 		std::sort(sorted_remained_ls.begin(), sorted_remained_ls.end(),
-			[](const std::pair<int,int>& a, const std::pair<int,int>& b) {
+			[](const std::pair<int, int>& a, const std::pair<int, int>& b) {
 				return (a.first < b.first);
 			});
 
@@ -792,7 +792,7 @@ namespace wnode {
 
 
 	template <bool PL>
-	class iter_cont{
+	class iter_cont {
 	public:
 		/// <summary>
 		/// The sub-program to decide the iteration strategy for non-parallel and parallel methods, respectively
@@ -803,7 +803,7 @@ namespace wnode {
 		/// <param name="key"></param>
 		/// <param name="range"></param>
 		template <typename W1, typename W2, typename FUNC>
-		inline static void func(std::vector<node::weightednode<weight::W_C<W1, W2>>>& new_successors, 
+		inline static void func(std::vector<node::weightednode<weight::W_C<W1, W2>>>& new_successors,
 			const cache::cont_key<W1, W2>& key, int index_range, FUNC const& func) {
 			// exam the parallel coordinator record
 			if constexpr (PL) {
@@ -894,7 +894,7 @@ namespace wnode {
 		const cache::pair_cmd& remained_ls,
 		const cache::pair_cmd& a_waiting_ls, const cache::pair_cmd& b_waiting_ls,
 		const std::vector<int64_t>& a_new_order, const std::vector<int64_t>& b_new_order, bool parallel_tensor) {
-		
+
 		if (p_node_a == nullptr && p_node_b == nullptr) {
 			// close all the unprocessed indices
 			double scale = 1.;
@@ -934,7 +934,7 @@ namespace wnode {
 			//std::cout << remained_ls << " / " << a_waiting_ls << " / " << b_waiting_ls << std::endl;
 
 			double scale = 1.;
-			
+
 			bool a_node_uncontracted = true, b_node_uncontracted = true;
 			// find out the next contracting index for B at the same time
 			int next_b_min_i = 0;
@@ -1059,7 +1059,7 @@ namespace wnode {
 					auto&& successors_b = p_node_b->get_successors();
 					new_successors = std::vector<node::weightednode<weight::W_C<W1, W2>>>
 						(data_shape_b[order_b]);
-					
+
 					iter_cont<PL>::func(new_successors, key, data_shape_b[order_b],
 						[&](int i) {
 							return contract_iterate<W1, W2, PL>(p_node_a, successors_b[i].node,
@@ -1080,7 +1080,7 @@ namespace wnode {
 				}
 			}
 
-			
+
 
 			// remained_ls not empty holds in this situation
 			{
@@ -1181,7 +1181,7 @@ namespace wnode {
 			}
 
 
-			RETURN:
+		RETURN:
 			// add to the cache
 			res.weight = res.weight * scale;
 
@@ -1216,7 +1216,7 @@ namespace wnode {
 		const node::weightednode<W1>& w_node_a, const node::weightednode<W2>& w_node_b,
 		const std::vector<int64_t>& para_shape_a, const std::vector<int64_t>& para_shape_b,
 		const std::vector<int64_t>& data_shape_a, const std::vector<int64_t>& data_shape_b,
-		const cache::pair_cmd& cont_indices, 
+		const cache::pair_cmd& cont_indices,
 		const std::vector<int64_t>& a_new_order,
 		const std::vector<int64_t>& b_new_order, bool parallel_tensor) {
 
@@ -1238,7 +1238,7 @@ namespace wnode {
 			for (int i = 0; i < iter_para::p_thread_pool->thread_num(); i++) {
 				results[i] = iter_para::p_thread_pool->enqueue(
 					[&] {
-						return contract_iterate<W1, W2, true>(w_node_a.node, w_node_b.node,	prepared_weight,
+						return contract_iterate<W1, W2, true>(w_node_a.node, w_node_b.node, prepared_weight,
 							para_shape_a, para_shape_b,
 							data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
 							a_new_order, b_new_order, parallel_tensor);
@@ -1246,7 +1246,7 @@ namespace wnode {
 				);
 			}
 
-			auto&& res =  results[0].get();
+			auto&& res = results[0].get();
 			for (int i = 1; i < results.size(); i++) {
 				results[i].get();
 			}

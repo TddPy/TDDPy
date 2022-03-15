@@ -11,11 +11,6 @@ from . import ctdd
 # the TDD index node
 from .node import Node
 
-# order coordinators
-from .abstract_coordinator import AbstractCoordinator, OrderInfo
-from .trival_coordinator import TrivalCoordinator
-from .global_order_coordinator import GlobalOrderCoordinator
-
 # for tdd graphing
 from graphviz import Digraph
 from IPython.display import Image
@@ -23,17 +18,6 @@ from IPython.display import Image
 TERMINAL_ID = -1
 
 class TDD:
-    coordinator_factory = {
-        'trival': TrivalCoordinator(),
-        'global_order': GlobalOrderCoordinator()
-        }
-
-    coordinator : AbstractCoordinator = coordinator_factory['global_order']
-    #coordinator : AbstractCoordinator = coordinator_factory['trival']
-
-    @staticmethod
-    def set_coordinator(name) -> None:
-        TDD.coordinator = TDD.coordinator_factory[name]
 
 
     # different invocations for scalar and tensor weight
@@ -44,13 +28,11 @@ class TDD:
             return ctdd.get_tdd_info(self.pointer)
 
 
-    def __init__(self, pointer, tensor_weight: bool, coordinator_info: OrderInfo):
+    def __init__(self, pointer, tensor_weight: bool):
         self._pointer : int = pointer
         self._tensor_weight = tensor_weight
         self._info = self.get_tdd_info()
 
-        # here copy is not needed, because coordinator_info will only be resigned, not modified.
-        self._coordinator_info: OrderInfo = coordinator_info
 
     @property
     def tensor_weight(self)->bool:
@@ -150,10 +132,7 @@ class TDD:
 
     @staticmethod
     def as_tensor(data : TDD|
-                  Tuple[
-                      CUDAcpl_Tensor|np.ndarray|Tuple[CUDAcpl_Tensor|np.ndarray, int, Sequence[int]],
-                      Any
-                  ]) -> TDD:
+                      CUDAcpl_Tensor|np.ndarray|Tuple[CUDAcpl_Tensor|np.ndarray, int, Sequence[int]]) -> TDD:
 
         '''
         construct the tdd tensor
@@ -174,13 +153,9 @@ class TDD:
         if isinstance(data, TDD):
             # note the order information is also copied
             if data._tensor_weight:
-                return TDD(ctdd.as_tensor_clone_T(data.pointer), True, data._coordinator_info);
+                return TDD(ctdd.as_tensor_clone_T(data.pointer), True);
             else:
-                return TDD(ctdd.as_tensor_clone(data.pointer), False, data._coordinator_info);
-
-        #extract the order_information
-        data, coordinator_info = data
-        coordinator_info = TDD.coordinator.create_order_info(coordinator_info)
+                return TDD(ctdd.as_tensor_clone(data.pointer), False);
 
         if isinstance(data,Tuple):
             tensor,parallel_i_num,storage_order = data
@@ -188,16 +163,9 @@ class TDD:
             tensor = data
             parallel_i_num = 0
             storage_order = []
-
-        # if storage order not given, the coordinator will take over
-        if storage_order == []:
-            storage_order = TDD.coordinator.as_tensor_order(coordinator_info)
-        else:
-            storage_order = list(storage_order)
             
         if isinstance(tensor,np.ndarray):
             tensor = CUDAcpl.np2CUDAcpl(tensor)
-
 
         # examination
 
@@ -213,7 +181,7 @@ class TDD:
         else:
             pointer = ctdd.as_tensor(tensor, 0, storage_order)
 
-        return TDD(pointer, tensor_weight, coordinator_info)
+        return TDD(pointer, tensor_weight)
 
     @staticmethod
     def conj(tensor: TDD) -> TDD:
@@ -226,7 +194,7 @@ class TDD:
         else:
             pointer = ctdd.conj(tensor.pointer)
 
-        return TDD(pointer, tensor.tensor_weight, tensor._coordinator_info)
+        return TDD(pointer, tensor.tensor_weight)
 
     @staticmethod
     def mul(tensor: TDD, scalar: CUDAcpl_Tensor|complex) -> TDD:
@@ -247,7 +215,7 @@ class TDD:
             else:
                 raise "The scalar must be a python complex for this scalar weight tdd."
 
-        return TDD(pointer, tensor._tensor_weight, tensor._coordinator_info)
+        return TDD(pointer, tensor._tensor_weight)
 
     def __add__(self, other: TDD) -> TDD:
         '''
@@ -264,7 +232,7 @@ class TDD:
         else:
             pointer = ctdd.sum_W(self.pointer, other.pointer)
 
-        return TDD(pointer, self._tensor_weight, self.coordinator_info)
+        return TDD(pointer, self._tensor_weight)
 
     @staticmethod
     def trace(tensor: TDD, axes:Sequence[Sequence[int]]) -> TDD:
@@ -280,7 +248,7 @@ class TDD:
         else:
             pointer = ctdd.trace(tensor.pointer, list(axes[0]), list(axes[1]))
 
-        return TDD(pointer, tensor.tensor_weight, TDD.coordinator.trace_order_info(tensor._coordinator_info, axes))
+        return TDD(pointer, tensor.tensor_weight)
 
 
     @staticmethod
@@ -294,10 +262,7 @@ class TDD:
             parallel_tensor: Whether to tensor on the parallel indices.
         '''
         parallel_tensor = 1 if parallel_tensor else 0
-        if rearrangement == []:
-            rearrangement = TDD.coordinator.tensordot_rearrangement(a._coordinator_info, b._coordinator_info, axes)
 
-        new_coordinator_info = TDD.coordinator.tensordot_order_info(a._coordinator_info, b._coordinator_info, axes)
         if isinstance(axes, int):
             # conditioning on the weight version and iteration parallelism
             if iteration_parallel:
@@ -361,15 +326,13 @@ class TDD:
                     pointer = ctdd.tensordot_ls_WT(a.pointer, b.pointer, i1, i2, rearrangement, parallel_tensor)
                     res_tensor_weight = True
         
-        res = TDD(pointer, res_tensor_weight, new_coordinator_info)
+        res = TDD(pointer, res_tensor_weight)
         return res
 
 
     @staticmethod
     def permute(tensor: TDD, perm: Sequence[int]) -> TDD:
         if tensor.tensor_weight:
-            return TDD(ctdd.permute_T(tensor.pointer, list(perm)), True,
-                   TDD.coordinator.permute_order_info(tensor._coordinator_info, perm));
+            return TDD(ctdd.permute_T(tensor.pointer, list(perm)), True);
         else:
-            return TDD(ctdd.permute(tensor.pointer, list(perm)), False,
-                   TDD.coordinator.permute_order_info(tensor._coordinator_info, perm));
+            return TDD(ctdd.permute(tensor.pointer, list(perm)), False);

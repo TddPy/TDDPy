@@ -1,9 +1,7 @@
 #pragma once
 
-#ifdef NDEBUG
 #include <Python.h>
 #include <torch/python.h>
-#endif
 
 
 #include <cmath>

@@ -16,26 +16,25 @@ void compare(const torch::Tensor& a, const torch::Tensor& b) {
 }
 
 int main() {
+	setting_update(4, 0, 1, 1E-14);
 
-	TDD<wcomplex>::setting_update(4, 0, 1E-14);
+	reset<wcomplex>();
 
-	TDD<wcomplex>::reset();
+	reset<CUDAcpl::Tensor>();
 
-	TDD<CUDAcpl::Tensor>::reset();
-
-	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 });
-	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 });
-	auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }, c10::ScalarType::Double).reshape({ 2,2,2 }) / sqrt(2);
+	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
+	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
+	auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 }) / sqrt(2);
 	auto&& cnot = torch::tensor({ 1., 0., 0., 0., 0., 0., 0., 0.,
 								 0., 0., 1., 0., 0., 0., 0., 0.,
 								 0., 0., 0., 0., 0., 0., 1., 0.,
-								 0., 0., 0., 0., 1., 0., 0., 0. }, c10::ScalarType::Double).reshape({ 2,2,2,2,2 });
+								 0., 0., 0., 0., 1., 0., 0., 0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2,2,2 });
 
 	auto&& cz = torch::tensor({ 1., 0., 0., 0., 0., 0., 0., 0.,
 								 0., 0., 1., 0., 0., 0., 0., 0.,
 								 0., 0., 0., 0., 1., 0., 0., 0.,
-								 0., 0., 0., 0., 0., 0., -1., 0. }, c10::ScalarType::Double).reshape({ 2,2,2,2,2 });
-	auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }, c10::ScalarType::Double).reshape({ 2,2,2 });
+								 0., 0., 0., 0., 0., 0., -1., 0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2,2,2 });
+	auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 
 
 
@@ -44,8 +43,8 @@ int main() {
 		cout << "=================== " << i << " ===================" << endl;
 		
 		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
-		auto t1 = torch::rand({ 2,2,2,2,2,2 }, c10::ScalarType::Double);
-		auto t2 = torch::rand({ 2,2,2,2,2,2 }, c10::ScalarType::Double);
+		auto t1 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
+		auto t2 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
 		//auto expected = t1 + t2;
 
 		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
@@ -69,8 +68,8 @@ int main() {
 		cout << "=================== " << i << " ===================" << endl;
 		
 		//auto t1 = CUDAcpl::tensordot(sigmax, sigmay, {}, {});
-		auto t1 = torch::rand({ 2,2,2,2,2,2 }, c10::ScalarType::Double);
-		auto t2 = torch::rand({ 2,2,2,2,2,2 }, c10::ScalarType::Double);
+		auto t1 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
+		auto t2 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
 		//auto expected = t1 + t2;
 
 		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});

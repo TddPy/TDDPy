@@ -1,7 +1,7 @@
 
 import torch
 from torch._C import dtype
-from pytdd import TDD, CUDAcpl
+from pytdd import TDD, CUDAcpl, GlobalOrderCoordinator
 
 def compare(title, expected: CUDAcpl.CUDAcpl_Tensor,
             actual: CUDAcpl.CUDAcpl_Tensor):
@@ -20,8 +20,8 @@ def test1():
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.tensordot(a,b,1)
     
-    tdd_a = TDD.as_tensor(((a,0,[1,0]),None))
-    tdd_b = TDD.as_tensor(((b,0,[1,0]),None))
+    tdd_a = TDD.as_tensor((a,0,[1,0]))
+    tdd_b = TDD.as_tensor((b,0,[1,0]))
     actual = TDD.tensordot(tdd_a, tdd_b, 1).CUDAcpl()
 
     compare("test1", expected, actual)
@@ -34,8 +34,8 @@ def test1_T():
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.einsum("ia,ia->i",a,b)
 
-    tdd_a = TDD.as_tensor(((a,1,[]),None))
-    tdd_b = TDD.as_tensor(((b,1,[]),None))
+    tdd_a = TDD.as_tensor((a,1,[]))
+    tdd_b = TDD.as_tensor((b,1,[]))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], False).CUDAcpl()
 
     compare("test1_T",expected,actual)
@@ -48,8 +48,8 @@ def test1_T2():
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.einsum("ia,ja->ij",a,b)
 
-    tdd_a = TDD.as_tensor(((a,1,[]),None))
-    tdd_b = TDD.as_tensor(((b,1,[]),None))
+    tdd_a = TDD.as_tensor((a,1,[]))
+    tdd_b = TDD.as_tensor((b,1,[]))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], True).CUDAcpl()
 
     compare("test1_T2",expected,actual)
@@ -61,7 +61,7 @@ def test2():
     a = torch.rand((2,4,1,3,2))
     expected = a.permute((0,2,3,1,4))
 
-    tdd_a = TDD.as_tensor(((a,0,[0,2,3,1]),None))
+    tdd_a = TDD.as_tensor((a,0,[0,2,3,1]))
     actual = TDD.permute(tdd_a, (0,2,3,1)).CUDAcpl()
 
     compare("test2",expected, actual)
@@ -75,10 +75,24 @@ def test3():
     a = torch.rand((2,2,2,2,2), dtype = torch.double)
     expected = torch.einsum("iijjk->k", a)
 
-    tdd_a = TDD.as_tensor((a,None))
+    tdd_a = TDD.as_tensor(a)
     actual = TDD.trace(tdd_a, [[0,2],[1,3]]).CUDAcpl()
 
     compare("test3",expected, actual)
+
+
+def test3_cuda():
+    '''
+    tracing, CUDA
+    '''
+    a = torch.rand((2,2,2,2,2), dtype = torch.double, device = 'cuda')
+    expected = torch.einsum("iijjk->k", a)
+
+    tdd_a = TDD.as_tensor(a)
+    actual = TDD.trace(tdd_a, [[0,2],[1,3]]).CUDAcpl()
+
+    compare("test3_cuda", expected, actual)
+
 
 def test3_q():
     '''
@@ -88,7 +102,7 @@ def test3_q():
     a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard, a, 0)
     expected = torch.einsum("ijijklm->klm",a)
     
-    tdd_a = TDD.as_tensor((a,None))
+    tdd_a = TDD.as_tensor(a)
     actual = TDD.trace(tdd_a, [[0,1],[2,3]]).CUDAcpl()
 
     compare("test3_q",expected, actual)
@@ -101,7 +115,7 @@ def test3_q_T():
     a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard, a, 0)
     expected = torch.einsum("klijijm->klm",a)
     
-    tdd_a = TDD.as_tensor(((a,2,[]),None))
+    tdd_a = TDD.as_tensor((a,2,[]))
     actual = TDD.trace(tdd_a, [[0,1],[2,3]]).CUDAcpl()
 
     compare("test3_q_T",expected, actual)
@@ -119,8 +133,8 @@ def test4():
 
     expected = CUDAcpl.tensordot(a,b,[[1,5,3],[4,0,5]])
     
-    tdd_a = TDD.as_tensor(((a,0,[]),None))
-    tdd_b = TDD.as_tensor(((b,0,[]),None))
+    tdd_a = TDD.as_tensor((a,0,[]))
+    tdd_b = TDD.as_tensor((b,0,[]))
     actual = TDD.tensordot(tdd_a, tdd_b, [[1,5,3],[4,0,5]]).CUDAcpl()
 
     compare("test4",expected,actual)
@@ -137,8 +151,8 @@ def test5():
 
     expected = CUDAcpl.tensordot(a,b,[[1,3],[3,2]])
     
-    tdd_a = TDD.as_tensor(((a,0,[]),None))
-    tdd_b = TDD.as_tensor(((b,0,[]),None))
+    tdd_a = TDD.as_tensor((a,0,[]))
+    tdd_b = TDD.as_tensor((b,0,[]))
     actual = TDD.tensordot(tdd_a, tdd_b, [[1,3],[3,2]]).CUDAcpl()
     compare("test5",expected,actual)
 
@@ -154,8 +168,8 @@ def test6():
 
     expected = CUDAcpl.tensordot(a,b,[[0,1],[1,0]])
     
-    tdd_a = TDD.as_tensor(((a,0,[]),None))
-    tdd_b = TDD.as_tensor(((b,0,[]),None))
+    tdd_a = TDD.as_tensor((a,0,[]))
+    tdd_b = TDD.as_tensor((b,0,[]))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0,1],[1,0]]).CUDAcpl()
 
     compare("test6", expected,actual)
@@ -166,11 +180,11 @@ def test7():
     '''
 
     cz = CUDAcpl.quantum_basic.CZ.reshape((2,2,2,2,2))
-    tdd_cz = TDD.as_tensor((cz,None))
+    tdd_cz = TDD.as_tensor(cz)
     I = CUDAcpl.eye(2)
-    tdd_I = TDD.as_tensor((I,None))
+    tdd_I = TDD.as_tensor(I)
     h = CUDAcpl.quantum_basic.hadamard
-    tdd_h = TDD.as_tensor((h,None))
+    tdd_h = TDD.as_tensor(h)
 
     #step 1
     t1 = CUDAcpl.tensordot(h, I, [[0],[1]])
@@ -201,39 +215,40 @@ def test8():
     '''
     qft_2 stepwise global_order_coordinator version
     '''
+    coordinator = GlobalOrderCoordinator();
 
     cz = CUDAcpl.quantum_basic.CZ.reshape((2,2,2,2,2))
-    tdd_cz = TDD.as_tensor((cz,[2,5,3,6]))
+    tdd_cz = coordinator.as_tensor((cz,[2,5,3,6]))
     I = CUDAcpl.eye(2)
-    tdd_I1 = TDD.as_tensor((I,[0,1]))
-    tdd_I2 = TDD.as_tensor((I,[4,5]))
+    tdd_I1 = coordinator.as_tensor((I,[0,1]))
+    tdd_I2 = coordinator.as_tensor((I,[4,5]))
     h = CUDAcpl.quantum_basic.hadamard
-    tdd_h1 = TDD.as_tensor((h,[1,2]))
-    tdd_h2 = TDD.as_tensor((h,[6,7]))
+    tdd_h1 = coordinator.as_tensor((h,[1,2]))
+    tdd_h2 = coordinator.as_tensor((h,[6,7]))
 
     #step 1
     t1 = CUDAcpl.tensordot(h, I, [[0],[1]])
-    tdd_t1 = TDD.tensordot(tdd_h1, tdd_I1, [[0],[1]])
+    tdd_t1 = coordinator.tensordot(tdd_h1, tdd_I1, [[0],[1]])
     compare("test8", t1, tdd_t1.CUDAcpl())
 
     #step 2
     t2 = CUDAcpl.tensordot(I, cz, [[1],[1]])
-    tdd_t2 = TDD.tensordot(tdd_I2, tdd_cz, [[1],[1]])
+    tdd_t2 = coordinator.tensordot(tdd_I2, tdd_cz, [[1],[1]])
     compare("test8", t2, tdd_t2.CUDAcpl())
 
     #step 3
     t3 = CUDAcpl.tensordot(h, t2, [[0],[3]])
-    tdd_t3 = TDD.tensordot(tdd_h2, tdd_t2, [[0],[3]])
+    tdd_t3 = coordinator.tensordot(tdd_h2, tdd_t2, [[0],[3]])
     compare("test8", t3, tdd_t3.CUDAcpl())
 
     #step4
     t4 = CUDAcpl.tensordot(t1, t3, [[0],[3]])
-    tdd_t4 = TDD.tensordot(tdd_t1, tdd_t3, [[0],[3]])
+    tdd_t4 = coordinator.tensordot(tdd_t1, tdd_t3, [[0],[3]])
     compare("test8", t4, tdd_t4.CUDAcpl())
 
     #permute
     res = t4.permute((0,3,1,2,4))
-    tdd_res = TDD.permute(tdd_t4,[0,3,1,2])
+    tdd_res = coordinator.permute(tdd_t4,[0,3,1,2])
     compare("test8", res, tdd_res.CUDAcpl())
 
 def test9():
@@ -243,7 +258,7 @@ def test9():
     a = torch.rand((2,3,4,2))
     expected = CUDAcpl.np2CUDAcpl(CUDAcpl.CUDAcpl2np(a).conj())
 
-    a_tdd = TDD.as_tensor((a,None))
+    a_tdd = TDD.as_tensor(a)
     actual = TDD.conj(a_tdd).CUDAcpl()
 
     compare("test9", expected, actual)
@@ -255,7 +270,7 @@ def test10():
     a = CUDAcpl.quantum_basic.CZ;
     expected = CUDAcpl.tensordot(CUDAcpl._U_(torch.tensor, [0,1]), a, 0)
 
-    a_tdd = TDD.as_tensor((a,None))
+    a_tdd = TDD.as_tensor(a)
     actual = TDD.mul(a_tdd, 1j).CUDAcpl()
 
     compare("test10", expected, actual)
@@ -268,8 +283,8 @@ def test1_H():
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.einsum("ia,aj->ij",a,b)
 
-    tdd_a = TDD.as_tensor(((a,1,[]),None))
-    tdd_b = TDD.as_tensor(((b,0,[]),None))
+    tdd_a = TDD.as_tensor((a,1,[]))
+    tdd_b = TDD.as_tensor((b,0,[]))
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], False).CUDAcpl()
 
     compare("test1_H", expected,actual)

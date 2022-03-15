@@ -141,32 +141,6 @@ namespace tdd {
 		}
 	public:
 
-		static void setting_update(int thread_num = DEFAULT_THREAD_NUM, bool device_cuda = false, double new_eps = DEFAULT_EPS) {
-			delete wnode::iter_para::p_thread_pool;
-			wnode::iter_para::p_thread_pool = new ThreadPool(thread_num);
-
-			CUDAcpl::reset(device_cuda);
-			weight::EPS = new_eps;
-		}
-
-		static void reset() {
-			node::Node<W>::reset();
-			cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
-			cache::Global_Cache<W>::p_sum_cache->clear();
-			cache::Global_Cache<W>::p_trace_cache->clear();
-			cache::Cont_Cache<W, wcomplex>:: p_cont_cache->clear();
-			cache::Cont_Cache<W, CUDAcpl::Tensor>:: p_cont_cache->clear();
-		}
-
-		static void clear_cache() {
-			cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
-			cache::Global_Cache<W>::p_sum_cache->clear();
-			cache::Global_Cache<W>::p_trace_cache->clear();
-			cache::Cont_Cache<W, wcomplex>::p_cont_cache->clear();
-			cache::Cont_Cache<W, CUDAcpl::Tensor>::p_cont_cache->clear();
-		}
-
-
 		TDD(TDD&& other) {
 			*this = std::move(other);
 		}
@@ -399,6 +373,37 @@ namespace tdd {
 				const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
 				const std::vector<int>& rearrangement, bool parallel_tensor);
 	};
+
+	inline void setting_update(int thread_num = DEFAULT_THREAD_NUM,
+		bool device_cuda = false, bool double_type = true, double new_eps = DEFAULT_EPS) {
+
+		delete wnode::iter_para::p_thread_pool;
+		wnode::iter_para::p_thread_pool = new ThreadPool(thread_num);
+
+		CUDAcpl::reset(device_cuda, double_type);
+		weight::EPS = new_eps;
+	}
+
+	template <typename W>
+	inline void reset() {
+		node::Node<W>::reset();
+		cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
+		cache::Global_Cache<W>::p_sum_cache->clear();
+		cache::Global_Cache<W>::p_trace_cache->clear();
+		cache::Cont_Cache<W, wcomplex>::p_cont_cache->clear();
+		cache::Cont_Cache<W, CUDAcpl::Tensor>::p_cont_cache->clear();
+	}
+
+	template <typename W>
+	inline void clear_cache() {
+		cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
+		cache::Global_Cache<W>::p_sum_cache->clear();
+		cache::Global_Cache<W>::p_trace_cache->clear();
+		cache::Cont_Cache<W, wcomplex>::p_cont_cache->clear();
+		cache::Cont_Cache<W, CUDAcpl::Tensor>::p_cont_cache->clear();
+	}
+
+
 
 	/// <summary>
 	///  multiply the weight element wise
