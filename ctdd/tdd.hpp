@@ -228,6 +228,7 @@ namespace tdd {
 		/// If empty order is put in, the trival order will be taken.</param>
 		/// <returns>The tdd created.</returns>
 		static TDD<W> as_tensor(const CUDAcpl::Tensor& t, int dim_parallel, const std::vector<int64_t>& storage_order) {
+
 			auto&& dim_total = t.dim() - 1;
 			auto&& dim_data = dim_total - dim_parallel;
 			auto&& storage_order_pd = std::vector<int64_t>(dim_data);

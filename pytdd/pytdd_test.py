@@ -85,10 +85,10 @@ def test3_cuda():
     '''
     tracing, CUDA
     '''
-    a = torch.rand((2,2,2,2,2), dtype = torch.double, device = 'cuda')
-    expected = torch.einsum("iijjk->k", a)
+    a = torch.rand((2,2,2,2,2,2), dtype = torch.double, device = 'cuda')
+    expected = torch.einsum("liijjk->lk", a)
 
-    tdd_a = TDD.as_tensor(a)
+    tdd_a = TDD.as_tensor((a,1,[]))
     actual = TDD.trace(tdd_a, [[0,2],[1,3]]).CUDAcpl()
 
     compare("test3_cuda", expected, actual)

@@ -26,8 +26,8 @@ namespace weight {
 	}
 
 	inline void get_int_key(WCode* p_vec, CUDAcpl::Tensor weight) {
-		auto&& temp = torch::round(weight / EPS).toType(c10::ScalarType::Long);
-		auto ptr = (WCode*)temp.data_ptr();
+		auto&& temp = torch::round(weight / EPS).toType(c10::ScalarType::Long).cpu();
+		auto ptr = (WCode*)temp.data_ptr<WCode>();
 
 		for (int i = 0; i < temp.numel(); i++) {
 			p_vec[i] = ptr[i];
