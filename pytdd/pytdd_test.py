@@ -8,9 +8,9 @@ def compare(title, expected: CUDAcpl.CUDAcpl_Tensor,
     max_diff = torch.max(abs(expected - actual))
 
     if ( max_diff > 1e-7):
-        print(title+" not passed, diff: ",max_diff)
+        print("not passed: "+title+", diff: ",max_diff)
     else:
-        print(title+" passed, diff: ",max_diff)
+        print("passed: "+title+", diff: ",max_diff)
 
 def test1():
     '''

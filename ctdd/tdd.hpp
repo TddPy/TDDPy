@@ -373,6 +373,9 @@ namespace tdd {
 			tensordot(const TDD<W1>& a, const TDD<W2>& b,
 				const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
 				const std::vector<int>& rearrangement, bool parallel_tensor);
+
+		template <typename W>
+		friend void reset(const std::vector<TDD<W>*>& tdd_ls);
 	};
 
 	inline void setting_update(int thread_num = DEFAULT_THREAD_NUM,
@@ -385,9 +388,25 @@ namespace tdd {
 		weight::EPS = new_eps;
 	}
 
+	/// <summary>
+	/// Note that tdds in tdd_ls have their nodes changed (due to rearrangement of node id)
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
+	/// <param name="tdd_ls"></param>
 	template <typename W>
-	inline void reset() {
-		node::Node<W>::reset();
+	inline void reset(const std::vector<TDD<W>*>& tdd_ls = {}) {
+
+		std::vector<const node::Node<W>*> remained_nodes{ tdd_ls.size() };
+		for (int i = 0; i < tdd_ls.size(); i++) {
+			remained_nodes[i] = tdd_ls[i]->m_wnode.node;
+		}
+
+		auto&& res_nodes = node::Node<W>::reset(remained_nodes);
+
+		for (int i = 0; i < tdd_ls.size(); i++) {
+			tdd_ls[i]->m_wnode.node = res_nodes[i];
+		}
+
 		cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
 		cache::Global_Cache<W>::p_sum_cache->clear();
 		cache::Global_Cache<W>::p_trace_cache->clear();

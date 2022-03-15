@@ -34,4 +34,8 @@ for i in range(1):
     pytdd.setting_update(1, True, True)
     pytdd_test.test3_cuda();
 
+    a = TDD.as_tensor(np.array([[1,2],[3,4]]))
+    pytdd.reset([a])
+    print(a.numpy())
+
 os.system('pause')

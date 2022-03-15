@@ -87,5 +87,18 @@ int main() {
 	end = clock();
 
 	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
+
+	auto t1 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
+	auto t2 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
+	auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
+	t1_tdd.print();
+	auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
+	reset<wcomplex>({ &t2_tdd });
+	reset<CUDAcpl::Tensor>({ &t1_tdd });
+	auto tdd_res = tdd::tensordot<CUDAcpl::Tensor, wcomplex, true>(t1_tdd, t2_tdd, { 0,1,2 }, { 0,1,2 }, {}, true);
+	auto actual = tdd_res.CUDAcpl();
+	t1_tdd.print();
+	cout << t1_tdd.CUDAcpl() << endl;
+
 	return 0;
 }

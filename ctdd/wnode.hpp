@@ -427,18 +427,22 @@ namespace wnode {
 		}
 		auto&& p_find_res = cache::Global_Cache<W>::p_sum_cache->find(key);
 		auto found_in_cache = (p_find_res != cache::Global_Cache<W>::p_sum_cache->end());
-		if constexpr (PL) {
-			cache::Global_Cache<W>::sum_m.unlock_shared();
-		}
-		//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		if (found_in_cache) {
 			node::weightednode<W> res = p_find_res->second;
+			if constexpr (PL) {
+				cache::Global_Cache<W>::sum_m.unlock_shared();
+			}
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			res.weight = weight::mul(res.weight, renorm_coef);
 			return res;
 		}
 		else {
-			///////////////////////////////////////////////////////////////////////
+			if constexpr (PL) {
+				cache::Global_Cache<W>::sum_m.unlock_shared();
+			}
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+				///////////////////////////////////////////////////////////////////////
 			// ensure w_node1.node to be the node of smaller order, through swaping
 			///////////////////////////////////////////////////////////////////////
 			const node::weightednode<W>* p_wnode_1, * p_wnode_2;
@@ -920,17 +924,21 @@ namespace wnode {
 		}
 		auto&& p_find_res = cache::Cont_Cache<W1, W2>::p_cont_cache->find(key);
 		auto found_in_cache = (p_find_res != cache::Cont_Cache<W1, W2>::p_cont_cache->end());
-		if constexpr (PL) {
-			cache::Cont_Cache<W1, W2>::m.unlock_shared();
-		}
-		//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		if (found_in_cache) {
 			res = p_find_res->second;
+			if constexpr (PL) {
+				cache::Cont_Cache<W1, W2>::m.unlock_shared();
+			}
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			res.weight = weight::mul(res.weight, weight);
 			return res;
 		}
 		else {
+			if constexpr (PL) {
+				cache::Cont_Cache<W1, W2>::m.unlock_shared();
+			}
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			//std::cout << remained_ls << " / " << a_waiting_ls << " / " << b_waiting_ls << std::endl;
 
 			double scale = 1.;

@@ -28,15 +28,33 @@ delete_tdd(PyObject* self, PyObject* args) {
 
 
 /// <summary>
-/// reset the unique table and all the caches.
+/// reset the unique table and all the caches. designated tdds are reserved.
 /// </summary>
 /// <param name="self"></param>
 /// <param name="args">for storage_order, put in [] from python to indicate the trival order.</param>
 /// <returns>the pointer to the tdd</returns>
 static PyObject*
 reset(PyObject* self, PyObject* args) {
-	reset<wcomplex>();
-	reset<CUDAcpl::Tensor>();
+
+	PyObject* p_tdd_W_pyo, * p_tdd_T_pyo;
+	if (!PyArg_ParseTuple(args, "OO", &p_tdd_W_pyo, &p_tdd_T_pyo)) {
+		return NULL;
+	}
+
+	auto&& size_W = PyList_GET_SIZE(p_tdd_W_pyo);
+	std::vector<TDD<wcomplex>*> tdd_W_ls(size_W);
+	for (int i = 0; i < size_W; i++) {
+		tdd_W_ls[i] = (TDD<wcomplex>*)PyLong_AsLongLong(PyList_GetItem(p_tdd_W_pyo, i));
+	}
+
+	auto&& size_T = PyList_GET_SIZE(p_tdd_T_pyo);
+	std::vector<TDD<CUDAcpl::Tensor>*> tdd_T_ls(size_T);
+	for (int i = 0; i < size_T; i++) {
+		tdd_T_ls[i] = (TDD<CUDAcpl::Tensor>*)PyLong_AsLongLong(PyList_GetItem(p_tdd_T_pyo, i));
+	}
+
+	reset<wcomplex>(tdd_W_ls);
+	reset<CUDAcpl::Tensor>(tdd_T_ls);
 	return Py_BuildValue("");
 }
 
@@ -513,7 +531,7 @@ get_node_info(PyObject* self, PyObject* args) {
 static PyMethodDef ctdd_methods[] = {
 	{ "delete_tdd", (PyCFunction)delete_tdd<wcomplex>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "delete_tdd_T", (PyCFunction)delete_tdd<CUDAcpl::Tensor>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
-	{ "reset", (PyCFunction)reset, METH_VARARGS, " reset the unique table and all the caches." },
+	{ "reset", (PyCFunction)reset, METH_VARARGS, " reset the unique table and all the caches. designated tdds are reserved." },
 	{ "clear_cache", (PyCFunction)clear_cache, METH_VARARGS, " clear all the caches." },
 	{ "setting_update", (PyCFunction)setting_update, METH_VARARGS, " update the settings." },
 	{ "as_tensor", (PyCFunction)as_tensor<wcomplex>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },

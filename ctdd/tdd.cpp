@@ -10,10 +10,10 @@ int node::Node<CUDAcpl::Tensor>::m_global_id = 0;
 std::mutex node::Node<CUDAcpl::Tensor>::global_id_m{};
 
 
-cache::unique_table<wcomplex> node::Node<wcomplex>::m_unique_table = cache::unique_table<wcomplex>();
+cache::unique_table<wcomplex>* node::Node<wcomplex>::mp_unique_table = new cache::unique_table<wcomplex>();
 std::shared_mutex node::Node<wcomplex>::unique_table_m{};
 
-cache::unique_table<CUDAcpl::Tensor> node::Node<CUDAcpl::Tensor>::m_unique_table = cache::unique_table<CUDAcpl::Tensor>();
+cache::unique_table<CUDAcpl::Tensor>* node::Node<CUDAcpl::Tensor>::mp_unique_table = new cache::unique_table<CUDAcpl::Tensor>();
 std::shared_mutex node::Node<CUDAcpl::Tensor>::unique_table_m{};
 
 cache::CUDAcpl_table<wcomplex>* cache::Global_Cache<wcomplex>::p_CUDAcpl_cache = new cache::CUDAcpl_table<wcomplex>();
