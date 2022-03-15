@@ -303,6 +303,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="manage.cpp" />
     <ClCompile Include="simpletools.cpp" />
     <ClCompile Include="tdd.cpp" />
   </ItemGroup>
@@ -310,6 +311,7 @@
     <ClInclude Include="cache.hpp" />
     <ClInclude Include="config.h" />
     <ClInclude Include="CUDAcpl.h" />
+    <ClInclude Include="manage.hpp" />
     <ClInclude Include="node.hpp" />
     <ClInclude Include="simpletools.h" />
     <ClInclude Include="stdafx.h" />

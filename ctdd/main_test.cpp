@@ -1,12 +1,14 @@
 #include "tdd.hpp"
+#include "manage.hpp"
 #include <time.h>
 #include "ThreadPool.h"
 
 using namespace std;
 using namespace tdd;
+using namespace mng;
 
 void compare(const torch::Tensor& a, const torch::Tensor& b) {
-	auto&& max_diff = torch::max(torch::abs(a - b)).item().toDouble();
+	auto&& max_diff = (torch::max)(torch::abs(a - b)).item().toDouble();
 	if (max_diff > 1E-7) {
 		std::cout << "not passed, max diff: " << max_diff << std::endl;
 	}

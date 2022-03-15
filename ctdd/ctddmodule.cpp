@@ -1,9 +1,11 @@
 #include "stdafx.h"
 #include "tdd.hpp"
+#include "manage.hpp"
 
 using namespace std;
 using namespace node;
 using namespace tdd;
+using namespace mng;
 
 
 /// <summary>
@@ -586,6 +588,7 @@ static PyModuleDef ctdd = {
 };
 
 PyMODINIT_FUNC PyInit_ctdd() {
+	get_current_process();
 	setting_update();
 	reset<wcomplex>();
 	reset<CUDAcpl::Tensor>();

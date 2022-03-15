@@ -89,6 +89,10 @@ namespace node {
 
 	public:
 
+		static int current_global_id() {
+			return m_global_id;
+		}
+
 		Node(int id, int order, succ_ls<W>&& successors) :m_id(id), m_order(order), m_successors(std::move(successors)) {}
 
 		Node(Node<W>&& _node) {

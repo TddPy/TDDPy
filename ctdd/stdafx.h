@@ -16,9 +16,19 @@
 #include <vector>
 #include <assert.h>
 #include <shared_mutex>
+#include <chrono>
 
 #include <torch/script.h>
 #include <torch/torch.h>
+
+// resource management
+
+#include <windows.h>  
+#include <psapi.h>  
+//#include <tlhelp32.h>
+#include <direct.h>
+#include <process.h>
+
 
 
 #include "simpletools.h"

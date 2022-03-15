@@ -1,7 +1,10 @@
 #pragma once
 #include "node.hpp"
 
-
+namespace mng {
+	inline void cache_clear_check();
+	extern std::chrono::duration<double> mem_check_period;
+}
 
 namespace wnode {
 
@@ -96,16 +99,11 @@ namespace wnode {
 	/// <summary>
 /// Conduct the normalization of this wnode.
 /// This method only normalize the given wnode, and assumes the wnodes under it are already normalized.
+/// (not terminal node)
 /// </summary>
-/// <param name="w_node"></param>
 /// <returns>Return the normalized node and normalization coefficients as a wnode.</returns>
 	template <class W, bool PL>
-	node::weightednode<W> normalize(const node::weightednode<W>& w_node) {
-		if (w_node.node == nullptr) {
-			return w_node;
-		}
-
-		auto&& successors = w_node.node->get_successors();
+	node::weightednode<W> normalize(const W& wei, int order, std::vector<node::weightednode<W>>&& successors) {
 
 		// subnode equality check
 		bool all_equal = true;
@@ -117,7 +115,7 @@ namespace wnode {
 		}
 		if (all_equal) {
 			return node::weightednode<W>(
-				weight::mul(w_node.weight, successors[0].weight),
+				weight::mul(wei, successors[0].weight),
 				successors[0].node
 				);
 		}
@@ -135,14 +133,14 @@ namespace wnode {
 			succ.weight = weight::mul(succ.weight, reciprocal);
 			// check whether the successor weight is zero, and redirect to terminal node if so
 			if (weight::is_zero(succ.weight)) {
-				succ.weight = weight::zeros_like(w_node.weight);
+				succ.weight = weight::zeros_like(wei);
 				succ.node = nullptr;
 			}
 		}
 
-		auto&& new_node = node::Node<W>::get_unique_node<PL>(w_node.node->get_order(), std::move(new_successors));
+		auto&& new_node = node::Node<W>::get_unique_node<PL>(order, std::move(new_successors));
 
-		return node::weightednode<W>{ weight::mul(weig_max, w_node.weight), new_node };
+		return node::weightednode<W>{ weight::mul(weig_max, wei), new_node };
 	}
 
 
@@ -178,9 +176,8 @@ namespace wnode {
 				t.select(axe_pos, i).unsqueeze(axe_pos),
 				para_shape, data_shape, storage_order, depth + 1);
 		}
-		auto&& temp_node = node::Node<W>::ConstructNode<false>(depth, std::move(new_successors));
 		// normalize this depth
-		return normalize<W, false>(node::weightednode<W>(weight::ones<W>(para_shape), &temp_node));
+		return normalize<W, false>(weight::ones<W>(para_shape), depth, std::move(new_successors));
 	}
 
 
@@ -491,8 +488,7 @@ namespace wnode {
 						auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->node);
 						*i_new = sum_iterate<W, PL>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 					}
-					auto&& temp_node = node::Node<W>::ConstructNode<PL>(p_wnode_1->node->get_order(), std::move(new_successors));
-					res = normalize<W, PL>(node::weightednode<W>(weight::ones<W>(para_shape), &temp_node));
+					res = normalize<W, PL>(weight::ones<W>(para_shape), p_wnode_1->node->get_order(), std::move(new_successors));
 					not_operated = false;
 				}
 			}
@@ -516,8 +512,7 @@ namespace wnode {
 					auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), p_wnode_2->node);
 					*i_new = sum_iterate<W, PL>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 				}
-				auto&& temp_node = node::Node<W>::ConstructNode<PL>(p_wnode_1->node->get_order(), std::move(new_successors));
-				res = normalize<W, PL>(node::weightednode<W>(weight::ones<W>(para_shape), &temp_node));
+				res = normalize<W, PL>(weight::ones<W>(para_shape), p_wnode_1->node->get_order(), std::move(new_successors));
 			}
 
 
@@ -701,8 +696,7 @@ namespace wnode {
 						*i_new = trace_iterate(*i, para_shape, data_shape, remained_ls_pd, waiting_ls_pd, new_order);
 					}
 				}
-				auto&& temp_node = node::Node<W>::ConstructNode<false>(new_order[order], std::move(new_successors));
-				res = normalize<W, false>(node::weightednode<W>(weight::ones<W>(para_shape), &temp_node));
+				res = normalize<W, false>(weight::ones<W>(para_shape), new_order[order], std::move(new_successors));
 			}
 
 			// add to the cache
@@ -789,7 +783,7 @@ namespace wnode {
 		/// <summary>
 		/// The mark that the corresponding branch have been calculated already.
 		/// </summary>
-		constexpr int CONT_DONE = std::numeric_limits<int>::max();
+		constexpr int CONT_DONE = (std::numeric_limits<int>::max)();
 	}
 	///////////////////////////////////////////////////////////////////////////////
 
@@ -1051,11 +1045,10 @@ namespace wnode {
 						}
 					);
 
-					auto&& temp_node = node::Node<weight::W_C<W1, W2>>::ConstructNode<PL>
-						(a_new_order[order_a], std::move(new_successors));
-					res = normalize<weight::W_C<W1, W2>, PL>(node::weightednode<weight::W_C<W1, W2>>(
+					res = normalize<weight::W_C<W1, W2>, PL>(
 						weight::ones_like(weight),
-						&temp_node)
+						a_new_order[order_a],
+						std::move(new_successors)
 						);
 					goto RETURN;
 				}
@@ -1078,11 +1071,10 @@ namespace wnode {
 						}
 					);
 
-					auto&& temp_node = node::Node<weight::W_C<W1, W2>>::ConstructNode<PL>
-						(b_new_order[order_b], std::move(new_successors));
-					res = normalize<weight::W_C<W1, W2>, PL>(node::weightednode<weight::W_C<W1, W2>>(
+					res = normalize<weight::W_C<W1, W2>, PL>(
 						weight::ones_like(weight),
-						&temp_node)
+						b_new_order[order_b],
+						std::move(new_successors)
 						);
 					goto RETURN;
 				}
@@ -1228,6 +1220,8 @@ namespace wnode {
 		const std::vector<int64_t>& a_new_order,
 		const std::vector<int64_t>& b_new_order, bool parallel_tensor) {
 
+
+
 		// sort the remained_ls by first element, to keep the key unique
 		cache::pair_cmd sorted_remained_ls(cont_indices);
 
@@ -1236,7 +1230,6 @@ namespace wnode {
 				return (a.first < b.first);
 			});
 
-		//std::cout << sorted_remained_ls << std::endl;
 
 		if constexpr (PL) {
 			iter_para::Para_Crd<W1, W2>::record.clear();
@@ -1254,7 +1247,12 @@ namespace wnode {
 				);
 			}
 
+			while (results[0].wait_for(mng::mem_check_period) != std::future_status::ready) {
+				mng::cache_clear_check();
+			}
+
 			auto&& res = results[0].get();
+
 			for (int i = 1; i < results.size(); i++) {
 				results[i].get();
 			}
