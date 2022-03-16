@@ -62,9 +62,6 @@
     <ClInclude Include="cache.hpp">
       <Filter>templates &amp; headers</Filter>
     </ClInclude>
-    <ClInclude Include="succ_ls.hpp">
-      <Filter>templates &amp; headers</Filter>
-    </ClInclude>
     <ClInclude Include="wnode.hpp">
       <Filter>templates &amp; headers</Filter>
     </ClInclude>

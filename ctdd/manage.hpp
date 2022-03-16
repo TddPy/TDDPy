@@ -20,19 +20,8 @@ namespace mng {
 	/// <typeparam name="W"></typeparam>
 	/// <param name="tdd_ls"></param>
 	template <typename W>
-	inline void reset(const std::vector<tdd::TDD<W>*>& tdd_ls = {}) {
-
-		std::vector<const node::Node<W>*> remained_nodes{ tdd_ls.size() };
-		for (int i = 0; i < tdd_ls.size(); i++) {
-			remained_nodes[i] = tdd_ls[i]->m_wnode.node;
-		}
-
-		auto&& res_nodes = node::Node<W>::reset(remained_nodes);
-
-		for (int i = 0; i < tdd_ls.size(); i++) {
-			tdd_ls[i]->m_wnode.node = res_nodes[i];
-		}
-
+	inline void reset() {
+		node::Node<W>::reset();
 		cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
 		cache::Global_Cache<W>::p_sum_cache->clear();
 		cache::Global_Cache<W>::p_trace_cache->clear();

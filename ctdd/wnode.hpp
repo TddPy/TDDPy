@@ -93,7 +93,7 @@ namespace wnode {
 
 	template <class W>
 	inline bool is_equal(const node::weightednode<W>& a, const node::weightednode<W>& b) {
-		return (a.node == b.node && weight::is_equal(a.weight, b.weight));
+		return (a.get_node() == b.get_node() && weight::is_equal(a.weight, b.weight));
 	}
 
 	/// <summary>
@@ -116,31 +116,29 @@ namespace wnode {
 		if (all_equal) {
 			return node::weightednode<W>(
 				weight::mul(wei, successors[0].weight),
-				successors[0].node
+				successors[0].get_node()
 				);
 		}
 
 		// start to normalize the weights
 		W weig_max = get_normalizer(successors);
 		if (weight::is_exact_zero(weig_max)) {
-			return node::weightednode<W>{ weig_max, nullptr };
+			// in this case, all nodes in succesors should be the terminal node
+			return node::weightednode<W>{ std::move(weig_max), nullptr };
 		}
 
 		W reciprocal = weight::reciprocal_without_zero(weig_max);
-		auto&& new_successors = std::vector<node::weightednode<W>>(successors);
 
-		for (auto&& succ : new_successors) {
+		for (auto&& succ : successors) {
 			succ.weight = weight::mul(succ.weight, reciprocal);
 			// check whether the successor weight is zero, and redirect to terminal node if so
 			if (weight::is_zero(succ.weight)) {
 				succ.weight = weight::zeros_like(wei);
-				succ.node = nullptr;
+				succ.set_node(nullptr);
 			}
 		}
 
-		auto&& new_node = node::Node<W>::get_unique_node<PL>(order, std::move(new_successors));
-
-		return node::weightednode<W>{ weight::mul(weig_max, wei), new_node };
+		return node::weightednode<W>::get_wnode<PL>(weight::mul(weig_max, wei), order, std::move(successors));
 	}
 
 
@@ -159,7 +157,7 @@ namespace wnode {
 		auto&& dim_data = data_shape.size() - 1;
 		if (depth == dim_data) {
 			weight::as_weight(t, res.weight, para_shape);
-			res.node = nullptr;
+			res.set_node(nullptr);
 			return res;
 		}
 
@@ -169,7 +167,7 @@ namespace wnode {
 
 		//note: torch::chunk does not work here
 
-		auto&& new_successors = std::vector<node::weightednode<W>>(data_shape[split_pos]);
+		auto new_successors = std::vector<node::weightednode<W>>(data_shape[split_pos]);
 		for (int i = 0; i < data_shape[split_pos]; i++) {
 			new_successors[i] = as_tensor_iterate<W>(
 				// -1 is because the extra inner dim for real and imag
@@ -192,10 +190,10 @@ namespace wnode {
 		const std::vector<int64_t>& data_shape) {
 		// w_node.node is guaranteed not to be null
 
-		auto&& current_order = w_node.node->get_order();
+		auto&& current_order = w_node.get_node()->get_order();
 
-		auto&& par_tensor = std::vector<CUDAcpl::Tensor>(w_node.node->get_range());
-		auto&& successors = w_node.node->get_successors();
+		auto&& par_tensor = std::vector<CUDAcpl::Tensor>(w_node.get_node()->get_range());
+		auto&& successors = w_node.get_node()->get_successors();
 
 		auto dim_para = para_shape.size();
 		auto&& dim_data = data_shape.size() - 1;
@@ -207,24 +205,24 @@ namespace wnode {
 		auto&& i_par = par_tensor.begin();
 		for (auto&& i = successors.cbegin(); i != successors.cend(); i++, i_par++) {
 			// detect terminal nodes, or iterate on the next node
-			if (i->node == nullptr) {
+			if (i->get_node() == nullptr) {
 				temp_tensor = weight::from_weight(i->weight);
 				next_order = dim_data;
 			}
 			else {
 				// first look up in the dictionary
-				auto&& key = cache::CUDAcpl_table_key<W>(i->node, data_shape);
+				auto&& key = cache::CUDAcpl_table_key<W>(i->get_node(), data_shape);
 				auto&& p_find_res = cache::Global_Cache<W>::p_CUDAcpl_cache->find(key);
 				if (p_find_res != cache::Global_Cache<W>::p_CUDAcpl_cache->end()) {
 					uniform_tensor = p_find_res->second;
 				}
 				else {
-					auto&& next_wnode = node::weightednode<W>(weight::ones<W>(para_shape), i->node);
+					auto&& next_wnode = node::weightednode<W>(weight::ones<W>(para_shape), i->get_node());
 					uniform_tensor = to_CUDAcpl_iterate(next_wnode, para_shape, data_shape);
 					// add into the dictionary
 					(*cache::Global_Cache<W>::p_CUDAcpl_cache)[key] = uniform_tensor;
 				}
-				next_order = i->node->get_order();
+				next_order = i->get_node()->get_order();
 				// multiply the dangling weight
 				temp_tensor = weight::res_mul_weight(uniform_tensor, i->weight);
 			}
@@ -272,13 +270,13 @@ namespace wnode {
 		int n_extra_one = 0;
 		auto&& dim_data = inner_data_shape.size() - 1;
 		CUDAcpl::Tensor res;
-		if (w_node.node == nullptr) {
+		if (w_node.get_node() == nullptr) {
 			res = CUDAcpl::mul_element_wise(CUDAcpl::ones(para_shape), w_node.weight);
 			n_extra_one = dim_data;
 		}
 		else {
 			res = to_CUDAcpl_iterate(w_node, para_shape, inner_data_shape);
-			n_extra_one = w_node.node->get_order();
+			n_extra_one = w_node.get_node()->get_order();
 		}
 
 		auto dim_para = para_shape.size();
@@ -313,37 +311,44 @@ namespace wnode {
 
 			// if the new weight is 0, then reduce all nodes.
 			if (weight::is_exact_zero(new_weight)) {
-				return node::weightednode<W1>(new_weight, nullptr);
+				return node::weightednode<W1>(W1{ new_weight }, nullptr);
 			}
 			else {
-				return node::weightednode<W1>(new_weight, w_node.node);
+				return node::weightednode<W1>(W1{ new_weight }, w_node.get_node());
 			}
 		}
 	}
 
 	template <typename W>
 	node::weightednode<W> conj(const node::weightednode<W>& w_node) {
-		const node::Node<W>* new_node;
+		node::Node<W>* new_node;
 
-		if (w_node.node == nullptr) {
-			new_node = nullptr;
+		if (w_node.get_node() == nullptr) {
+
+			if constexpr (std::is_same_v<W, wcomplex>) {
+				return node::weightednode<W>(std::conj(w_node.weight), nullptr);
+			}
+			else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+				return node::weightednode<W>(CUDAcpl::conj(w_node.weight), nullptr);
+			}
 		}
 		else {
-			auto&& successors = w_node.node->get_successors();
+			auto&& successors = w_node.get_node()->get_successors();
 			std::vector<node::weightednode<W>> new_successors(successors.size());
 			for (int i = 0; i < successors.size(); i++) {
 				new_successors[i] = wnode::conj(successors[i]);
 			}
 
-			new_node = node::Node<W>::get_unique_node<false>(w_node.node->get_order(), std::move(new_successors));
+			if constexpr (std::is_same_v<W, wcomplex>) {
+				return node::weightednode<W>::get_wnode<false>(std::conj(w_node.weight), 
+					w_node.get_node()->get_order(), std::move(new_successors));
+			}
+			else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+				return node::weightednode<W>::get_wnode<false>(CUDAcpl::conj(w_node.weight),
+					w_node.get_node()->get_order(), std::move(new_successors));
+			}
 		}
 
-		if constexpr (std::is_same_v<W, wcomplex>) {
-			return node::weightednode<W>(std::conj(w_node.weight), new_node);
-		}
-		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
-			return node::weightednode<W>(CUDAcpl::conj(w_node.weight), new_node);
-		}
 	}
 
 	/// <summary>
@@ -409,13 +414,13 @@ namespace wnode {
 		const node::weightednode<W>& w_node1,
 		const node::weightednode<W>& w_node2, const W& renorm_coef, const std::vector<int64_t>& para_shape) {
 
-		if (w_node1.node == nullptr && w_node2.node == nullptr) {
+		if (w_node1.get_node() == nullptr && w_node2.get_node() == nullptr) {
 			return node::weightednode<W>(weight::mul((w_node1.weight + w_node2.weight), renorm_coef), nullptr);
 		}
 
 		// produce the unique key and look up in the cache
 		auto&& key = cache::sum_key<W>(
-			w_node1.node, w_node1.weight, w_node2.node, w_node2.weight);
+			w_node1.get_node(), w_node1.weight, w_node2.get_node(), w_node2.weight);
 
 		//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		if constexpr (PL) {
@@ -442,15 +447,15 @@ namespace wnode {
 			// ensure w_node1.node to be the node of smaller order, through swaping
 			///////////////////////////////////////////////////////////////////////
 			const node::weightednode<W>* p_wnode_1, * p_wnode_2;
-			if (w_node1.node == nullptr) {
+			if (w_node1.get_node() == nullptr) {
 				p_wnode_1 = &w_node2;
 				p_wnode_2 = &w_node1;
 			}
-			else if (w_node2.node == nullptr) {
+			else if (w_node2.get_node() == nullptr) {
 				p_wnode_1 = &w_node1;
 				p_wnode_2 = &w_node2;
 			}
-			else if (w_node1.node->get_order() > w_node2.node->get_order()) {
+			else if (w_node1.get_node()->get_order() > w_node2.get_node()->get_order()) {
 				p_wnode_1 = &w_node2;
 				p_wnode_2 = &w_node1;
 			}
@@ -459,21 +464,21 @@ namespace wnode {
 				p_wnode_2 = &w_node2;
 			}
 
-			auto&& new_successors = std::vector<node::weightednode<W>>(p_wnode_1->node->get_range());
+			auto&& new_successors = std::vector<node::weightednode<W>>(p_wnode_1->get_node()->get_range());
 
 			bool not_operated = true;
 			node::weightednode<W> res;
-			if (p_wnode_2->node != nullptr) {
+			if (p_wnode_2->get_node() != nullptr) {
 
 				// if they are the same node, then we can only adjust the weight
-				if (p_wnode_1->node == p_wnode_2->node) {
-					res = node::weightednode<W>(p_wnode_1->weight + p_wnode_2->weight, p_wnode_1->node);
+				if (p_wnode_1->get_node() == p_wnode_2->get_node()) {
+					res = node::weightednode<W>(p_wnode_1->weight + p_wnode_2->weight, p_wnode_1->get_node());
 					not_operated = false;
 				}
-				else if (p_wnode_1->node->get_order() == p_wnode_2->node->get_order()) {
+				else if (p_wnode_1->get_node()->get_order() == p_wnode_2->get_node()->get_order()) {
 					// node1 and node2 are assumed to have the same shape
-					auto&& successors_1 = p_wnode_1->node->get_successors();
-					auto&& successors_2 = p_wnode_2->node->get_successors();
+					auto&& successors_1 = p_wnode_1->get_node()->get_successors();
+					auto&& successors_2 = p_wnode_2->get_node()->get_successors();
 					auto&& i_1 = successors_1.begin();
 					auto&& i_2 = successors_2.begin();
 					auto&& i_new = new_successors.begin();
@@ -483,11 +488,11 @@ namespace wnode {
 							weight::mul(p_wnode_1->weight, i_1->weight),
 							weight::mul(p_wnode_2->weight, i_2->weight)
 						);
-						auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
-						auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->node);
+						auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->get_node());
+						auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->get_node());
 						*i_new = sum_iterate<W, PL>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 					}
-					res = normalize<W, PL>(weight::ones<W>(para_shape), p_wnode_1->node->get_order(), std::move(new_successors));
+					res = normalize<W, PL>(weight::ones<W>(para_shape), p_wnode_1->get_node()->get_order(), std::move(new_successors));
 					not_operated = false;
 				}
 			}
@@ -501,17 +506,17 @@ namespace wnode {
 					wnode_1 will be the lower ordered weighted node.
 				*/
 
-				auto&& successors = p_wnode_1->node->get_successors();
+				auto&& successors = p_wnode_1->get_node()->get_successors();
 				auto&& i_1 = successors.begin();
 				auto&& i_new = new_successors.begin();
 				for (; i_1 != successors.end(); i_1++, i_new++) {
 					auto&& renorm_res = weights_normalize(
 						weight::mul(p_wnode_1->weight, i_1->weight), p_wnode_2->weight);
-					auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->node);
-					auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), p_wnode_2->node);
+					auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->get_node());
+					auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), p_wnode_2->get_node());
 					*i_new = sum_iterate<W, PL>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 				}
-				res = normalize<W, PL>(weight::ones<W>(para_shape), p_wnode_1->node->get_order(), std::move(new_successors));
+				res = normalize<W, PL>(weight::ones<W>(para_shape), p_wnode_1->get_node()->get_order(), std::move(new_successors));
 			}
 
 
@@ -544,8 +549,8 @@ namespace wnode {
 		const node::weightednode<W>& w_node2, const std::vector<int64_t>& para_shape) {
 		// normalize as a whole
 		auto&& renorm_res = weights_normalize(w_node1.weight, w_node2.weight);
-		auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), w_node1.node);
-		auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), w_node2.node);
+		auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), w_node1.get_node());
+		auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), w_node2.get_node());
 		return sum_iterate<W, PL>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 	}
 
@@ -562,7 +567,7 @@ namespace wnode {
 		const std::vector<int64_t>& data_shape,
 		const cache::pair_cmd& remained_ls, const cache::pair_cmd& waiting_ls, const std::vector<int64_t>& new_order) {
 
-		if (w_node.node == nullptr) {
+		if (w_node.get_node() == nullptr) {
 			// close all the unprocessed indices
 			double scale = 1.;
 			for (const auto& cmd : remained_ls) {
@@ -574,7 +579,7 @@ namespace wnode {
 		node::weightednode<W> res;
 
 		// first look up in the dictionary
-		auto&& key = cache::trace_key<W>(w_node.node, remained_ls, waiting_ls);
+		auto&& key = cache::trace_key<W>(w_node.get_node(), remained_ls, waiting_ls);
 		auto&& p_find_res = cache::Global_Cache<W>::p_trace_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_trace_cache->end()) {
 			res = p_find_res->second;
@@ -582,7 +587,7 @@ namespace wnode {
 			return res;
 		}
 		else {
-			auto&& order = w_node.node->get_order();
+			auto&& order = w_node.get_node()->get_order();
 
 			// store the scaling number due to skipped remained indices
 			double scale = 1.;
@@ -607,7 +612,7 @@ namespace wnode {
 			// the flag for no operation performed
 			bool not_operated = true;
 
-			auto&& successors = w_node.node->get_successors();
+			auto&& successors = w_node.get_node()->get_successors();
 
 			if (!waiting_ls_pd.empty()) {
 				/*
@@ -651,8 +656,8 @@ namespace wnode {
 						int index_val = 0;
 						auto&& i_new = new_successors.begin();
 						for (auto&& i = successors.begin(); i != successors.end(); i++, i_new++, index_val++) {
-							if (i->node == nullptr) {
-								i_new->node = nullptr;
+							if (i->get_node() == nullptr) {
+								i_new->set_node(nullptr);
 								i_new->weight = i->weight;
 							}
 							else {
@@ -667,7 +672,7 @@ namespace wnode {
 						int index_val = 0;
 						for (auto&& succ_new : new_successors) {
 							next_waiting_ls[insert_pos].second = index_val;
-							succ_new = trace_iterate(node::weightednode<W>(weight::ones<W>(para_shape), w_node.node),
+							succ_new = trace_iterate(node::weightednode<W>(weight::ones<W>(para_shape), w_node.get_node()),
 								para_shape, data_shape, next_remained_ls, next_waiting_ls, new_order);
 							index_val++;
 						}
@@ -684,11 +689,11 @@ namespace wnode {
 
 			if (not_operated) {
 				// in this case, no operation can be performed on this node, so we move on the the following nodes.
-				auto&& new_successors = std::vector<node::weightednode<W>>(w_node.node->get_range());
+				auto&& new_successors = std::vector<node::weightednode<W>>(w_node.get_node()->get_range());
 				auto&& i_new = new_successors.begin();
 				for (auto&& i = successors.begin(); i != successors.end(); i++, i_new++) {
-					if (i->node == nullptr) {
-						i_new->node = nullptr;
+					if (i->get_node() == nullptr) {
+						i_new->set_node(nullptr);
 						i_new->weight = i->weight;
 					}
 					else {
@@ -988,7 +993,7 @@ namespace wnode {
 					// close the waiting index
 					auto&& next_a_waiting_ls = removed(a_waiting_ls_pd, 0);
 					auto&& succ = p_node_a->get_successors()[index_val];
-					res = contract_iterate<W1, W2, PL>(succ.node, p_node_b,
+					res = contract_iterate<W1, W2, PL>(succ.get_node(), p_node_b,
 						weight::weight_expanded_back<W1, W2>(succ.weight, para_shape_b, parallel_tensor),
 						para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, next_a_waiting_ls, b_waiting_ls_pd,
@@ -1004,7 +1009,7 @@ namespace wnode {
 					// close the waiting index
 					auto&& next_b_waiting_ls = removed(b_waiting_ls_pd, 0);
 					auto&& succ = p_node_b->get_successors()[index_val];
-					res = contract_iterate<W1, W2, PL>(p_node_a, succ.node,
+					res = contract_iterate<W1, W2, PL>(p_node_a, succ.get_node(),
 						weight::weight_expanded_front<W1, W2>(succ.weight, para_shape_a, parallel_tensor),
 						para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, a_waiting_ls_pd, next_b_waiting_ls,
@@ -1036,7 +1041,7 @@ namespace wnode {
 
 					iter_cont<PL>::func(new_successors, key, data_shape_a[order_a],
 						[&](int i) {
-							return contract_iterate<W1, W2, PL>(successors_a[i].node, p_node_b,
+							return contract_iterate<W1, W2, PL>(successors_a[i].get_node(), p_node_b,
 								weight::weight_expanded_back<W1, W2>(successors_a[i].weight, para_shape_b, parallel_tensor),
 								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
@@ -1062,7 +1067,7 @@ namespace wnode {
 
 					iter_cont<PL>::func(new_successors, key, data_shape_b[order_b],
 						[&](int i) {
-							return contract_iterate<W1, W2, PL>(p_node_a, successors_b[i].node,
+							return contract_iterate<W1, W2, PL>(p_node_a, successors_b[i].get_node(),
 								weight::weight_expanded_front<W1, W2>(successors_b[i].weight, para_shape_a, parallel_tensor),
 								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
@@ -1103,7 +1108,7 @@ namespace wnode {
 						iter_cont<PL>::func(new_successors, key, data_shape_a[remained_ls_pd[0].first],
 							[&](int i) {
 								next_b_waiting_ls[insert_pos].second = i;
-								return contract_iterate<W1, W2, PL>(successors_a[i].node, p_node_b,
+								return contract_iterate<W1, W2, PL>(successors_a[i].get_node(), p_node_b,
 									weight::weight_expanded_back<W1, W2>(successors_a[i].weight, para_shape_b, parallel_tensor),
 									para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 									next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
@@ -1143,7 +1148,7 @@ namespace wnode {
 						iter_cont<PL>::func(new_successors, key, data_shape_b[remained_ls_pd[next_b_min_i].second],
 							[&](int i) {
 								next_a_waiting_ls[insert_pos].second = i;
-								return contract_iterate<W1, W2, PL>(p_node_a, successors_b[i].node,
+								return contract_iterate<W1, W2, PL>(p_node_a, successors_b[i].get_node(),
 									weight::weight_expanded_front<W1, W2>(successors_b[i].weight, para_shape_a, parallel_tensor),
 									para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 									next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd,
@@ -1231,14 +1236,13 @@ namespace wnode {
 
 
 		if constexpr (PL) {
-			iter_para::Para_Crd<W1, W2>::record.clear();
 			std::vector<std::future<node::weightednode<weight::W_C<W1, W2>>>> results(iter_para::p_thread_pool->thread_num());
 
 			auto prepared_weight = weight::prepare_weight(w_node_a.weight, w_node_b.weight, parallel_tensor);
 			for (int i = 0; i < iter_para::p_thread_pool->thread_num(); i++) {
 				results[i] = iter_para::p_thread_pool->enqueue(
 					[&] {
-						return contract_iterate<W1, W2, true>(w_node_a.node, w_node_b.node, prepared_weight,
+						return contract_iterate<W1, W2, true>(w_node_a.get_node(), w_node_b.get_node(), prepared_weight,
 							para_shape_a, para_shape_b,
 							data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
 							a_new_order, b_new_order, parallel_tensor);
@@ -1255,10 +1259,13 @@ namespace wnode {
 			for (int i = 1; i < results.size(); i++) {
 				results[i].get();
 			}
+
+			iter_para::Para_Crd<W1, W2>::record.clear();
+
 			return res;
 		}
 		else {
-			return contract_iterate<W1, W2, false>(w_node_a.node, w_node_b.node,
+			return contract_iterate<W1, W2, false>(w_node_a.get_node(), w_node_b.get_node(),
 				weight::prepare_weight(w_node_a.weight, w_node_b.weight, parallel_tensor),
 				para_shape_a, para_shape_b,
 				data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),

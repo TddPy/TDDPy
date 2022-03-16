@@ -9,14 +9,13 @@
 #include <complex>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
-#include <string>
 #include <boost/container_hash/hash_fwd.hpp>
+#include <string>
 #include <vector>
 #include <algorithm>
 #include <type_traits>
 #include <vector>
 #include <assert.h>
-#include <shared_mutex>
 #include <chrono>
 
 #include <torch/script.h>
@@ -30,9 +29,11 @@
 #include <direct.h>
 #include <process.h>
 
-
+// multi-thread
+#include <shared_mutex>
+#include <atomic>
+#include "ThreadPool.h"
 
 #include "simpletools.h"
 #include "config.h"
 #include "CUDAcpl.h"
-#include "ThreadPool.h"

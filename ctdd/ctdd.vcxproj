@@ -237,7 +237,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(libtorch)\include;$(libtorch)\include\torch\csrc\api\include;$(Boost);$(PythonPath)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -315,7 +315,6 @@
     <ClInclude Include="node.hpp" />
     <ClInclude Include="simpletools.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="succ_ls.hpp" />
     <ClInclude Include="tdd.hpp" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="weight.hpp" />

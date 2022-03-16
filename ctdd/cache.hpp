@@ -1,13 +1,14 @@
 #pragma once
 #include "stdafx.h"
 #include "weight.hpp"
-#include "succ_ls.hpp"
 
 namespace node {
 	template <class W>
 	class Node;
 	template <class W>
 	struct weightednode;
+	template <class W>
+	using succ_ls = std::vector<weightednode<W>>;
 }
 
 
@@ -38,7 +39,7 @@ namespace cache {
 				for (int i = 0; i < successors.size(); i++) {
 					weight::get_int_key(code1.data() + i, successors[i].weight.real());
 					weight::get_int_key(code2.data() + i, successors[i].weight.imag());
-					nodes[i] = successors[i].node;
+					nodes[i] = successors[i].get_node();
 				}
 			}
 			else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
@@ -48,7 +49,7 @@ namespace cache {
 				nodes = std::vector<const node::Node<CUDAcpl::Tensor>*>(successors.size());
 				for (int i = 0; i < successors.size(); i++) {
 					weight::get_int_key(code1.data() + i * numel, successors[i].weight);
-					nodes[i] = successors[i].node;
+					nodes[i] = successors[i].get_node();
 				}
 				code2 = std::vector<weight::WCode>(successors[0].weight.dim() - 1);
 				auto&& sizes = successors[0].weight.sizes();
@@ -109,7 +110,7 @@ namespace cache {
 	}
 
 	template <typename W>
-	using unique_table = boost::unordered_map<unique_table_key<W>, const node::Node<W>*>;
+	using unique_table = boost::unordered_map<unique_table_key<W>, node::Node<W>*>;
 
 
 

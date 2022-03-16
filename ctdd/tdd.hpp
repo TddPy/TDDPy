@@ -166,6 +166,22 @@ namespace tdd {
 			m_wnode = other.m_wnode;
 		}
 
+		~TDD() {
+			
+		}
+
+		TDD& operator = (TDD&& other) {
+			m_data_shape = std::move(other.m_data_shape);
+			m_storage_order = std::move(other.m_storage_order);
+			m_inner_data_shape = std::move(other.m_inner_data_shape);
+			m_inversed_order = std::move(other.m_inversed_order);
+			m_global_order = std::move(other.m_global_order);
+			m_inversed_global_order = std::move(other.m_inversed_global_order);
+			m_para_shape = std::move(other.m_para_shape);
+			m_wnode = std::move(other.m_wnode);
+			return *this;
+		}
+
 		inline const node::weightednode<W>& w_node() const {
 			return m_wnode;
 		}
@@ -187,11 +203,11 @@ namespace tdd {
 		}
 
 		inline int size() const {
-			if (m_wnode.node == nullptr) {
+			if (m_wnode.get_node() == nullptr) {
 				return 0;
 			}
 			else {
-				return m_wnode.node->get_size();
+				return m_wnode.get_node()->get_size();
 			}
 		}
 
@@ -201,7 +217,7 @@ namespace tdd {
 		/// </summary>
 		inline void print() const {
 			std::cout << "weight: " << m_wnode.weight << std::endl;
-			std::cout << "node: " << m_wnode.node << std::endl;
+			std::cout << "node: " << m_wnode.get_node() << std::endl;
 			std::cout << "parallel shape: (" << m_para_shape << ")\n";
 			std::cout << "data shape: (" << m_data_shape << ")\n";
 			std::cout << "storage order: (" << m_storage_order << ")\n";
@@ -212,8 +228,8 @@ namespace tdd {
 		}
 
 		inline void print_nodes() const {
-			if (m_wnode.node != nullptr) {
-				m_wnode.node->print();
+			if (m_wnode.get_node() != nullptr) {
+				m_wnode.get_node()->print();
 			}
 			else {
 				std::cout << ">node: " << nullptr << std::endl;

@@ -37,26 +37,8 @@ delete_tdd(PyObject* self, PyObject* args) {
 /// <returns>the pointer to the tdd</returns>
 static PyObject*
 reset(PyObject* self, PyObject* args) {
-
-	PyObject* p_tdd_W_pyo, * p_tdd_T_pyo;
-	if (!PyArg_ParseTuple(args, "OO", &p_tdd_W_pyo, &p_tdd_T_pyo)) {
-		return NULL;
-	}
-
-	auto&& size_W = PyList_GET_SIZE(p_tdd_W_pyo);
-	std::vector<TDD<wcomplex>*> tdd_W_ls(size_W);
-	for (int i = 0; i < size_W; i++) {
-		tdd_W_ls[i] = (TDD<wcomplex>*)PyLong_AsLongLong(PyList_GetItem(p_tdd_W_pyo, i));
-	}
-
-	auto&& size_T = PyList_GET_SIZE(p_tdd_T_pyo);
-	std::vector<TDD<CUDAcpl::Tensor>*> tdd_T_ls(size_T);
-	for (int i = 0; i < size_T; i++) {
-		tdd_T_ls[i] = (TDD<CUDAcpl::Tensor>*)PyLong_AsLongLong(PyList_GetItem(p_tdd_T_pyo, i));
-	}
-
-	reset<wcomplex>(tdd_W_ls);
-	reset<CUDAcpl::Tensor>(tdd_T_ls);
+	reset<wcomplex>();
+	reset<CUDAcpl::Tensor>();
 	return Py_BuildValue("");
 }
 
@@ -429,7 +411,7 @@ get_tdd_info(PyObject* self, PyObject* args) {
 	TDD<W>* p_tdd = (TDD<W>*)code;
 
 	auto&& tdd_weight = p_tdd->w_node().weight;
-	auto&& tdd_node = p_tdd->w_node().node;
+	auto&& tdd_node = p_tdd->w_node().get_node();
 	auto&& tdd_dim_parallel = p_tdd->parallel_shape().size();
 	auto&& tdd_dim_data = p_tdd->dim_data();
 	auto&& tdd_p_parallel_shape = p_tdd->parallel_shape();
@@ -513,7 +495,7 @@ get_node_info(PyObject* self, PyObject* args) {
 	for (int i = 0; i < node_range; i++) {
 		auto&& temp_succ = Py_BuildValue("{sOsO}",
 			"weight", THPVariable_Wrap(weight::from_weight(node_successors[i].weight)),
-			"node", PyLong_FromLongLong((int64_t)node_successors[i].node));
+			"node", PyLong_FromLongLong((int64_t)node_successors[i].get_node()));
 		
 		PyTuple_SetItem(py_successors, i, temp_succ);
 	}

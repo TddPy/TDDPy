@@ -2,16 +2,8 @@ from typing import List
 from . import ctdd
 from .tdd import TDD
 
-def reset(tdd_ls: List[TDD] = []) -> None:
-    tdd_w_ls = []
-    tdd_t_ls = []
-    for item in tdd_ls:
-        if item.tensor_weight:
-            tdd_t_ls.append(item.pointer)
-        else:
-            tdd_w_ls.append(item.pointer)
-
-    ctdd.reset(tdd_w_ls, tdd_t_ls)
+def reset() -> None:
+    ctdd.reset()
 
 def clear_cache() -> None:
     ctdd.clear_cache()
