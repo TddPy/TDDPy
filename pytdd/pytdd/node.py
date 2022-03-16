@@ -45,10 +45,6 @@ class Node:
         return self.__info
 
     @property
-    def id(self) -> int:
-        return self.__info["id"]
-
-    @property
     def range(self) -> int:
         return self.__info["range"]
 
@@ -71,7 +67,7 @@ class Node:
             label = str(1)
         else:
             node_info = self.__info
-            id_str = str(self.id)
+            id_str = str(self._pointer)
             label = 'i'+str(storage_order[self.order])
 
 
@@ -95,12 +91,12 @@ class Node:
                 if (temp_node.pointer == 0):
                     id_str = str(TERMINAL_ID)
                 else:
-                    id_str = str(temp_node.id)
+                    id_str = str(temp_node._pointer)
                 
                 if not temp_node.pointer in succ:
                     dot=temp_node.layout(storage_order, parallel_shape, dot,succ,full_output)
-                    dot.edge(str(self.id),id_str,color=col[k%4],label=label1)
+                    dot.edge(str(self._pointer),id_str,color=col[k%4],label=label1)
                     succ.append(temp_node.pointer)
                 else:
-                    dot.edge(str(self.id),id_str,color=col[k%4],label=label1)
+                    dot.edge(str(self._pointer),id_str,color=col[k%4],label=label1)
         return dot    

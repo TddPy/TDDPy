@@ -213,7 +213,7 @@ namespace wnode {
 			}
 			else {
 				// first look up in the dictionary
-				auto&& key = cache::CUDAcpl_table_key<W>(i->node->get_id(), data_shape);
+				auto&& key = cache::CUDAcpl_table_key<W>(i->node, data_shape);
 				auto&& p_find_res = cache::Global_Cache<W>::p_CUDAcpl_cache->find(key);
 				if (p_find_res != cache::Global_Cache<W>::p_CUDAcpl_cache->end()) {
 					uniform_tensor = p_find_res->second;
@@ -415,8 +415,7 @@ namespace wnode {
 
 		// produce the unique key and look up in the cache
 		auto&& key = cache::sum_key<W>(
-			node::Node<W>::get_id_all(w_node1.node), w_node1.weight,
-			node::Node<W>::get_id_all(w_node2.node), w_node2.weight);
+			w_node1.node, w_node1.weight, w_node2.node, w_node2.weight);
 
 		//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		if constexpr (PL) {
@@ -467,7 +466,7 @@ namespace wnode {
 			if (p_wnode_2->node != nullptr) {
 
 				// if they are the same node, then we can only adjust the weight
-				if (p_wnode_1->node->get_id() == p_wnode_2->node->get_id()) {
+				if (p_wnode_1->node == p_wnode_2->node) {
 					res = node::weightednode<W>(p_wnode_1->weight + p_wnode_2->weight, p_wnode_1->node);
 					not_operated = false;
 				}
@@ -575,7 +574,7 @@ namespace wnode {
 		node::weightednode<W> res;
 
 		// first look up in the dictionary
-		auto&& key = cache::trace_key<W>(w_node.node->get_id(), remained_ls, waiting_ls);
+		auto&& key = cache::trace_key<W>(w_node.node, remained_ls, waiting_ls);
 		auto&& p_find_res = cache::Global_Cache<W>::p_trace_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_trace_cache->end()) {
 			res = p_find_res->second;

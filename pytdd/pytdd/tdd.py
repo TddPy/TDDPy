@@ -66,7 +66,6 @@ class TDD:
     def storage_order(self) -> Tuple:
         return self._info["storage order"]
 
-    # extremely time costy
     def size(self) -> int:
         if self._tensor_weight:
             return ctdd.get_tdd_size_T(self._pointer)
@@ -100,7 +99,7 @@ class TDD:
         if tdd_node.pointer == 0:
             id_str = str(TERMINAL_ID)
         else:
-            id_str = str(tdd_node.id)
+            id_str = str(tdd_node.pointer)
 
         tdd_weight = self.info["weight"]
         if self.info["dim parallel"]==0:

@@ -4,11 +4,6 @@ using namespace std;
 
 double weight::EPS = DEFAULT_EPS;
 
-int node::Node<wcomplex>::m_global_id = 0;
-std::mutex node::Node<wcomplex>::global_id_m{};
-int node::Node<CUDAcpl::Tensor>::m_global_id = 0;
-std::mutex node::Node<CUDAcpl::Tensor>::global_id_m{};
-
 
 cache::unique_table<wcomplex>* node::Node<wcomplex>::mp_unique_table = new cache::unique_table<wcomplex>();
 std::shared_mutex node::Node<wcomplex>::unique_table_m{};

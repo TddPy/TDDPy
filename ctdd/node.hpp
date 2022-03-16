@@ -5,21 +5,15 @@
 
 namespace node {
 
+
 	// The node used in tdd.
 	template <typename W>
 	class Node {
 	private:
-		/* record the size of mp_unique_table
-		*  Note: id = 0 is reserved for terminal node (null).
-		*/
-		static int m_global_id;
-		static std::mutex global_id_m;
 
 		// The unique_table to store all the node instances used in tdd.
 		static cache::unique_table<W>* mp_unique_table;
 		static std::shared_mutex unique_table_m;
-
-		int m_id;
 
 		//represent the order of this node (which tensor index it represent)
 		int m_order;
@@ -36,16 +30,16 @@ namespace node {
 		/// Count all the nodes starting from this node.
 		/// </summary>
 		/// <param name="id_ls"> the vector to store all the ids</param>
-		void node_search(std::vector<int>& id_ls) const {
-			// check whether it is in p_id already
-			if (std::find(id_ls.cbegin(), id_ls.cend(), m_id) != id_ls.cend()) {
-				return;
-			}
-			// it is not counted yet in this case
-			id_ls.push_back(m_id);
-			for (const auto& succ : m_successors) {
-				if (!succ.isterminal()) {
-					succ.node->node_search(id_ls);
+		void node_search(boost::unordered_set<const Node<W>*>& node_ls) const {
+			// check whether it is in node_ls already, and insert in
+			auto&& insert_res = node_ls.insert(this);
+
+			if (insert_res.second) {
+				// it is not counted yet in this case
+				for (const auto& succ : m_successors) {
+					if (!succ.isterminal()) {
+						succ.node->node_search(node_ls);
+					}
 				}
 			}
 		}
@@ -57,10 +51,10 @@ namespace node {
 		/// <param name="p_unique_table"></param>
 		/// <param name="inserted">record whether the node of particular id has been inserted</param>
 		const Node<W>* unique_table_insert(cache::unique_table<W>* p_unique_table, 
-			boost::unordered_map<int, const Node<W>*>& inserted_nodes) const {
+			boost::unordered_map<const Node<W>*, const Node<W>*>& inserted_nodes) const {
 
 			// find in the cache
-			auto&& p_find_res = inserted_nodes.find(m_id);
+			auto&& p_find_res = inserted_nodes.find(this);
 			if (p_find_res != inserted_nodes.end()) {
 				return p_find_res->second;
 			}
@@ -80,43 +74,20 @@ namespace node {
 
 			const Node<W>* p_res;
 			auto&& key = cache::unique_table_key<W>(m_order, new_successors);
-			p_res = new Node{ ++m_global_id, m_order, std::move(new_successors) };
+			p_res = new Node{ m_order, std::move(new_successors) };
 			(*p_unique_table)[key] = p_res;
-			inserted_nodes[m_id] = p_res;
+			inserted_nodes[this] = p_res;
 			return p_res;
 		}
 
 
 	public:
 
-		static int current_global_id() {
-			return m_global_id;
-		}
 
-		Node(int id, int order, succ_ls<W>&& successors) :m_id(id), m_order(order), m_successors(std::move(successors)) {}
+		Node(int order, succ_ls<W>&& successors) :m_order(order), m_successors(std::move(successors)) {}
 
 		Node(Node<W>&& _node) {
 			*this = std::move(_node);
-		}
-
-		/// <summary>
-		/// Note: the memory of successors will be transfered to this node, therefore a right value is needed.
-		/// </summary>
-		/// <param name="order"></param>
-		/// <param name="successors"></param>
-		template <bool PL>
-		inline static Node<W> ConstructNode(int order, succ_ls<W>&& successors) {
-			if constexpr (PL) {
-				global_id_m.lock();
-				m_global_id++;
-				auto current_id = m_global_id;
-				global_id_m.unlock();
-				return Node<W>{ current_id, order, std::move(successors) };
-			}
-			else {
-				m_global_id += 1;
-				return Node<W>{ m_global_id, order, std::move(successors) };
-			}
 		}
 
 		/// <summary>
@@ -126,10 +97,9 @@ namespace node {
 		/// <param name="remained_nodes"></param>
 		/// <returns> the corresponding new nodes of those in remained_nodes </returns>
 		static std::vector<const Node<W>*> reset(const std::vector<const Node<W>*>& remained_nodes = {}) {
-			m_global_id = 0;
 
 			auto new_unique_table = new cache::unique_table<W>{};
-			boost::unordered_map<int, const Node<W>*> inserted_nodes{};
+			boost::unordered_map<const Node<W>*, const Node<W>*> inserted_nodes{};
 			std::vector<const Node<W>*> res_nodes{ remained_nodes.size() };
 
 			for (int i = 0; i < remained_nodes.size(); i++) {
@@ -171,7 +141,7 @@ namespace node {
 				return p_find_res->second;
 			}
 
-			node::Node<W>* p_node = new node::Node<W>(node::Node<W>::ConstructNode<PL>(order, succ_ls<W>(successors)));
+			node::Node<W>* p_node = new node::Node<W>(order, succ_ls<W>(successors));
 
 			(*mp_unique_table)[key] = p_node;
 			if constexpr (PL) {
@@ -208,7 +178,7 @@ namespace node {
 				return p_find_res->second;
 			}
 
-			node::Node<W>* p_node = new node::Node<W>(node::Node<W>::ConstructNode<PL>(order, std::move(successors)));
+			node::Node<W>* p_node = new node::Node<W>(order, std::move(successors));
 
 			(*mp_unique_table)[key] = p_node;
 			if constexpr (PL) {
@@ -217,17 +187,6 @@ namespace node {
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 			return p_node;
-		}
-
-		inline static int get_id_all(const Node* p_node) {
-			if (p_node == nullptr) {
-				return 0;
-			}
-			return p_node->m_id;
-		}
-
-		inline int get_id() const {
-			return m_id;
 		}
 
 		inline int get_order() const {
@@ -247,11 +206,6 @@ namespace node {
 				std::cout << " ";
 			}
 			std::cout << "|node: " << this << std::endl;
-
-			for (int i = 0; i < m_order; i++) {
-				std::cout << " ";
-			}
-			std::cout << "|id: " << m_id << std::endl;
 
 			for (int i = 0; i < m_order; i++) {
 				std::cout << " ";
@@ -290,10 +244,10 @@ namespace node {
 		/// </summary>
 		/// <returns></returns>
 		inline int get_size() const {
-			auto&& id_ls = std::vector<int>();
-			node_search(id_ls);
+			auto&& node_ls = boost::unordered_set<const Node<W>*>{};
+			node_search(node_ls);
 			// the terminal node is counted
-			return id_ls.size() + 1;
+			return node_ls.size() + 1;
 		}
 	};
 }

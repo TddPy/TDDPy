@@ -115,7 +115,7 @@ namespace cache {
 
 	template <class W>
 	struct CUDAcpl_table_key {
-		int id;
+		const node::Node<W>* p_node;
 		std::vector<int64_t> inner_shape;
 
 		/// <summary>
@@ -125,18 +125,18 @@ namespace cache {
 		/// <param name="_range"></param>
 		/// <param name="_p_weights">[borrowed]</param>
 		/// <param name="_p_nodes">[borrowed</param>
-		CUDAcpl_table_key(int _id, const std::vector<int64_t>& _inner_shape) {
-			id = _id;
+		CUDAcpl_table_key(const node::Node<W>* _p_node, const std::vector<int64_t>& _inner_shape) {
+			p_node = _p_node;
 			inner_shape = _inner_shape;
 		}
 
 		CUDAcpl_table_key(const CUDAcpl_table_key& other) {
-			id = other.id;
+			p_node = other.p_node;
 			inner_shape = other.inner_shape;
 		}
 
 		CUDAcpl_table_key& operator =(CUDAcpl_table_key&& other) {
-			id = other.id;
+			p_node = other.p_node;
 			inner_shape = std::move(other.inner_shape);
 			return *this;
 		}
@@ -144,13 +144,13 @@ namespace cache {
 
 	template <class W>
 	inline bool operator == (const CUDAcpl_table_key<W>& a, const CUDAcpl_table_key<W>& b) {
-		return a.id == b.id && a.inner_shape == b.inner_shape;
+		return a.p_node == b.p_node && a.inner_shape == b.inner_shape;
 	}
 
 	template <class W>
 	inline std::size_t hash_value(const CUDAcpl_table_key<W>& key) {
 		std::size_t seed = 0;
-		boost::hash_combine(seed, key.id);
+		boost::hash_combine(seed, key.p_node);
 		for (const auto& code : key.inner_shape) {
 			boost::hash_combine(seed, code);
 		}
@@ -170,10 +170,10 @@ namespace cache {
 	/// <typeparam name="W"></typeparam>
 	template <class  W>
 	struct sum_key {
-		int id_1;
+		const node::Node<W>* p_node_1;
 		std::vector<weight::WCode> nweight1_code1;
 		std::vector<weight::WCode> nweight1_code2;
-		int id_2;
+		const node::Node<W>* p_node_2;
 		std::vector<weight::WCode> nweight2_code1;
 		std::vector<weight::WCode> nweight2_code2;
 
@@ -184,11 +184,11 @@ namespace cache {
 		/// <param name="weight_a"></param>
 		/// <param name="id_b"></param>
 		/// <param name="weight_b"></param>
-		sum_key(int id_a, const W& weight_a, int id_b, const W& weight_b) {
+		sum_key(const node::Node<W>* p_node_a, const W& weight_a, const node::Node<W>* p_node_b, const W& weight_b) {
 			if constexpr (std::is_same_v<W, wcomplex>) {
-				if (id_a < id_b) {
-					id_1 = id_a;
-					id_2 = id_b;
+				if (p_node_a < p_node_b) {
+					p_node_1 = p_node_a;
+					p_node_2 = p_node_b;
 					nweight1_code1 = std::vector<weight::WCode>(1);
 					weight::get_int_key(nweight1_code1.data(), weight_a.real());
 					nweight1_code2 = std::vector<weight::WCode>(1);
@@ -199,8 +199,8 @@ namespace cache {
 					weight::get_int_key(nweight2_code2.data(), weight_b.imag());
 				}
 				else {
-					id_1 = id_b;
-					id_2 = id_a;
+					p_node_1 = p_node_b;
+					p_node_2 = p_node_a;
 					nweight1_code1 = std::vector<weight::WCode>(1);
 					weight::get_int_key(nweight1_code1.data(), weight_b.real());
 					nweight1_code2 = std::vector<weight::WCode>(1);
@@ -212,9 +212,9 @@ namespace cache {
 				}
 			}
 			else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
-				if (id_a < id_b) {
-					id_1 = id_a;
-					id_2 = id_b;
+				if (p_node_a < p_node_b) {
+					p_node_1 = p_node_a;
+					p_node_2 = p_node_b;
 					nweight1_code1 = std::vector<weight::WCode>(weight_a.numel());
 					weight::get_int_key(nweight1_code1.data(), weight_a);
 
@@ -232,8 +232,8 @@ namespace cache {
 					nweight2_code2 = std::vector<weight::WCode>();
 				}
 				else {
-					id_1 = id_b;
-					id_2 = id_a;
+					p_node_1 = p_node_b;
+					p_node_2 = p_node_a;
 					nweight1_code1 = std::vector<weight::WCode>(weight_b.numel());
 					weight::get_int_key(nweight1_code1.data(), weight_b);
 
@@ -253,19 +253,19 @@ namespace cache {
 		}
 		
 		sum_key(const sum_key& other) {
-			id_1 = other.id_1;
+			p_node_1 = other.p_node_1;
 			nweight1_code1 = other.nweight1_code1;
 			nweight1_code2 = other.nweight1_code2;
-			id_2 = other.id_2;
+			p_node_2 = other.p_node_2;
 			nweight2_code1 = other.nweight2_code1;
 			nweight2_code2 = other.nweight2_code2;
 		}
 
 		sum_key& operator =(sum_key&& other) {
-			id_1 = other.id_1;
+			p_node_1 = other.p_node_1;
 			nweight1_code1 = std::move(other.nweight1_code1);
 			nweight1_code2 = std::move(other.nweight1_code2);
-			id_2 = other.id_2;
+			p_node_2 = other.p_node_2;
 			nweight2_code1 = std::move(other.nweight2_code1);
 			nweight2_code2 = std::move(other.nweight2_code2);
 			return *this;
@@ -274,7 +274,7 @@ namespace cache {
 
 	template <class W>
 	inline bool operator == (const sum_key<W>& a, const sum_key<W>& b) {
-		return a.id_1 == b.id_1 && a.id_2 == b.id_2 &&
+		return a.p_node_1 == b.p_node_1 && a.p_node_2 == b.p_node_2 &&
 			a.nweight1_code1 == b.nweight1_code1 &&
 			a.nweight1_code2 == b.nweight1_code2 &&
 			a.nweight2_code1 == b.nweight2_code1 &&
@@ -284,8 +284,8 @@ namespace cache {
 	template <class W>
 	inline std::size_t hash_value(const sum_key<W>& key) {
 		std::size_t seed = 0;
-		boost::hash_combine(seed, key.id_1);
-		boost::hash_combine(seed, key.id_2);
+		boost::hash_combine(seed, key.p_node_1);
+		boost::hash_combine(seed, key.p_node_2);
 		for (const auto& code : key.nweight1_code1) {
 			boost::hash_combine(seed, code);
 		}
@@ -310,7 +310,7 @@ namespace cache {
 	// the type for trace cache
 	template <class W>
 	struct trace_key {
-		int id;
+		const node::Node<W>* p_node;
 		// first: the smaller index to trace, second: the larger index to trace
 		pair_cmd remained_ls;
 		// first: the larger index to trace, seconde; the index value to select
@@ -326,25 +326,25 @@ namespace cache {
 		/// <param name="_num_waiting"></param>
 		/// <param name="_p_w_i"></param>
 		/// <param name="_p_w_v"></param>
-		inline trace_key(int _id, const pair_cmd& _remained_ls, const pair_cmd& _waiting_ls) {
-			id = _id;
+		inline trace_key(const node::Node<W>* _p_node, const pair_cmd& _remained_ls, const pair_cmd& _waiting_ls) {
+			p_node = _p_node;
 			remained_ls = pair_cmd(_remained_ls);
 			waiting_ls = pair_cmd(_waiting_ls);
 		}
 
-		inline trace_key(int _id, pair_cmd&& _remained_ls, pair_cmd&& _waiting_ls) {
-			id = _id;
+		inline trace_key(const node::Node<W>* _p_node, pair_cmd&& _remained_ls, pair_cmd&& _waiting_ls) {
+			p_node = _p_node;
 			remained_ls = std::move(_remained_ls);
 			waiting_ls = std::move(_waiting_ls);
 		}
 
 		inline trace_key(const trace_key& other) {
-			id = other.id;
+			p_node = other.p_node;
 			remained_ls = other.remained_ls;
 			waiting_ls = other.waiting_ls;
 		}
 		inline trace_key& operator =(trace_key&& other) {
-			id = other.id;
+			p_node = other.p_node;
 			remained_ls = std::move(other.remained_ls);
 			waiting_ls = std::move(other.waiting_ls);
 			return *this;
@@ -353,13 +353,13 @@ namespace cache {
 
 	template <class W>
 	inline bool operator == (const trace_key<W>& a, const trace_key<W>& b) {
-		return (a.id == b.id && a.remained_ls == b.remained_ls && a.waiting_ls == b.waiting_ls);
+		return (a.p_node == b.p_node && a.remained_ls == b.remained_ls && a.waiting_ls == b.waiting_ls);
 	}
 
 	template <class W>
 	inline std::size_t hash_value(const trace_key<W>& key) {
 		std::size_t seed = 0;
-		boost::hash_combine(seed, key.id);
+		boost::hash_combine(seed, key.p_node);
 		for (const auto& cmd : key.remained_ls) {
 			boost::hash_combine(seed, cmd.first);
 			boost::hash_combine(seed, cmd.second);

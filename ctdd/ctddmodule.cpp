@@ -504,7 +504,6 @@ get_node_info(PyObject* self, PyObject* args) {
 	}
 	const Node<W>* p_node = (const Node<W>*)code;
 
-	auto&& node_id = p_node->get_id();
 	auto&& node_order = p_node->get_order();
 	auto&& node_range = p_node->get_range();
 
@@ -520,7 +519,6 @@ get_node_info(PyObject* self, PyObject* args) {
 	}
 
 	return Py_BuildValue("{sisisisO}",
-		"id", node_id,
 		"order", node_order,
 		"range", node_range,
 		"successors", py_successors

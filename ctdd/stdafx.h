@@ -8,6 +8,7 @@
 #include <iostream>
 #include <complex>
 #include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 #include <string>
 #include <boost/container_hash/hash_fwd.hpp>
 #include <vector>
