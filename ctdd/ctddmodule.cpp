@@ -9,6 +9,53 @@ using namespace mng;
 
 
 /// <summary>
+/// this method is for testing purpose
+/// </summary>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+static PyObject*
+test(PyObject* self, PyObject* args) {
+
+	auto all_tdds_w = TDD<wcomplex>::get_all_tdds();
+	std::cout << "wcomplex tdd number: " << all_tdds_w.size() << std::endl;
+	auto p_table_w = node::Node<wcomplex>::get_unique_table();
+	int ref_max = 0, ref_min = (std::numeric_limits<int>::max)();
+	int zero_ref_count = 0;
+	for (auto&& pair : *p_table_w) {
+		auto count = pair.second->get_ref_count();
+		ref_max = ref_max <= count ? count : ref_max;
+		ref_min = ref_min >= count ? count : ref_min;
+		if (count == 0) zero_ref_count++;
+	}
+	std::cout << "wcomplex node number: " << p_table_w->size() << std::endl;
+	std::cout << "wcomplex max reference: " << ref_max << std::endl;
+	std::cout << "wcomplex min reference: " << ref_min << std::endl;
+	std::cout << "wcomplex 0-ref node number: " << zero_ref_count << std::endl;
+
+
+
+	auto all_tdds_t = TDD<CUDAcpl::Tensor>::get_all_tdds();
+	std::cout << "CUDAcpl::Tensor tdd number: " << all_tdds_t.size() << std::endl;
+	auto p_table_t = node::Node<CUDAcpl::Tensor>::get_unique_table();
+	ref_max = 0;
+	ref_min = (std::numeric_limits<int>::max)();
+	zero_ref_count = 0;
+	for (auto&& pair : *p_table_t) {
+		auto count = pair.second->get_ref_count();
+		ref_max = ref_max <= count ? count : ref_max;
+		ref_min = ref_min >= count ? count : ref_min;
+		if (count == 0) zero_ref_count++;
+	}
+	std::cout << "CUDAcpl::Tensor node number: " << p_table_t->size() << std::endl;
+	std::cout << "CUDAcpl::Tensor max reference: " << ref_max << std::endl;
+	std::cout << "CUDAcpl::Tensor min reference: " << ref_min << std::endl;
+	std::cout << "CUDAcpl::Tensor 0-ref node number: " << zero_ref_count << std::endl;
+	return Py_BuildValue("");
+}
+
+
+/// <summary>
 /// delete the tdd passed in (garbage collection)
 /// </summary>
 /// <typeparam name="W"></typeparam>
@@ -511,6 +558,8 @@ get_node_info(PyObject* self, PyObject* args) {
 
 
 static PyMethodDef ctdd_methods[] = {
+	{ "test", (PyCFunction)test, METH_VARARGS, "this method is for testing purpose" },
+
 	{ "delete_tdd", (PyCFunction)delete_tdd<wcomplex>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "delete_tdd_T", (PyCFunction)delete_tdd<CUDAcpl::Tensor>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "reset", (PyCFunction)reset, METH_VARARGS, " reset the unique table and all the caches. designated tdds are reserved." },

@@ -2,6 +2,13 @@ from typing import List
 from . import ctdd
 from .tdd import TDD
 
+
+def test() -> None:
+    '''
+        This method is for testing purpose.
+    '''
+    ctdd.test()
+
 def reset() -> None:
     ctdd.reset()
 

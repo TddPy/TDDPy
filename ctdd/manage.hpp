@@ -21,6 +21,7 @@ namespace mng {
 	/// <param name="tdd_ls"></param>
 	template <typename W>
 	inline void reset() {
+		tdd::TDD<W>::reset();
 		node::Node<W>::reset();
 		cache::Global_Cache<W>::p_CUDAcpl_cache->clear();
 		cache::Global_Cache<W>::p_sum_cache->clear();

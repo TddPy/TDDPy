@@ -8,6 +8,8 @@ namespace node {
 	template <class W>
 	struct weightednode;
 	template <class W>
+	struct wnode_cache;
+	template <class W>
 	using succ_ls = std::vector<weightednode<W>>;
 }
 
@@ -303,7 +305,7 @@ namespace cache {
 	}
 
 	template <class W>
-	using sum_table = boost::unordered_map<sum_key<W>, node::weightednode<W>>;
+	using sum_table = boost::unordered_map<sum_key<W>, node::wnode_cache<W>>;
 
 
 	typedef std::vector<std::pair<int, int>> pair_cmd;
@@ -373,7 +375,7 @@ namespace cache {
 	}
 
 	template <class W>
-	using trace_table = boost::unordered_map<trace_key<W>, node::weightednode<W>>;
+	using trace_table = boost::unordered_map<trace_key<W>, node::wnode_cache<W>>;
 
 	
 	// the type for contract cache
@@ -483,7 +485,7 @@ namespace cache {
 
 
 	template <typename W1, typename W2>
-	using cont_table = boost::unordered_map<cont_key<W1, W2>, node::weightednode<weight::W_C<W1, W2>>>;
+	using cont_table = boost::unordered_map<cont_key<W1, W2>, node::wnode_cache<weight::W_C<W1, W2>>>;
 
 
 

@@ -75,7 +75,7 @@ inline std::vector<T> removed(const std::vector<T>& vec, int pos) {
 	for (int i = pos + 1; i < vec.size(); i++) {
 		res[i - 1] = vec[i];
 	}
-	return std::move(res);
+	return res;
 }
 
 
@@ -93,7 +93,7 @@ inline std::vector<T> inserted(const std::vector<T>& vec, int pos, const T& val)
 	for (int i = pos + 1; i < vec.size() + 1; i++) {
 		res[i] = vec[i - 1];
 	}
-	return std::move(res);
+	return res;
 }
 
 

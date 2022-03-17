@@ -175,7 +175,8 @@ namespace wnode {
 				para_shape, data_shape, storage_order, depth + 1);
 		}
 		// normalize this depth
-		return normalize<W, false>(weight::ones<W>(para_shape), depth, std::move(new_successors));
+		res = normalize<W, false>(weight::ones<W>(para_shape), depth, std::move(new_successors));
+		return res;
 	}
 
 
@@ -414,6 +415,7 @@ namespace wnode {
 		const node::weightednode<W>& w_node1,
 		const node::weightednode<W>& w_node2, const W& renorm_coef, const std::vector<int64_t>& para_shape) {
 
+		node::weightednode<W> res;
 		if (w_node1.get_node() == nullptr && w_node2.get_node() == nullptr) {
 			return node::weightednode<W>(weight::mul((w_node1.weight + w_node2.weight), renorm_coef), nullptr);
 		}
@@ -430,7 +432,7 @@ namespace wnode {
 		auto found_in_cache = (p_find_res != cache::Global_Cache<W>::p_sum_cache->end());
 
 		if (found_in_cache) {
-			node::weightednode<W> res = p_find_res->second;
+			res = p_find_res->second.weightednode();
 			if constexpr (PL) {
 				cache::Global_Cache<W>::sum_m.unlock_shared();
 			}
@@ -467,7 +469,6 @@ namespace wnode {
 			auto&& new_successors = std::vector<node::weightednode<W>>(p_wnode_1->get_node()->get_range());
 
 			bool not_operated = true;
-			node::weightednode<W> res;
 			if (p_wnode_2->get_node() != nullptr) {
 
 				// if they are the same node, then we can only adjust the weight
@@ -582,7 +583,7 @@ namespace wnode {
 		auto&& key = cache::trace_key<W>(w_node.get_node(), remained_ls, waiting_ls);
 		auto&& p_find_res = cache::Global_Cache<W>::p_trace_cache->find(key);
 		if (p_find_res != cache::Global_Cache<W>::p_trace_cache->end()) {
-			res = p_find_res->second;
+			res = p_find_res->second.weightednode();
 			res.weight = weight::mul(res.weight, w_node.weight);
 			return res;
 		}
@@ -856,7 +857,7 @@ namespace wnode {
 						p_iter_state->m.lock();
 
 						p_iter_state->state[next_iter_index].thread_count = iter_para::CONT_DONE;
-						p_iter_state->state[next_iter_index].w_node = std::move(res);
+						p_iter_state->state[next_iter_index].w_node = res;
 
 						p_iter_state->m.unlock();
 						//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -924,7 +925,7 @@ namespace wnode {
 		auto found_in_cache = (p_find_res != cache::Cont_Cache<W1, W2>::p_cont_cache->end());
 
 		if (found_in_cache) {
-			res = p_find_res->second;
+			res = p_find_res->second.weightednode();
 			if constexpr (PL) {
 				cache::Cont_Cache<W1, W2>::m.unlock_shared();
 			}

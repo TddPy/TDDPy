@@ -181,6 +181,7 @@ namespace node {
 		}
 	};
 
+
 	template <typename W>
 	struct weightednode {
 	public:
@@ -189,6 +190,7 @@ namespace node {
 		Node<W>* node;
 
 	public:
+
 		inline Node<W>* get_node() const {
 			return node;
 		}
@@ -253,7 +255,7 @@ namespace node {
 
 				//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-				// construct at once to avoid accidental clean of p_find_res->second
+				// construct at once to avoid accidental clean of p_find_res->second, (the node may have reference count of 0)
 				weightednode<W> res;
 				res.weight = std::move(wei);
 				res.node = p_find_res->second;
@@ -280,8 +282,46 @@ namespace node {
 			return node == nullptr;
 		}
 
+		inline bool is_multi_ref() const {
+			return node->m_ref_count.load(std::memory_order::memory_order_relaxed) > 1;
+		}
+
 		~weightednode() {
 			Node<W>::ref_dec(node);
+		}
+	};
+
+	template <typename W>
+	struct wnode_cache {
+	public:
+		W weight;
+	private:
+		Node<W>* node;
+
+	public:
+		inline Node<W>* get_node() const {
+			return node;
+		}
+
+		wnode_cache(const weightednode<W>& w_node) {
+			weight = w_node.weight;
+			node = w_node.get_node();
+		}
+
+		wnode_cache() : node(nullptr) {}
+
+		wnode_cache& operator = (const weightednode<W>& w_node) {
+			weight = w_node.weight;
+			node = w_node.get_node();
+			return *this;
+		}
+
+		inline bool is_garbage() const {
+			return node->is_garbage();
+		}
+
+		inline weightednode<W> weightednode() const {
+			return node::weightednode<W>(W{ weight }, node);
 		}
 	};
 }

@@ -6,11 +6,6 @@ namespace tdd {
 	class TDD;
 }
 
-namespace mng {
-	template <typename W>
-	inline void reset(const std::vector<tdd::TDD<W>*>& tdd_ls);
-}
-
 namespace tdd {
 
 
@@ -21,6 +16,10 @@ namespace tdd {
 	template <class W>
 	class TDD {
 	private:
+
+		// record all the tdds created.
+		static boost::unordered_set<TDD<W>*> m_all_tdds;
+
 		// The inner data of this tdd.
 		node::weightednode<W> m_wnode;
 
@@ -58,6 +57,8 @@ namespace tdd {
 			calculate_inversed_order();
 			calculate_global_order();
 			calculate_inversed_global_order();
+
+			m_all_tdds.insert(this);
 		}
 
 		void calculate_inner_data_shape() {
@@ -151,8 +152,18 @@ namespace tdd {
 		}
 	public:
 
+		inline static void reset() {
+			m_all_tdds.clear();
+		}
+
+		inline static const boost::unordered_set<TDD<W>*>& get_all_tdds() {
+			return m_all_tdds;
+		}
+
 		TDD(TDD&& other) {
 			*this = std::move(other);
+
+			m_all_tdds.insert(this);
 		}
 
 		TDD(const TDD& other) {
@@ -164,10 +175,13 @@ namespace tdd {
 			m_inversed_global_order = other.m_inversed_global_order;
 			m_para_shape = other.m_para_shape;
 			m_wnode = other.m_wnode;
+
+			m_all_tdds.insert(this);
+
 		}
 
 		~TDD() {
-			
+			m_all_tdds.erase(this);
 		}
 
 		TDD& operator = (TDD&& other) {
@@ -400,8 +414,6 @@ namespace tdd {
 				const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
 				const std::vector<int>& rearrangement, bool parallel_tensor);
 
-		template <typename W>
-		friend void mng::reset(const std::vector<TDD<W>*>& tdd_ls);
 	};
 
 

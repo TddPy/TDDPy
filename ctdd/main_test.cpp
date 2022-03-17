@@ -61,7 +61,7 @@ int main() {
 
 	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
 
-	/*
+	
 	start = clock();
 	for (int i = 0; i < 2; i++) {
 		cout << "=================== " << i << " ===================" << endl;
@@ -93,15 +93,17 @@ int main() {
 	end = clock();
 
 	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
-	*/
-	mng::clear_cache<wcomplex>();
-	mng::clear_cache<CUDAcpl::Tensor>();
+	
+	//mng::clear_cache<wcomplex>();
+	//mng::clear_cache<CUDAcpl::Tensor>();
 
 	auto p_table = node::Node<CUDAcpl::Tensor>::get_unique_table();
 	for (auto&& pair : *p_table) {
 		auto count = pair.second->get_ref_count();
 		std::cout << count << endl;
 	}
+	cout << endl;
+	cout << TDD<CUDAcpl::Tensor>::get_all_tdds().size() << endl;
 
 	return 0;
 }

@@ -4,6 +4,9 @@ using namespace std;
 
 double weight::EPS = DEFAULT_EPS;
 
+boost::unordered_set<tdd::TDD<wcomplex>*> tdd::TDD<wcomplex>::m_all_tdds{};
+boost::unordered_set<tdd::TDD<CUDAcpl::Tensor>*> tdd::TDD<CUDAcpl::Tensor>::m_all_tdds{};
+
 
 cache::unique_table<wcomplex>* node::Node<wcomplex>::mp_unique_table = new cache::unique_table<wcomplex>();
 std::shared_mutex node::Node<wcomplex>::unique_table_m{};
