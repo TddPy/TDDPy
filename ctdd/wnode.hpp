@@ -8,7 +8,7 @@ namespace mng {
 
 namespace wnode {
 
-	inline int get_cmd_insert_pos(const cache::pair_cmd& cmd_ls, int order) {
+	inline int get_cmd_insert_pos(const cache::pair_cmd& cmd_ls, int order) noexcept {
 		int insert_pos = 0;
 		for (; insert_pos < cmd_ls.size(); insert_pos++) {
 			if (cmd_ls[insert_pos].first < order) {
@@ -64,7 +64,7 @@ namespace wnode {
 	/// <param name="length"></param>
 	/// <param name="reduced_indices">must be in order</param>
 	/// <returns></returns>
-	inline std::vector<int64_t> get_new_order(int length, const std::vector<int64_t>& reduced_indices) {
+	inline std::vector<int64_t> get_new_order(int length, const std::vector<int64_t>& reduced_indices) noexcept {
 		////////////////////////////////
 		// prepare the new index order
 		if (reduced_indices.empty()) {
@@ -92,7 +92,7 @@ namespace wnode {
 	}
 
 	template <class W>
-	inline bool is_equal(const node::weightednode<W>& a, const node::weightednode<W>& b) {
+	inline bool is_equal(const node::weightednode<W>& a, const node::weightednode<W>& b) noexcept {
 		return (a.get_node() == b.get_node() && weight::is_equal(a.weight, b.weight));
 	}
 
@@ -784,7 +784,7 @@ namespace wnode {
 			int thread_count;
 			node::weightednode<weight::W_C<W1, W2>> w_node;
 
-			branch_state() {
+			branch_state() noexcept {
 				thread_count = 0;
 			}
 		};
@@ -794,7 +794,7 @@ namespace wnode {
 			std::vector<branch_state<W1, W2>> state;
 			std::shared_mutex m;
 
-			void init(int n) {
+			void init(int n) noexcept {
 				state.resize(n);
 			}
 		};

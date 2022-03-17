@@ -48,7 +48,7 @@ namespace tdd {
 	private:
 
 		TDD(node::weightednode<W>&& w_node, std::vector<int64_t>&& para_shape,
-			std::vector<int64_t>&& data_shape, std::vector<int64_t>&& storage_order) {
+			std::vector<int64_t>&& data_shape, std::vector<int64_t>&& storage_order) noexcept {
 			m_wnode = std::move(w_node);
 			m_para_shape = std::move(para_shape);
 			m_data_shape = std::move(data_shape);
@@ -61,7 +61,7 @@ namespace tdd {
 			m_all_tdds.insert(this);
 		}
 
-		void calculate_inner_data_shape() {
+		void calculate_inner_data_shape() noexcept {
 
 			auto&& temp = std::vector<int64_t>(m_storage_order.size() + 1);
 			temp[m_storage_order.size()] = 2;
@@ -71,7 +71,7 @@ namespace tdd {
 			m_inner_data_shape = std::move(temp);
 		}
 
-		void calculate_inversed_order() {
+		void calculate_inversed_order() noexcept {
 			auto&& temp = std::vector<int64_t>(m_storage_order.size());
 			for (int i = 0; i < m_storage_order.size(); i++) {
 				temp[m_storage_order[i]] = i;
@@ -79,7 +79,7 @@ namespace tdd {
 			m_inversed_order = std::move(temp);
 		}
 
-		void calculate_global_order() {
+		void calculate_global_order() noexcept {
 			auto&& dim_para = m_para_shape.size();
 			auto&& dim_data = m_storage_order.size();
 			auto&& temp = std::vector<int64_t>(dim_para + dim_data + 1);
@@ -93,7 +93,7 @@ namespace tdd {
 			m_global_order = std::move(temp);
 		}
 
-		void calculate_inversed_global_order() {
+		void calculate_inversed_global_order() noexcept {
 			auto&& dim_para = m_para_shape.size();
 			auto&& dim_data = m_storage_order.size();
 			auto&& temp = std::vector<int64_t>(dim_para + dim_data + 1);
@@ -152,17 +152,17 @@ namespace tdd {
 		}
 	public:
 
-		inline static const boost::unordered_set<TDD<W>*>& get_all_tdds() {
+		inline static const boost::unordered_set<TDD<W>*>& get_all_tdds() noexcept {
 			return m_all_tdds;
 		}
 
-		TDD(TDD&& other) {
+		TDD(TDD&& other) noexcept {
 			*this = std::move(other);
 
 			m_all_tdds.insert(this);
 		}
 
-		TDD(const TDD& other) {
+		TDD(const TDD& other) noexcept {
 			m_data_shape = other.m_data_shape;
 			m_storage_order = other.m_storage_order;
 			m_inner_data_shape = other.m_inner_data_shape;
@@ -176,11 +176,11 @@ namespace tdd {
 
 		}
 
-		~TDD() {
+		~TDD() noexcept {
 			m_all_tdds.erase(this);
 		}
 
-		TDD& operator = (TDD&& other) {
+		TDD& operator = (TDD&& other) noexcept {
 			m_data_shape = std::move(other.m_data_shape);
 			m_storage_order = std::move(other.m_storage_order);
 			m_inner_data_shape = std::move(other.m_inner_data_shape);
@@ -192,27 +192,27 @@ namespace tdd {
 			return *this;
 		}
 
-		inline const node::weightednode<W>& w_node() const {
+		inline const node::weightednode<W>& w_node() const noexcept {
 			return m_wnode;
 		}
 
-		inline const std::vector<int64_t>& parallel_shape()const {
+		inline const std::vector<int64_t>& parallel_shape() const noexcept {
 			return m_para_shape;
 		}
 
-		inline int64_t dim_data()const {
+		inline int64_t dim_data() const noexcept {
 			return m_storage_order.size();
 		}
 
-		inline const std::vector<int64_t>& data_shape() const {
+		inline const std::vector<int64_t>& data_shape() const noexcept {
 			return m_data_shape;
 		}
 
-		inline const std::vector<int64_t>& storage_order() const {
+		inline const std::vector<int64_t>& storage_order() const noexcept {
 			return m_storage_order;
 		}
 
-		inline int size() const {
+		inline int size() const noexcept {
 			if (m_wnode.get_node() == nullptr) {
 				return 0;
 			}
@@ -225,7 +225,7 @@ namespace tdd {
 		/// <summary>
 		/// print the informaton of this tdd. DEBUG usage.
 		/// </summary>
-		inline void print() const {
+		inline void print() const noexcept {
 			std::cout << "weight: " << m_wnode.weight << std::endl;
 			std::cout << "node: " << m_wnode.get_node() << std::endl;
 			std::cout << "parallel shape: (" << m_para_shape << ")\n";
@@ -247,7 +247,7 @@ namespace tdd {
 		}
 
 
-		inline TDD<W> clone() const {
+		inline TDD<W> clone() const noexcept {
 			return TDD(node::weightednode<W>(m_wnode),
 				std::vector<int64_t>(m_para_shape),
 				std::vector<int64_t>(m_data_shape),

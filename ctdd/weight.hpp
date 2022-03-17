@@ -21,7 +21,7 @@ namespace weight {
 	template <typename W1, typename W2>
 	using W_C = typename W_<W1, W2>::reType;
 
-	inline void get_int_key(WCode* p_vec, double weight) {
+	inline void get_int_key(WCode* p_vec, double weight) noexcept {
 		*p_vec = (WCode)round(weight / EPS);
 	}
 
@@ -36,7 +36,7 @@ namespace weight {
 
 
 	template <class W>
-	inline void as_weight(const CUDAcpl::Tensor& t, W& weight, const std::vector<int64_t>& data_shape) {
+	inline void as_weight(const CUDAcpl::Tensor& t, W& weight, const std::vector<int64_t>& data_shape) noexcept {
 		if constexpr (std::is_same_v<W, wcomplex>) {
 			weight = CUDAcpl::item(t);
 
@@ -82,7 +82,7 @@ namespace weight {
 	/// <param name="b"></param>
 	/// <returns></returns>
 	template <class W>
-	inline bool is_equal(const W& a, const W& b) {
+	inline bool is_equal(const W& a, const W& b) noexcept {
 		if constexpr (std::is_same_v<W, wcomplex>) {
 			auto this_eps = std::norm(a) * EPS;
 			return abs(a.real() - b.real()) < this_eps &&
@@ -102,7 +102,7 @@ namespace weight {
 	/// <param name="a"></param>
 	/// <returns></returns>
 	template <class W>
-	inline bool is_zero(const W& a) {
+	inline bool is_zero(const W& a) noexcept {
 		if constexpr (std::is_same_v<W, wcomplex>) {
 			return abs(a.real()) < EPS && abs(a.imag()) < EPS;
 		}
@@ -112,7 +112,7 @@ namespace weight {
 	}
 
 	template <class W>
-	inline bool is_exact_zero(const W& a) {
+	inline bool is_exact_zero(const W& a) noexcept {
 		if constexpr (std::is_same_v<W, wcomplex>) {
 			return a.real() == 0. && a.imag() == 0.;
 		}
@@ -163,7 +163,7 @@ namespace weight {
 	}
 
 	template <typename W1, typename W2>
-	inline W_C<W1, W2> mul(const W1& a, const W2& b) {
+	inline W_C<W1, W2> mul(const W1& a, const W2& b) noexcept {
 		return CUDAcpl::mul_element_wise(a, b);
 	}
 
@@ -190,7 +190,7 @@ namespace weight {
 
 
 	template <typename W1, typename W2>
-	inline W_C<W1, W2> prepare_weight(const W1& a, const W2& b, bool parallel_tensor) {
+	inline W_C<W1, W2> prepare_weight(const W1& a, const W2& b, bool parallel_tensor) noexcept {
 		if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, wcomplex>) {
 			return a * b;
 		}
@@ -293,7 +293,7 @@ namespace weight {
 		W nweight2;
 		W renorm_coef;
 
-		sum_nweights(W&& _nweight1, W&& _nweight2, W&& _renorm_coef) {
+		sum_nweights(W&& _nweight1, W&& _nweight2, W&& _renorm_coef) noexcept {
 			nweight1 = std::move(_nweight1);
 			nweight2 = std::move(_nweight2);
 			renorm_coef = std::move(_renorm_coef);

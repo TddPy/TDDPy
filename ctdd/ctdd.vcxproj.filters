@@ -36,9 +36,6 @@
     <ClCompile Include="tdd.cpp">
       <Filter>sources</Filter>
     </ClCompile>
-    <ClCompile Include="simpletools.cpp">
-      <Filter>dependency</Filter>
-    </ClCompile>
     <ClCompile Include="manage.cpp">
       <Filter>sources</Filter>
     </ClCompile>

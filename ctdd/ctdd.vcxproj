@@ -304,7 +304,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="manage.cpp" />
-    <ClCompile Include="simpletools.cpp" />
     <ClCompile Include="tdd.cpp" />
   </ItemGroup>
   <ItemGroup>

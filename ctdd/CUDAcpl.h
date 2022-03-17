@@ -15,7 +15,7 @@ namespace CUDAcpl {
 
 	extern c10::TensorOptions tensor_opt;
 
-	inline void reset(bool device_cuda, bool double_type) {
+	inline void reset(bool device_cuda, bool double_type) noexcept {
 		if (device_cuda) {
 			tensor_opt = tensor_opt.device(c10::Device::Type::CUDA);
 		}

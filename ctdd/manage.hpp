@@ -8,16 +8,16 @@ namespace mng {
 		std::cout << std::endl;
 		auto all_tdds_w = tdd::TDD<wcomplex>::get_all_tdds();
 		std::cout << "wcomplex tdd number: " << all_tdds_w.size() << std::endl;
-		auto p_table_w = node::Node<wcomplex>::get_unique_table();
+		auto table_w = node::Node<wcomplex>::get_unique_table();
 		int ref_max = 0, ref_min = (std::numeric_limits<int>::max)();
 		int zero_ref_count = 0;
-		for (auto&& pair : *p_table_w) {
+		for (auto&& pair : table_w) {
 			auto count = pair.second->get_ref_count();
 			ref_max = ref_max <= count ? count : ref_max;
 			ref_min = ref_min >= count ? count : ref_min;
 			if (count == 0) zero_ref_count++;
 		}
-		std::cout << "wcomplex node number: " << p_table_w->size() << std::endl;
+		std::cout << "wcomplex node number: " << table_w.size() << std::endl;
 		std::cout << "wcomplex max reference: " << ref_max << std::endl;
 		std::cout << "wcomplex min reference: " << ref_min << std::endl;
 		std::cout << "wcomplex 0-ref node number: " << zero_ref_count << std::endl;
@@ -26,17 +26,17 @@ namespace mng {
 
 		auto all_tdds_t = tdd::TDD<CUDAcpl::Tensor>::get_all_tdds();
 		std::cout << "CUDAcpl::Tensor tdd number: " << all_tdds_t.size() << std::endl;
-		auto p_table_t = node::Node<CUDAcpl::Tensor>::get_unique_table();
+		auto table_t = node::Node<CUDAcpl::Tensor>::get_unique_table();
 		ref_max = 0;
 		ref_min = (std::numeric_limits<int>::max)();
 		zero_ref_count = 0;
-		for (auto&& pair : *p_table_t) {
+		for (auto&& pair : table_t) {
 			auto count = pair.second->get_ref_count();
 			ref_max = ref_max <= count ? count : ref_max;
 			ref_min = ref_min >= count ? count : ref_min;
 			if (count == 0) zero_ref_count++;
 		}
-		std::cout << "CUDAcpl::Tensor node number: " << p_table_t->size() << std::endl;
+		std::cout << "CUDAcpl::Tensor node number: " << table_t.size() << std::endl;
 		std::cout << "CUDAcpl::Tensor max reference: " << ref_max << std::endl;
 		std::cout << "CUDAcpl::Tensor min reference: " << ref_min << std::endl;
 		std::cout << "CUDAcpl::Tensor 0-ref node number: " << zero_ref_count << std::endl;

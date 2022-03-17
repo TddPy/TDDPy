@@ -32,7 +32,7 @@ namespace cache {
 		/// <param name="_range"></param>
 		/// <param name="_p_weights">[borrowed]</param>
 		/// <param name="_p_nodes">[borrowed</param>
-		unique_table_key(int _order, const node::succ_ls<W>& successors) {
+		unique_table_key(int _order, const node::succ_ls<W>& successors) noexcept {
 			if constexpr (std::is_same_v<W, wcomplex>) {
 				order = _order;
 				code1 = std::vector<weight::WCode>(successors.size());
@@ -61,14 +61,14 @@ namespace cache {
 			}
 		}
 
-		unique_table_key(const unique_table_key& other) {
+		unique_table_key(const unique_table_key& other) noexcept {
 			order = other.order;
 			code1 = other.code1;
 			code2 = other.code2;
 			nodes = other.nodes;
 		}
 
-		unique_table_key& operator =(unique_table_key&& other) {
+		unique_table_key& operator =(unique_table_key&& other) noexcept {
 			order = other.order;
 			code1 = std::move(other.code1);
 			code2 = std::move(other.code2);
@@ -78,7 +78,7 @@ namespace cache {
 	};
 
 	template <class W>
-	inline bool operator == (const unique_table_key<W>& a, const unique_table_key<W>& b) {
+	inline bool operator == (const unique_table_key<W>& a, const unique_table_key<W>& b) noexcept {
 		if (a.order != b.order) {
 			return false;
 		}
@@ -96,7 +96,7 @@ namespace cache {
 	}
 
 	template <class W>
-	inline std::size_t hash_value(const unique_table_key<W>& key) {
+	inline std::size_t hash_value(const unique_table_key<W>& key) noexcept {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.order);
 		for (const auto& code : key.code1) {
@@ -130,17 +130,17 @@ namespace cache {
 		/// <param name="_range"></param>
 		/// <param name="_p_weights">[borrowed]</param>
 		/// <param name="_p_nodes">[borrowed</param>
-		CUDAcpl_table_key(const node::Node<W>* _p_node, const std::vector<int64_t>& _inner_shape) {
+		CUDAcpl_table_key(const node::Node<W>* _p_node, const std::vector<int64_t>& _inner_shape) noexcept {
 			p_node = _p_node;
 			inner_shape = _inner_shape;
 		}
 
-		CUDAcpl_table_key(const CUDAcpl_table_key& other) {
+		CUDAcpl_table_key(const CUDAcpl_table_key& other) noexcept {
 			p_node = other.p_node;
 			inner_shape = other.inner_shape;
 		}
 
-		CUDAcpl_table_key& operator =(CUDAcpl_table_key&& other) {
+		CUDAcpl_table_key& operator =(CUDAcpl_table_key&& other) noexcept {
 			p_node = other.p_node;
 			inner_shape = std::move(other.inner_shape);
 			return *this;
@@ -148,12 +148,12 @@ namespace cache {
 	};
 
 	template <class W>
-	inline bool operator == (const CUDAcpl_table_key<W>& a, const CUDAcpl_table_key<W>& b) {
+	inline bool operator == (const CUDAcpl_table_key<W>& a, const CUDAcpl_table_key<W>& b) noexcept {
 		return a.p_node == b.p_node && a.inner_shape == b.inner_shape;
 	}
 
 	template <class W>
-	inline std::size_t hash_value(const CUDAcpl_table_key<W>& key) {
+	inline std::size_t hash_value(const CUDAcpl_table_key<W>& key) noexcept {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.p_node);
 		for (const auto& code : key.inner_shape) {
@@ -259,7 +259,7 @@ namespace cache {
 			}
 		}
 		
-		sum_key(const sum_key& other) {
+		sum_key(const sum_key& other) noexcept {
 			p_node_1 = other.p_node_1;
 			nweight1_code1 = other.nweight1_code1;
 			nweight1_code2 = other.nweight1_code2;
@@ -268,7 +268,7 @@ namespace cache {
 			nweight2_code2 = other.nweight2_code2;
 		}
 
-		sum_key& operator =(sum_key&& other) {
+		sum_key& operator =(sum_key&& other) noexcept {
 			p_node_1 = other.p_node_1;
 			nweight1_code1 = std::move(other.nweight1_code1);
 			nweight1_code2 = std::move(other.nweight1_code2);
@@ -280,7 +280,7 @@ namespace cache {
 	};
 
 	template <class W>
-	inline bool operator == (const sum_key<W>& a, const sum_key<W>& b) {
+	inline bool operator == (const sum_key<W>& a, const sum_key<W>& b) noexcept {
 		return a.p_node_1 == b.p_node_1 && a.p_node_2 == b.p_node_2 &&
 			a.nweight1_code1 == b.nweight1_code1 &&
 			a.nweight1_code2 == b.nweight1_code2 &&
@@ -289,7 +289,7 @@ namespace cache {
 	}
 
 	template <class W>
-	inline std::size_t hash_value(const sum_key<W>& key) {
+	inline std::size_t hash_value(const sum_key<W>& key) noexcept {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.p_node_1);
 		boost::hash_combine(seed, key.p_node_2);
@@ -335,24 +335,24 @@ namespace cache {
 		/// <param name="_num_waiting"></param>
 		/// <param name="_p_w_i"></param>
 		/// <param name="_p_w_v"></param>
-		inline trace_key(const node::Node<W>* _p_node, const pair_cmd& _remained_ls, const pair_cmd& _waiting_ls) {
+		inline trace_key(const node::Node<W>* _p_node, const pair_cmd& _remained_ls, const pair_cmd& _waiting_ls) noexcept {
 			p_node = _p_node;
 			remained_ls = pair_cmd(_remained_ls);
 			waiting_ls = pair_cmd(_waiting_ls);
 		}
 
-		inline trace_key(const node::Node<W>* _p_node, pair_cmd&& _remained_ls, pair_cmd&& _waiting_ls) {
+		inline trace_key(const node::Node<W>* _p_node, pair_cmd&& _remained_ls, pair_cmd&& _waiting_ls) noexcept {
 			p_node = _p_node;
 			remained_ls = std::move(_remained_ls);
 			waiting_ls = std::move(_waiting_ls);
 		}
 
-		inline trace_key(const trace_key& other) {
+		inline trace_key(const trace_key& other) noexcept {
 			p_node = other.p_node;
 			remained_ls = other.remained_ls;
 			waiting_ls = other.waiting_ls;
 		}
-		inline trace_key& operator =(trace_key&& other) {
+		inline trace_key& operator =(trace_key&& other) noexcept {
 			p_node = other.p_node;
 			remained_ls = std::move(other.remained_ls);
 			waiting_ls = std::move(other.waiting_ls);
@@ -361,12 +361,12 @@ namespace cache {
 	};
 
 	template <class W>
-	inline bool operator == (const trace_key<W>& a, const trace_key<W>& b) {
+	inline bool operator == (const trace_key<W>& a, const trace_key<W>& b) noexcept {
 		return (a.p_node == b.p_node && a.remained_ls == b.remained_ls && a.waiting_ls == b.waiting_ls);
 	}
 
 	template <class W>
-	inline std::size_t hash_value(const trace_key<W>& key) {
+	inline std::size_t hash_value(const trace_key<W>& key) noexcept {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.p_node);
 		for (const auto& cmd : key.remained_ls) {
@@ -423,7 +423,7 @@ namespace cache {
 
 		inline cont_key(const node::Node<W1>* _p_a, const node::Node<W2>* _p_b, pair_cmd&& _remained_ls, 
 			pair_cmd&& _a_waiting_ls, pair_cmd&& _b_waiting_ls,
-			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b, bool _parallel_tensor) {
+			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b, bool _parallel_tensor) noexcept {
 			p_a = _p_a;
 			p_b = _p_b;
 			remained_ls = std::move(_remained_ls);
@@ -434,7 +434,7 @@ namespace cache {
 			parallel_tensor = _parallel_tensor;
 		}
 
-		inline cont_key(const cont_key& other) {
+		inline cont_key(const cont_key& other) noexcept {
 			p_a = other.p_a;
 			p_b = other.p_b;
 			remained_ls = other.remained_ls;
@@ -444,7 +444,7 @@ namespace cache {
 			b_new_order = other.b_new_order;
 			parallel_tensor = other.parallel_tensor;
 		}
-		inline cont_key& operator =(cont_key&& other) {
+		inline cont_key& operator =(cont_key&& other) noexcept {
 			p_a = other.p_a;
 			p_b = other.p_b;
 			remained_ls = std::move(other.remained_ls);
@@ -458,14 +458,14 @@ namespace cache {
 	};
 
 	template <class W1, class W2>
-	inline bool operator == (const cont_key<W1, W2>& a, const cont_key<W1, W2>& b) {
+	inline bool operator == (const cont_key<W1, W2>& a, const cont_key<W1, W2>& b) noexcept {
 		return (a.p_a == b.p_a && a.p_b == b.p_b &&
 			a.remained_ls == b.remained_ls && a.a_waiting_ls == b.a_waiting_ls && a.b_waiting_ls == b.b_waiting_ls &&
 			a.a_new_order == b.a_new_order && a.b_new_order == b.b_new_order && a.parallel_tensor == b.parallel_tensor);
 	}
 
 	template <class W1, class W2>
-	inline std::size_t hash_value(const cont_key<W1, W2>& key) {
+	inline std::size_t hash_value(const cont_key<W1, W2>& key) noexcept {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.p_a);
 		boost::hash_combine(seed, key.p_b);

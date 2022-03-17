@@ -104,7 +104,7 @@ inline std::vector<T> inserted(const std::vector<T>& vec, int pos, const T& val)
 /// <param name="p"></param>
 /// <param name="size"></param>
 template <typename T>
-inline void print_ls(const T* p, int size) {
+inline void print_ls(const T* p, int size) noexcept {
 	std::cout << "(";
 	for (int i = 0; i < size; i++) {
 		std::cout << p[i] << ", ";

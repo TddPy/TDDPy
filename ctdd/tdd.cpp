@@ -8,10 +8,10 @@ boost::unordered_set<tdd::TDD<wcomplex>*> tdd::TDD<wcomplex>::m_all_tdds{};
 boost::unordered_set<tdd::TDD<CUDAcpl::Tensor>*> tdd::TDD<CUDAcpl::Tensor>::m_all_tdds{};
 
 
-cache::unique_table<wcomplex>* node::Node<wcomplex>::mp_unique_table = new cache::unique_table<wcomplex>();
+cache::unique_table<wcomplex> node::Node<wcomplex>::m_unique_table{};
 std::shared_mutex node::Node<wcomplex>::unique_table_m{};
 
-cache::unique_table<CUDAcpl::Tensor>* node::Node<CUDAcpl::Tensor>::mp_unique_table = new cache::unique_table<CUDAcpl::Tensor>();
+cache::unique_table<CUDAcpl::Tensor> node::Node<CUDAcpl::Tensor>::m_unique_table{};
 std::shared_mutex node::Node<CUDAcpl::Tensor>::unique_table_m{};
 
 std::pair<std::shared_mutex, cache::CUDAcpl_table<wcomplex>> cache::Global_Cache<wcomplex>::CUDAcpl_cache{};

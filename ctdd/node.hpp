@@ -14,7 +14,7 @@ namespace node {
 	private:
 
 		// The unique_table to store all the node instances used in tdd.
-		static cache::unique_table<W>* mp_unique_table;
+		static cache::unique_table<W> m_unique_table;
 		static std::shared_mutex unique_table_m;
 
 		// represent the order of this node (which tensor index it represent)
@@ -40,7 +40,7 @@ namespace node {
 		/// Count all the nodes starting from this node.
 		/// </summary>
 		/// <param name="id_ls"> the vector to store all the ids</param>
-		void node_search(boost::unordered_set<const Node<W>*>& node_ls) const {
+		void node_search(boost::unordered_set<const Node<W>*>& node_ls) const noexcept {
 			// check whether it is in node_ls already, and insert in
 			auto&& insert_res = node_ls.insert(this);
 
@@ -66,9 +66,9 @@ namespace node {
 		/// </summary>
 		inline static void clean_unique_table() {
 			unique_table_m.lock();
-			for (auto&& i = mp_unique_table->begin(); i != mp_unique_table->end();) {
+			for (auto&& i = m_unique_table.begin(); i != m_unique_table.end();) {
 				if (is_garbage(i->second)) {
-					i = mp_unique_table->erase(i);
+					i = m_unique_table.erase(i);
 				}
 				else {
 					i++;
@@ -78,17 +78,17 @@ namespace node {
 		}
 
 		// note that due to the transfer semantics of successors, their reference counts will not be increased.
-		Node(int order, succ_ls<W>&& successors) :m_order(order), m_ref_count(1), m_successors(std::move(successors)) { }
+		Node(int order, succ_ls<W>&& successors) noexcept :m_order(order), m_ref_count(1), m_successors(std::move(successors)) { }
 
 		/// <summary>
 		/// warning: this property should not be queried when parallel calculating is running.
 		/// </summary>
 		/// <returns></returns>
-		inline int get_ref_count() const {
+		inline int get_ref_count() const noexcept {
 			return m_ref_count;
 		}
 
-		inline static bool is_garbage(const Node<W>* p_node) {
+		inline static bool is_garbage(const Node<W>* p_node) noexcept {
 			if (p_node) {
 				return p_node->m_ref_count == 0;
 			}
@@ -97,7 +97,7 @@ namespace node {
 			}
 		}
 
-		inline static bool is_multi_ref(const Node<W>* p_node) {
+		inline static bool is_multi_ref(const Node<W>* p_node) noexcept {
 			if (!p_node) {
 				return true;
 			}
@@ -105,7 +105,7 @@ namespace node {
 				return p_node->m_ref_count > 1;
 			}
 		}
-		static void ref_inc(Node<W>* p_node) {
+		static void ref_inc(Node<W>* p_node) noexcept {
 			if (p_node) {
 				p_node->ref_count_m.lock();
 				(p_node->m_ref_count)++;
@@ -122,7 +122,7 @@ namespace node {
 
 		}
 
-		static void ref_dec(Node<W>* p_node) {
+		static void ref_dec(Node<W>* p_node) noexcept {
 			if (p_node) {
 				p_node->ref_count_m.lock();
 				(p_node->m_ref_count)--;
@@ -139,30 +139,15 @@ namespace node {
 			}
 		}
 
-		/// <summary>
-		/// clear the unique_table
-		/// id is rearranged.
-		/// </summary>
-		/// <returns> </returns>
-		static void reset() {
-			for (auto&& i : *mp_unique_table) {
-				delete i.second;
-			}
-
-			delete mp_unique_table;
-			mp_unique_table = new cache::unique_table<W>{};
-		}
-
-
-		inline int get_order() const {
+		inline int get_order() const noexcept {
 			return m_order;
 		}
 
-		inline int get_range() const {
+		inline int get_range() const noexcept {
 			return m_successors.size();
 		}
 
-		void print() const {
+		void print() const noexcept {
 			for (int i = 0; i < m_order; i++) {
 				std::cout << "-";
 			}
@@ -200,7 +185,7 @@ namespace node {
 			}
 		}
 
-		inline const succ_ls<W>& get_successors() const {
+		inline const succ_ls<W>& get_successors() const noexcept {
 			return m_successors;
 		}
 
@@ -208,15 +193,15 @@ namespace node {
 		/// Count all the nodes starting from this one.
 		/// </summary>
 		/// <returns></returns>
-		inline int get_size() const {
+		inline int get_size() const noexcept {
 			auto&& node_ls = boost::unordered_set<const Node<W>*>{};
 			node_search(node_ls);
 			// the terminal node is counted
 			return node_ls.size() + 1;
 		}
 
-		inline static const cache::unique_table<W>* get_unique_table() {
-			return mp_unique_table;
+		inline static const cache::unique_table<W> get_unique_table() {
+			return m_unique_table;
 		}
 	};
 
@@ -230,36 +215,36 @@ namespace node {
 
 	public:
 
-		inline Node<W>* get_node() const {
+		inline Node<W>* get_node() const noexcept {
 			return node;
 		}
 
-		inline void set_node(Node<W>* _node) {
+		inline void set_node(Node<W>* _node) noexcept {
 			Node<W>::ref_dec(node);
 			node = _node;
 			Node<W>::ref_inc(node);
 		}
 
-		weightednode(const weightednode<W>& other) {
+		weightednode(const weightednode<W>& other) noexcept {
 			weight = other.weight;
 			node = other.node;
 			Node<W>::ref_inc(node);
 		}
 
-		weightednode(weightednode<W>&& other) {
+		weightednode(weightednode<W>&& other) noexcept {
 			node = nullptr;
 			*this = std::move(other);
 		}
 
-		weightednode(W&& _weight, node::Node<W>* _p_node) {
+		weightednode(W&& _weight, node::Node<W>* _p_node) noexcept {
 			weight = std::move(_weight);
 			node = _p_node;
 			Node<W>::ref_inc(node);
 		}
 
-		weightednode(): node(nullptr) {}
+		weightednode() noexcept : node(nullptr) {}
 
-		weightednode& operator = (const weightednode& other) {
+		weightednode& operator = (const weightednode& other) noexcept {
 			weight = other.weight;
 			Node<W>::ref_dec(node);
 			node = other.node;
@@ -267,7 +252,7 @@ namespace node {
 			return *this;
 		}
 
-		weightednode& operator = (weightednode&& other) {
+		weightednode& operator = (weightednode&& other) noexcept {
 			weight = std::move(other.weight);
 			auto temp = node;
 			node = other.node;
@@ -280,9 +265,9 @@ namespace node {
 
 			//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 			Node<W>::unique_table_m.lock();
-			auto&& p_find_res = Node<W>::mp_unique_table->find(key);
+			auto&& p_find_res = Node<W>::m_unique_table.find(key);
 
-			if (p_find_res != Node<W>::mp_unique_table->end()) {
+			if (p_find_res != Node<W>::m_unique_table.end()) {
 				// and another reference
 				Node<W>::ref_inc(p_find_res->second);
 				Node<W>::unique_table_m.unlock();
@@ -298,7 +283,7 @@ namespace node {
 			// a node of reference 1 is created.
 			node::Node<W>* p_node = new node::Node<W>(order, std::move(successors));
 
-			(*Node<W>::mp_unique_table)[key] = p_node;
+			Node<W>::m_unique_table[key] = p_node;
 			Node<W>::unique_table_m.unlock();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -309,15 +294,15 @@ namespace node {
 		}
 
 
-		inline bool isterminal() const {
+		inline bool isterminal() const noexcept {
 			return node == nullptr;
 		}
 
-		inline bool is_multi_ref() const {
+		inline bool is_multi_ref() const noexcept {
 			return Node<W>::is_multi_ref(node);
 		}
 
-		~weightednode() {
+		~weightednode() noexcept {
 			Node<W>::ref_dec(node);
 		}
 	};
@@ -330,28 +315,28 @@ namespace node {
 		Node<W>* node;
 
 	public:
-		inline Node<W>* get_node() const {
+		inline Node<W>* get_node() const noexcept {
 			return node;
 		}
 
-		wnode_cache(const weightednode<W>& w_node) {
+		wnode_cache(const weightednode<W>& w_node) noexcept {
 			weight = w_node.weight;
 			node = w_node.get_node();
 		}
 
-		wnode_cache() : node(nullptr) {}
+		wnode_cache() noexcept : node(nullptr) {}
 
-		wnode_cache& operator = (const weightednode<W>& w_node) {
+		wnode_cache& operator = (const weightednode<W>& w_node) noexcept {
 			weight = w_node.weight;
 			node = w_node.get_node();
 			return *this;
 		}
 
-		inline bool is_garbage() const {
+		inline bool is_garbage() const noexcept {
 			return Node<W>::is_garbage(node);
 		}
 
-		inline weightednode<W> weightednode() const {
+		inline weightednode<W> weightednode() const noexcept {
 			return node::weightednode<W>(W{ weight }, node);
 		}
 	};
