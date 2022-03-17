@@ -3,7 +3,7 @@
 
 namespace mng {
 	inline void cache_clear_check();
-	extern std::chrono::duration<double> mem_check_period;
+	extern std::atomic<std::chrono::duration<double>> garbage_check_period;
 }
 
 namespace wnode {
@@ -102,7 +102,7 @@ namespace wnode {
 /// (not terminal node)
 /// </summary>
 /// <returns>Return the normalized node and normalization coefficients as a wnode.</returns>
-	template <class W, bool PL>
+	template <class W>
 	node::weightednode<W> normalize(const W& wei, int order, std::vector<node::weightednode<W>>&& successors) {
 
 		// subnode equality check
@@ -138,7 +138,7 @@ namespace wnode {
 			}
 		}
 
-		return node::weightednode<W>::get_wnode<PL>(weight::mul(weig_max, wei), order, std::move(successors));
+		return node::weightednode<W>::get_wnode(weight::mul(weig_max, wei), order, std::move(successors));
 	}
 
 
@@ -175,7 +175,7 @@ namespace wnode {
 				para_shape, data_shape, storage_order, depth + 1);
 		}
 		// normalize this depth
-		res = normalize<W, false>(weight::ones<W>(para_shape), depth, std::move(new_successors));
+		res = normalize<W>(weight::ones<W>(para_shape), depth, std::move(new_successors));
 		return res;
 	}
 
@@ -211,17 +211,37 @@ namespace wnode {
 				next_order = dim_data;
 			}
 			else {
-				// first look up in the dictionary
-				auto&& key = cache::CUDAcpl_table_key<W>(i->get_node(), data_shape);
-				auto&& p_find_res = cache::Global_Cache<W>::p_CUDAcpl_cache->find(key);
-				if (p_find_res != cache::Global_Cache<W>::p_CUDAcpl_cache->end()) {
-					uniform_tensor = p_find_res->second;
+				cache::CUDAcpl_table_key<W> key;
+				bool do_cache = i->is_multi_ref();
+				if (do_cache) {
+					// first look up in the dictionary
+					key = cache::CUDAcpl_table_key<W>(i->get_node(), data_shape);
+					//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+					cache::Global_Cache<W>::CUDAcpl_cache.first.lock_shared();
+					auto&& p_find_res = cache::Global_Cache<W>::CUDAcpl_cache.second.find(key);
+					if (p_find_res != cache::Global_Cache<W>::CUDAcpl_cache.second.end()) {
+						uniform_tensor = p_find_res->second;
+						cache::Global_Cache<W>::CUDAcpl_cache.first.unlock_shared();
+						//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+					}
+					else {
+						cache::Global_Cache<W>::CUDAcpl_cache.first.unlock_shared();
+						//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+						auto&& next_wnode = node::weightednode<W>(weight::ones<W>(para_shape), i->get_node());
+						uniform_tensor = to_CUDAcpl_iterate(next_wnode, para_shape, data_shape);
+
+						// add into the dictionary
+						//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+						cache::Global_Cache<W>::CUDAcpl_cache.first.lock();
+						cache::Global_Cache<W>::CUDAcpl_cache.second[key] = uniform_tensor;
+						cache::Global_Cache<W>::CUDAcpl_cache.first.unlock();
+						//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+					}
 				}
 				else {
 					auto&& next_wnode = node::weightednode<W>(weight::ones<W>(para_shape), i->get_node());
 					uniform_tensor = to_CUDAcpl_iterate(next_wnode, para_shape, data_shape);
-					// add into the dictionary
-					(*cache::Global_Cache<W>::p_CUDAcpl_cache)[key] = uniform_tensor;
 				}
 				next_order = i->get_node()->get_order();
 				// multiply the dangling weight
@@ -341,11 +361,11 @@ namespace wnode {
 			}
 
 			if constexpr (std::is_same_v<W, wcomplex>) {
-				return node::weightednode<W>::get_wnode<false>(std::conj(w_node.weight), 
+				return node::weightednode<W>::get_wnode(std::conj(w_node.weight), 
 					w_node.get_node()->get_order(), std::move(new_successors));
 			}
 			else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
-				return node::weightednode<W>::get_wnode<false>(CUDAcpl::conj(w_node.weight),
+				return node::weightednode<W>::get_wnode(CUDAcpl::conj(w_node.weight),
 					w_node.get_node()->get_order(), std::move(new_successors));
 			}
 		}
@@ -410,7 +430,7 @@ namespace wnode {
 	/// <param name="renorm_coef"></param>
 	/// <param name="sum_cache"></param>
 	/// <returns></returns>
-	template <class W, bool PL>
+	template <class W>
 	node::weightednode<W> sum_iterate(
 		const node::weightednode<W>& w_node1,
 		const node::weightednode<W>& w_node2, const W& renorm_coef, const std::vector<int64_t>& para_shape) {
@@ -425,25 +445,19 @@ namespace wnode {
 			w_node1.get_node(), w_node1.weight, w_node2.get_node(), w_node2.weight);
 
 		//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-		if constexpr (PL) {
-			cache::Global_Cache<W>::sum_m.lock_shared();
-		}
-		auto&& p_find_res = cache::Global_Cache<W>::p_sum_cache->find(key);
-		auto found_in_cache = (p_find_res != cache::Global_Cache<W>::p_sum_cache->end());
+		cache::Global_Cache<W>::sum_cache.first.lock_shared();
+		auto&& p_find_res = cache::Global_Cache<W>::sum_cache.second.find(key);
+		auto found_in_cache = (p_find_res != cache::Global_Cache<W>::sum_cache.second.end());
 
 		if (found_in_cache) {
 			res = p_find_res->second.weightednode();
-			if constexpr (PL) {
-				cache::Global_Cache<W>::sum_m.unlock_shared();
-			}
+			cache::Global_Cache<W>::sum_cache.first.unlock_shared();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			res.weight = weight::mul(res.weight, renorm_coef);
 			return res;
 		}
 		else {
-			if constexpr (PL) {
-				cache::Global_Cache<W>::sum_m.unlock_shared();
-			}
+			cache::Global_Cache<W>::sum_cache.first.unlock_shared();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 				///////////////////////////////////////////////////////////////////////
 			// ensure w_node1.node to be the node of smaller order, through swaping
@@ -491,9 +505,9 @@ namespace wnode {
 						);
 						auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->get_node());
 						auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), i_2->get_node());
-						*i_new = sum_iterate<W, PL>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
+						*i_new = sum_iterate<W>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 					}
-					res = normalize<W, PL>(weight::ones<W>(para_shape), p_wnode_1->get_node()->get_order(), std::move(new_successors));
+					res = normalize<W>(weight::ones<W>(para_shape), p_wnode_1->get_node()->get_order(), std::move(new_successors));
 					not_operated = false;
 				}
 			}
@@ -515,21 +529,17 @@ namespace wnode {
 						weight::mul(p_wnode_1->weight, i_1->weight), p_wnode_2->weight);
 					auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), i_1->get_node());
 					auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), p_wnode_2->get_node());
-					*i_new = sum_iterate<W, PL>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
+					*i_new = sum_iterate<W>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 				}
-				res = normalize<W, PL>(weight::ones<W>(para_shape), p_wnode_1->get_node()->get_order(), std::move(new_successors));
+				res = normalize<W>(weight::ones<W>(para_shape), p_wnode_1->get_node()->get_order(), std::move(new_successors));
 			}
 
 
 			// cache the result
 			//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			if constexpr (PL) {
-				cache::Global_Cache<W>::sum_m.lock();
-			}
-			(*cache::Global_Cache<W>::p_sum_cache)[key] = res;
-			if constexpr (PL) {
-				cache::Global_Cache<W>::sum_m.unlock();
-			}
+			cache::Global_Cache<W>::sum_cache.first.lock();
+			cache::Global_Cache<W>::sum_cache.second[key] = res;
+			cache::Global_Cache<W>::sum_cache.first.unlock();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 			// multiply the renorm_coef and return
@@ -544,7 +554,7 @@ namespace wnode {
 	/// <param name="w_node1"></param>
 	/// <param name="w_node2"></param>
 	/// <returns></returns>
-	template <class W, bool PL>
+	template <class W>
 	node::weightednode<W> sum(
 		const node::weightednode<W>& w_node1,
 		const node::weightednode<W>& w_node2, const std::vector<int64_t>& para_shape) {
@@ -552,7 +562,7 @@ namespace wnode {
 		auto&& renorm_res = weights_normalize(w_node1.weight, w_node2.weight);
 		auto&& next_wnode1 = node::weightednode<W>(std::move(renorm_res.nweight1), w_node1.get_node());
 		auto&& next_wnode2 = node::weightednode<W>(std::move(renorm_res.nweight2), w_node2.get_node());
-		return sum_iterate<W, PL>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
+		return sum_iterate<W>(next_wnode1, next_wnode2, renorm_res.renorm_coef, para_shape);
 	}
 
 	/// <summary>
@@ -581,13 +591,21 @@ namespace wnode {
 
 		// first look up in the dictionary
 		auto&& key = cache::trace_key<W>(w_node.get_node(), remained_ls, waiting_ls);
-		auto&& p_find_res = cache::Global_Cache<W>::p_trace_cache->find(key);
-		if (p_find_res != cache::Global_Cache<W>::p_trace_cache->end()) {
+
+		//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		cache::Global_Cache<W>::trace_cache.first.lock_shared();
+		auto&& p_find_res = cache::Global_Cache<W>::trace_cache.second.find(key);
+		if (p_find_res != cache::Global_Cache<W>::trace_cache.second.end()) {
 			res = p_find_res->second.weightednode();
+			cache::Global_Cache<W>::trace_cache.first.unlock_shared();
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			res.weight = weight::mul(res.weight, w_node.weight);
 			return res;
 		}
 		else {
+			cache::Global_Cache<W>::trace_cache.first.unlock_shared();
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 			auto&& order = w_node.get_node()->get_order();
 
 			// store the scaling number due to skipped remained indices
@@ -682,7 +700,7 @@ namespace wnode {
 					// however the subnode outcomes are calculated, sum them over.
 					res = new_successors[0];
 					for (auto&& i = new_successors.begin() + 1; i != new_successors.end(); i++) {
-						res = sum<W, false>(res, *i, para_shape);
+						res = sum<W>(res, *i, para_shape);
 					}
 					not_operated = false;
 				}
@@ -701,12 +719,18 @@ namespace wnode {
 						*i_new = trace_iterate(*i, para_shape, data_shape, remained_ls_pd, waiting_ls_pd, new_order);
 					}
 				}
-				res = normalize<W, false>(weight::ones<W>(para_shape), new_order[order], std::move(new_successors));
+				res = normalize<W>(weight::ones<W>(para_shape), new_order[order], std::move(new_successors));
 			}
 
-			// add to the cache
 			res.weight = res.weight * scale;
-			(*cache::Global_Cache<W>::p_trace_cache)[key] = res;
+
+			// add to the cache
+			//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			cache::Global_Cache<W>::trace_cache.first.lock();
+			cache::Global_Cache<W>::trace_cache.second[key] = res;
+			cache::Global_Cache<W>::trace_cache.first.unlock();
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 			res.weight = weight::mul(res.weight, w_node.weight);
 			return res;
 		}
@@ -794,7 +818,6 @@ namespace wnode {
 
 
 
-	template <bool PL>
 	class iter_cont {
 	public:
 		/// <summary>
@@ -809,64 +832,57 @@ namespace wnode {
 		inline static void func(std::vector<node::weightednode<weight::W_C<W1, W2>>>& new_successors,
 			const cache::cont_key<W1, W2>& key, int index_range, FUNC const& func) {
 			// exam the parallel coordinator record
-			if constexpr (PL) {
-				iter_para::iter_state<W1, W2>* p_iter_state;
-				//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-				iter_para::Para_Crd<W1, W2>::m.lock();
-				auto&& p_find_record = iter_para::Para_Crd<W1, W2>::record.find(key);
-				if (p_find_record == iter_para::Para_Crd<W1, W2>::record.end()) {
-					iter_para::Para_Crd<W1, W2>::record[key].init(index_range);
-					p_find_record = iter_para::Para_Crd<W1, W2>::record.find(key);
-				}
-				p_iter_state = &(p_find_record->second);
-				iter_para::Para_Crd<W1, W2>::m.unlock();
-				//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+			iter_para::iter_state<W1, W2>* p_iter_state;
+			//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			iter_para::Para_Crd<W1, W2>::m.lock();
+			auto&& p_find_record = iter_para::Para_Crd<W1, W2>::record.find(key);
+			if (p_find_record == iter_para::Para_Crd<W1, W2>::record.end()) {
+				iter_para::Para_Crd<W1, W2>::record[key].init(index_range);
+				p_find_record = iter_para::Para_Crd<W1, W2>::record.find(key);
+			}
+			p_iter_state = &(p_find_record->second);
+			iter_para::Para_Crd<W1, W2>::m.unlock();
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-				bool all_gathered = false;
-				while (!all_gathered) {
+			bool all_gathered = false;
+			while (!all_gathered) {
+				//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+				p_iter_state->m.lock();
+				auto next_iter_index = 0;
+				auto thread_count_min = p_iter_state->state[0].thread_count;
+				all_gathered = p_iter_state->state[0].thread_count == iter_para::CONT_DONE;
+				for (int i = 1; i < index_range; i++) {
+					if (p_iter_state->state[i].thread_count != iter_para::CONT_DONE) {
+						all_gathered = false;
+						if (p_iter_state->state[i].thread_count < thread_count_min) {
+							thread_count_min = p_iter_state->state[i].thread_count;
+							next_iter_index = i;
+						}
+					}
+				}
+
+				// get the result, or conduct the next iteration
+				if (all_gathered) {
+					for (int i = 0; i < index_range; i++) {
+						new_successors[i] = p_iter_state->state[i].w_node;
+					}
+					p_iter_state->m.unlock();
+					//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+				}
+				else {
+					p_iter_state->state[next_iter_index].thread_count += 1;
+					p_iter_state->m.unlock();
+					//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+					auto res = func(next_iter_index);
+
 					//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 					p_iter_state->m.lock();
-					auto next_iter_index = 0;
-					auto thread_count_min = p_iter_state->state[0].thread_count;
-					all_gathered = p_iter_state->state[0].thread_count == iter_para::CONT_DONE;
-					for (int i = 1; i < index_range; i++) {
-						if (p_iter_state->state[i].thread_count != iter_para::CONT_DONE) {
-							all_gathered = false;
-							if (p_iter_state->state[i].thread_count < thread_count_min) {
-								thread_count_min = p_iter_state->state[i].thread_count;
-								next_iter_index = i;
-							}
-						}
-					}
 
-					// get the result, or conduct the next iteration
-					if (all_gathered) {
-						for (int i = 0; i < index_range; i++) {
-							new_successors[i] = p_iter_state->state[i].w_node;
-						}
-						p_iter_state->m.unlock();
-						//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-					}
-					else {
-						p_iter_state->state[next_iter_index].thread_count += 1;
-						p_iter_state->m.unlock();
-						//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-						auto res = func(next_iter_index);
+					p_iter_state->state[next_iter_index].thread_count = iter_para::CONT_DONE;
+					p_iter_state->state[next_iter_index].w_node = res;
 
-						//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-						p_iter_state->m.lock();
-
-						p_iter_state->state[next_iter_index].thread_count = iter_para::CONT_DONE;
-						p_iter_state->state[next_iter_index].w_node = res;
-
-						p_iter_state->m.unlock();
-						//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-					}
-				}
-			}
-			else {
-				for (int i = 0; i < index_range; i++) {
-					new_successors[i] = func(i);
+					p_iter_state->m.unlock();
+					//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 				}
 			}
 		}
@@ -888,7 +904,7 @@ namespace wnode {
 	/// <param name="b_new_order">the new order of each node in B</param>
 	/// <param name="parallel_tensor">whether to tensor on the parallel indices</param>
 	/// <returns></returns>
-	template <typename W1, typename W2, bool PL>
+	template <typename W1, typename W2>
 	node::weightednode<weight::W_C<W1, W2>> contract_iterate(
 		const node::Node<W1>* p_node_a, const node::Node<W2>* p_node_b,
 		const weight::W_C<W1, W2>& weight,
@@ -918,25 +934,19 @@ namespace wnode {
 
 		//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		// lock for parallelism
-		if constexpr (PL) {
-			cache::Cont_Cache<W1, W2>::m.lock_shared();
-		}
-		auto&& p_find_res = cache::Cont_Cache<W1, W2>::p_cont_cache->find(key);
-		auto found_in_cache = (p_find_res != cache::Cont_Cache<W1, W2>::p_cont_cache->end());
+		cache::Cont_Cache<W1, W2>::cont_cache.first.lock_shared();
+		auto&& p_find_res = cache::Cont_Cache<W1, W2>::cont_cache.second.find(key);
+		auto found_in_cache = (p_find_res != cache::Cont_Cache<W1, W2>::cont_cache.second.end());
 
 		if (found_in_cache) {
 			res = p_find_res->second.weightednode();
-			if constexpr (PL) {
-				cache::Cont_Cache<W1, W2>::m.unlock_shared();
-			}
+			cache::Cont_Cache<W1, W2>::cont_cache.first.unlock_shared();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			res.weight = weight::mul(res.weight, weight);
 			return res;
 		}
 		else {
-			if constexpr (PL) {
-				cache::Cont_Cache<W1, W2>::m.unlock_shared();
-			}
+			cache::Cont_Cache<W1, W2>::cont_cache.first.unlock_shared();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			//std::cout << remained_ls << " / " << a_waiting_ls << " / " << b_waiting_ls << std::endl;
 
@@ -994,7 +1004,7 @@ namespace wnode {
 					// close the waiting index
 					auto&& next_a_waiting_ls = removed(a_waiting_ls_pd, 0);
 					auto&& succ = p_node_a->get_successors()[index_val];
-					res = contract_iterate<W1, W2, PL>(succ.get_node(), p_node_b,
+					res = contract_iterate<W1, W2>(succ.get_node(), p_node_b,
 						weight::weight_expanded_back<W1, W2>(succ.weight, para_shape_b, parallel_tensor),
 						para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, next_a_waiting_ls, b_waiting_ls_pd,
@@ -1010,7 +1020,7 @@ namespace wnode {
 					// close the waiting index
 					auto&& next_b_waiting_ls = removed(b_waiting_ls_pd, 0);
 					auto&& succ = p_node_b->get_successors()[index_val];
-					res = contract_iterate<W1, W2, PL>(p_node_a, succ.get_node(),
+					res = contract_iterate<W1, W2>(p_node_a, succ.get_node(),
 						weight::weight_expanded_front<W1, W2>(succ.weight, para_shape_a, parallel_tensor),
 						para_shape_a, para_shape_b,
 						data_shape_a, data_shape_b, remained_ls_pd, a_waiting_ls_pd, next_b_waiting_ls,
@@ -1040,9 +1050,9 @@ namespace wnode {
 					new_successors = std::vector<node::weightednode<weight::W_C<W1, W2>>>
 						(data_shape_a[order_a]);
 
-					iter_cont<PL>::func(new_successors, key, data_shape_a[order_a],
+					iter_cont::func(new_successors, key, data_shape_a[order_a],
 						[&](int i) {
-							return contract_iterate<W1, W2, PL>(successors_a[i].get_node(), p_node_b,
+							return contract_iterate<W1, W2>(successors_a[i].get_node(), p_node_b,
 								weight::weight_expanded_back<W1, W2>(successors_a[i].weight, para_shape_b, parallel_tensor),
 								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
@@ -1050,7 +1060,7 @@ namespace wnode {
 						}
 					);
 
-					res = normalize<weight::W_C<W1, W2>, PL>(
+					res = normalize<weight::W_C<W1, W2>>(
 						weight::ones_like(weight),
 						a_new_order[order_a],
 						std::move(new_successors)
@@ -1066,9 +1076,9 @@ namespace wnode {
 					new_successors = std::vector<node::weightednode<weight::W_C<W1, W2>>>
 						(data_shape_b[order_b]);
 
-					iter_cont<PL>::func(new_successors, key, data_shape_b[order_b],
+					iter_cont::func(new_successors, key, data_shape_b[order_b],
 						[&](int i) {
-							return contract_iterate<W1, W2, PL>(p_node_a, successors_b[i].get_node(),
+							return contract_iterate<W1, W2>(p_node_a, successors_b[i].get_node(),
 								weight::weight_expanded_front<W1, W2>(successors_b[i].weight, para_shape_a, parallel_tensor),
 								para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 								remained_ls_pd, a_waiting_ls_pd, b_waiting_ls_pd,
@@ -1076,7 +1086,7 @@ namespace wnode {
 						}
 					);
 
-					res = normalize<weight::W_C<W1, W2>, PL>(
+					res = normalize<weight::W_C<W1, W2>>(
 						weight::ones_like(weight),
 						b_new_order[order_b],
 						std::move(new_successors)
@@ -1106,10 +1116,10 @@ namespace wnode {
 						// w_node_a.node is not null in this case
 						auto&& successors_a = p_node_a->get_successors();
 
-						iter_cont<PL>::func(new_successors, key, data_shape_a[remained_ls_pd[0].first],
+						iter_cont::func(new_successors, key, data_shape_a[remained_ls_pd[0].first],
 							[&](int i) {
 								next_b_waiting_ls[insert_pos].second = i;
-								return contract_iterate<W1, W2, PL>(successors_a[i].get_node(), p_node_b,
+								return contract_iterate<W1, W2>(successors_a[i].get_node(), p_node_b,
 									weight::weight_expanded_back<W1, W2>(successors_a[i].weight, para_shape_b, parallel_tensor),
 									para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 									next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
@@ -1119,10 +1129,10 @@ namespace wnode {
 					}
 					else {
 						// this node skipped the opening index in this case
-						iter_cont<PL>::func(new_successors, key, data_shape_a[remained_ls_pd[0].first],
+						iter_cont::func(new_successors, key, data_shape_a[remained_ls_pd[0].first],
 							[&](int i) {
 								next_b_waiting_ls[insert_pos].second = i;
-								return contract_iterate<W1, W2, PL>(p_node_a, p_node_b,
+								return contract_iterate<W1, W2>(p_node_a, p_node_b,
 									weight::ones_like(weight), para_shape_a, para_shape_b,
 									data_shape_a, data_shape_b, next_remained_ls, a_waiting_ls_pd, next_b_waiting_ls,
 									a_new_order, b_new_order, parallel_tensor
@@ -1146,10 +1156,10 @@ namespace wnode {
 						// w_node_b.node is not null in this case
 						auto&& successors_b = p_node_b->get_successors();
 
-						iter_cont<PL>::func(new_successors, key, data_shape_b[remained_ls_pd[next_b_min_i].second],
+						iter_cont::func(new_successors, key, data_shape_b[remained_ls_pd[next_b_min_i].second],
 							[&](int i) {
 								next_a_waiting_ls[insert_pos].second = i;
-								return contract_iterate<W1, W2, PL>(p_node_a, successors_b[i].get_node(),
+								return contract_iterate<W1, W2>(p_node_a, successors_b[i].get_node(),
 									weight::weight_expanded_front<W1, W2>(successors_b[i].weight, para_shape_a, parallel_tensor),
 									para_shape_a, para_shape_b, data_shape_a, data_shape_b,
 									next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd,
@@ -1159,10 +1169,10 @@ namespace wnode {
 					}
 					else {
 						// this node skipped the opening index in this case
-						iter_cont<PL>::func(new_successors, key, data_shape_b[remained_ls_pd[next_b_min_i].second],
+						iter_cont::func(new_successors, key, data_shape_b[remained_ls_pd[next_b_min_i].second],
 							[&](int i) {
 								next_a_waiting_ls[insert_pos].second = i;
-								return contract_iterate<W1, W2, PL>(
+								return contract_iterate<W1, W2>(
 									p_node_a, p_node_b, weight::ones_like(weight), para_shape_a, para_shape_b,
 									data_shape_a, data_shape_b, next_remained_ls, next_a_waiting_ls, b_waiting_ls_pd,
 									a_new_order, b_new_order, parallel_tensor
@@ -1181,7 +1191,7 @@ namespace wnode {
 				// sum up
 				res = new_successors[0];
 				for (auto&& i = new_successors.begin() + 1; i != new_successors.end(); i++) {
-					res = sum<weight::W_C<W1, W2>, PL>(res, *i, para_shape);
+					res = sum<weight::W_C<W1, W2>>(res, *i, para_shape);
 				}
 			}
 
@@ -1191,13 +1201,9 @@ namespace wnode {
 			res.weight = res.weight * scale;
 
 			//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			if constexpr (PL) {
-				cache::Cont_Cache<W1, W2>::m.lock();
-			}
-			(*cache::Cont_Cache<W1, W2>::p_cont_cache)[key] = res;
-			if constexpr (PL) {
-				cache::Cont_Cache<W1, W2>::m.unlock();
-			}
+			cache::Cont_Cache<W1, W2>::cont_cache.first.lock();
+			cache::Cont_Cache<W1, W2>::cont_cache.second[key] = res;
+			cache::Cont_Cache<W1, W2>::cont_cache.first.unlock();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 			res.weight = weight::mul(res.weight, weight);
@@ -1216,7 +1222,7 @@ namespace wnode {
 	/// <param name="cont_indices">given in the inner order. list of (first, second). first: indices of a, second: indices of b </param>
 	/// <param name="parallel_tensor"></param>
 	/// <returns></returns>
-	template <typename W1, typename W2, bool PL>
+	template <typename W1, typename W2>
 	node::weightednode<weight::W_C<W1, W2>> contract(
 		const node::weightednode<W1>& w_node_a, const node::weightednode<W2>& w_node_b,
 		const std::vector<int64_t>& para_shape_a, const std::vector<int64_t>& para_shape_b,
@@ -1236,41 +1242,32 @@ namespace wnode {
 			});
 
 
-		if constexpr (PL) {
-			std::vector<std::future<node::weightednode<weight::W_C<W1, W2>>>> results(iter_para::p_thread_pool->thread_num());
+		std::vector<std::future<node::weightednode<weight::W_C<W1, W2>>>> results(iter_para::p_thread_pool->thread_num());
 
-			auto prepared_weight = weight::prepare_weight(w_node_a.weight, w_node_b.weight, parallel_tensor);
-			for (int i = 0; i < iter_para::p_thread_pool->thread_num(); i++) {
-				results[i] = iter_para::p_thread_pool->enqueue(
-					[&] {
-						return contract_iterate<W1, W2, true>(w_node_a.get_node(), w_node_b.get_node(), prepared_weight,
-							para_shape_a, para_shape_b,
-							data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
-							a_new_order, b_new_order, parallel_tensor);
-					}
-				);
-			}
-
-			while (results[0].wait_for(mng::mem_check_period) != std::future_status::ready) {
-				mng::cache_clear_check();
-			}
-
-			auto&& res = results[0].get();
-
-			for (int i = 1; i < results.size(); i++) {
-				results[i].get();
-			}
-
-			iter_para::Para_Crd<W1, W2>::record.clear();
-
-			return res;
+		auto prepared_weight = weight::prepare_weight(w_node_a.weight, w_node_b.weight, parallel_tensor);
+		for (int i = 0; i < iter_para::p_thread_pool->thread_num(); i++) {
+			results[i] = iter_para::p_thread_pool->enqueue(
+				[&] {
+					return contract_iterate<W1, W2>(w_node_a.get_node(), w_node_b.get_node(), prepared_weight,
+						para_shape_a, para_shape_b,
+						data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
+						a_new_order, b_new_order, parallel_tensor);
+				}
+			);
 		}
-		else {
-			return contract_iterate<W1, W2, false>(w_node_a.get_node(), w_node_b.get_node(),
-				weight::prepare_weight(w_node_a.weight, w_node_b.weight, parallel_tensor),
-				para_shape_a, para_shape_b,
-				data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
-				a_new_order, b_new_order, parallel_tensor);
+
+		while (results[0].wait_for(mng::garbage_check_period.load()) != std::future_status::ready) {
+			mng::cache_clear_check();
 		}
+
+		auto&& res = results[0].get();
+
+		for (int i = 1; i < results.size(); i++) {
+			results[i].get();
+		}
+
+		iter_para::Para_Crd<W1, W2>::record.clear();
+
+		return res;
 	}
 };

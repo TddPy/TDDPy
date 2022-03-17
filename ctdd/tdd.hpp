@@ -152,10 +152,6 @@ namespace tdd {
 		}
 	public:
 
-		inline static void reset() {
-			m_all_tdds.clear();
-		}
-
 		inline static const boost::unordered_set<TDD<W>*>& get_all_tdds() {
 			return m_all_tdds;
 		}
@@ -319,7 +315,7 @@ namespace tdd {
 		/// <param name="b"></param>
 		/// <returns></returns>
 		inline static TDD<W> sum(const TDD<W>& a, const TDD<W>& b) {
-			auto&& res_wnode = wnode::sum<W, false>(a.m_wnode, b.m_wnode, a.m_para_shape);
+			auto&& res_wnode = wnode::sum<W>(a.m_wnode, b.m_wnode, a.m_para_shape);
 			return TDD(std::move(res_wnode),
 				std::vector<int64_t>(a.m_para_shape),
 				std::vector<int64_t>(a.m_data_shape),
@@ -403,12 +399,12 @@ namespace tdd {
 		template <typename W1, typename W2>
 		friend TDD<weight::W_C<W1, W2>> operator *(const TDD<W1>& a, const W2& s);
 
-		template <typename W1, typename W2, bool PL>
+		template <typename W1, typename W2>
 		friend TDD<weight::W_C<W1, W2>>
 			tensordot_num(const TDD<W1>& a, const TDD<W2>& b, int num_indices,
 				const std::vector<int>& rearrangement, bool parallel_tensor);
 		
-		template <typename W1, typename W2, bool PL>
+		template <typename W1, typename W2>
 		friend TDD<weight::W_C<W1, W2>>
 			tensordot(const TDD<W1>& a, const TDD<W2>& b,
 				const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
@@ -442,7 +438,7 @@ namespace tdd {
 	/// Whether to tensor on the parallel indices.
 	/// </summary>
 	/// <typeparam name="W"></typeparam>
-	template <typename W1, typename W2, bool PL>
+	template <typename W1, typename W2>
 	TDD<weight::W_C<W1, W2>>
 		tensordot(const TDD<W1>& a, const TDD<W2>& b,
 		const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
@@ -556,7 +552,7 @@ namespace tdd {
 		}
 
 		// note that rearrangement does not need be processed.
-		auto&& res_wnode = wnode::contract<W1, W2, PL>(a.m_wnode, b.m_wnode, a.m_para_shape, b.m_para_shape,
+		auto&& res_wnode = wnode::contract<W1, W2>(a.m_wnode, b.m_wnode, a.m_para_shape, b.m_para_shape,
 			a.m_inner_data_shape, b.m_inner_data_shape,
 			inner_indices_cmd, a_inner_order, b_inner_order, parallel_tensor);
 
@@ -577,7 +573,7 @@ namespace tdd {
 	/// <param name="num_indices">contract the last num_indices indices of a and first of b</param>
 	/// <param name="parallel_tensor"></param>
 	/// <returns></returns>
-	template <typename W1, typename W2, bool PL>
+	template <typename W1, typename W2>
 	inline TDD<weight::W_C<W1, W2>>
 		tensordot_num(const TDD<W1>& a, const TDD<W2>& b, int num_indices,
 			const std::vector<int>& rearrangement = {}, bool parallel_tensor = false) {
@@ -587,6 +583,6 @@ namespace tdd {
 			ia[i] = a.dim_data() - num_indices + i;
 			ib[i] = i;
 		}
-		return tensordot<W1, W2, PL>(a, b, ia, ib, rearrangement, parallel_tensor);
+		return tensordot<W1, W2>(a, b, ia, ib, rearrangement, parallel_tensor);
 	}
 }

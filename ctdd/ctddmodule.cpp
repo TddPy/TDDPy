@@ -17,40 +17,7 @@ using namespace mng;
 static PyObject*
 test(PyObject* self, PyObject* args) {
 
-	auto all_tdds_w = TDD<wcomplex>::get_all_tdds();
-	std::cout << "wcomplex tdd number: " << all_tdds_w.size() << std::endl;
-	auto p_table_w = node::Node<wcomplex>::get_unique_table();
-	int ref_max = 0, ref_min = (std::numeric_limits<int>::max)();
-	int zero_ref_count = 0;
-	for (auto&& pair : *p_table_w) {
-		auto count = pair.second->get_ref_count();
-		ref_max = ref_max <= count ? count : ref_max;
-		ref_min = ref_min >= count ? count : ref_min;
-		if (count == 0) zero_ref_count++;
-	}
-	std::cout << "wcomplex node number: " << p_table_w->size() << std::endl;
-	std::cout << "wcomplex max reference: " << ref_max << std::endl;
-	std::cout << "wcomplex min reference: " << ref_min << std::endl;
-	std::cout << "wcomplex 0-ref node number: " << zero_ref_count << std::endl;
-
-
-
-	auto all_tdds_t = TDD<CUDAcpl::Tensor>::get_all_tdds();
-	std::cout << "CUDAcpl::Tensor tdd number: " << all_tdds_t.size() << std::endl;
-	auto p_table_t = node::Node<CUDAcpl::Tensor>::get_unique_table();
-	ref_max = 0;
-	ref_min = (std::numeric_limits<int>::max)();
-	zero_ref_count = 0;
-	for (auto&& pair : *p_table_t) {
-		auto count = pair.second->get_ref_count();
-		ref_max = ref_max <= count ? count : ref_max;
-		ref_min = ref_min >= count ? count : ref_min;
-		if (count == 0) zero_ref_count++;
-	}
-	std::cout << "CUDAcpl::Tensor node number: " << p_table_t->size() << std::endl;
-	std::cout << "CUDAcpl::Tensor max reference: " << ref_max << std::endl;
-	std::cout << "CUDAcpl::Tensor min reference: " << ref_min << std::endl;
-	std::cout << "CUDAcpl::Tensor 0-ref node number: " << zero_ref_count << std::endl;
+	mng::print_resource_state();
 	return Py_BuildValue("");
 }
 
@@ -75,19 +42,6 @@ delete_tdd(PyObject* self, PyObject* args) {
 	return Py_BuildValue("");
 }
 
-
-/// <summary>
-/// reset the unique table and all the caches. designated tdds are reserved.
-/// </summary>
-/// <param name="self"></param>
-/// <param name="args">for storage_order, put in [] from python to indicate the trival order.</param>
-/// <returns>the pointer to the tdd</returns>
-static PyObject*
-reset(PyObject* self, PyObject* args) {
-	reset<wcomplex>();
-	reset<CUDAcpl::Tensor>();
-	return Py_BuildValue("");
-}
 
 
 /// <summary>
@@ -114,12 +68,13 @@ clear_cache(PyObject* self, PyObject* args) {
 static PyObject*
 setting_update(PyObject* self, PyObject* args) {
 	int thread_num, device_cuda, double_type;
-	double new_eps;
-	if (!PyArg_ParseTuple(args, "iiid", &thread_num, &device_cuda, &double_type, &new_eps))
+	double new_eps, gc_check_period;
+	uint64_t vem_limit_MB;
+	if (!PyArg_ParseTuple(args, "iiiddK", &thread_num, &device_cuda, &double_type, &new_eps, &gc_check_period, &vem_limit_MB))
 		return NULL;
 
 	// note that the settings here are shared between scalar and tensor weight.
-	setting_update(thread_num, device_cuda, double_type, new_eps);
+	setting_update(thread_num, device_cuda, double_type, new_eps, gc_check_period, vem_limit_MB);
 
 	return Py_BuildValue("");
 }
@@ -265,7 +220,7 @@ trace(PyObject* self, PyObject* args) {
 /// <param name="self"></param>
 /// <param name="args"></param>
 /// <returns></returns>
-template <typename W1, typename W2, bool PL>
+template <typename W1, typename W2>
 static PyObject*
 tensordot_num(PyObject* self, PyObject* args) {
 	int64_t code_a, code_b;
@@ -285,7 +240,7 @@ tensordot_num(PyObject* self, PyObject* args) {
 	}
 
 	auto&& p_res = new TDD<weight::W_C<W1, W2>>
-		(tdd::tensordot_num<W1, W2, PL>(*p_tdda, *p_tddb, dim, rearrangement, parallel_tensor));
+		(tdd::tensordot_num<W1, W2>(*p_tdda, *p_tddb, dim, rearrangement, parallel_tensor));
 	// convert to long long
 	int64_t code = (int64_t)p_res;
 	return Py_BuildValue("L", code);
@@ -297,7 +252,7 @@ tensordot_num(PyObject* self, PyObject* args) {
 /// <param name="self"></param>
 /// <param name="args"></param>
 /// <returns></returns>
-template <typename W1, typename W2, bool PL>
+template <typename W1, typename W2>
 static PyObject*
 tensordot_ls(PyObject* self, PyObject* args) {
 	int64_t code_a, code_b;
@@ -324,7 +279,7 @@ tensordot_ls(PyObject* self, PyObject* args) {
 	}
 
 	auto&& p_res = new TDD<weight::W_C<W1, W2>>
-		(tdd::tensordot<W1, W2, PL>(*p_tdda, *p_tddb, i1, i2, rearrangement, parallel_tensor));
+		(tdd::tensordot<W1, W2>(*p_tdda, *p_tddb, i1, i2, rearrangement, parallel_tensor));
 
 	// convert to long long
 	int64_t code = (int64_t)p_res;
@@ -562,7 +517,6 @@ static PyMethodDef ctdd_methods[] = {
 
 	{ "delete_tdd", (PyCFunction)delete_tdd<wcomplex>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "delete_tdd_T", (PyCFunction)delete_tdd<CUDAcpl::Tensor>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
-	{ "reset", (PyCFunction)reset, METH_VARARGS, " reset the unique table and all the caches. designated tdds are reserved." },
 	{ "clear_cache", (PyCFunction)clear_cache, METH_VARARGS, " clear all the caches." },
 	{ "setting_update", (PyCFunction)setting_update, METH_VARARGS, " update the settings." },
 	{ "as_tensor", (PyCFunction)as_tensor<wcomplex>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },
@@ -575,22 +529,14 @@ static PyMethodDef ctdd_methods[] = {
 	{ "sum_T", (PyCFunction)sum<CUDAcpl::Tensor>, METH_VARARGS, "Return the sum of the two tdds." },
 	{ "trace", (PyCFunction)trace<wcomplex>, METH_VARARGS, "Trace the designated indices of the given tdd." },
 	{ "trace_T", (PyCFunction)trace<CUDAcpl::Tensor>, METH_VARARGS, "Trace the designated indices of the given tdd." },
-	{ "tensordot_num_WW", (PyCFunction)tensordot_num<wcomplex, wcomplex, false>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_num_WT", (PyCFunction)tensordot_num<wcomplex, CUDAcpl::Tensor, false>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_num_TW", (PyCFunction)tensordot_num<CUDAcpl::Tensor, wcomplex, false>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_num_TT", (PyCFunction)tensordot_num<CUDAcpl::Tensor, CUDAcpl::Tensor, false>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_ls_WW", (PyCFunction)tensordot_ls<wcomplex, wcomplex, false>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "tensordot_ls_WT", (PyCFunction)tensordot_ls<wcomplex, CUDAcpl::Tensor, false>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "tensordot_ls_TW", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, wcomplex, false>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "tensordot_ls_TT", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, CUDAcpl::Tensor, false>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "tensordot_num_WW_PL", (PyCFunction)tensordot_num<wcomplex, wcomplex, true>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_num_WT_PL", (PyCFunction)tensordot_num<wcomplex, CUDAcpl::Tensor, true>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_num_TW_PL", (PyCFunction)tensordot_num<CUDAcpl::Tensor, wcomplex, true>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_num_TT_PL", (PyCFunction)tensordot_num<CUDAcpl::Tensor, CUDAcpl::Tensor, true>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
-	{ "tensordot_ls_WW_PL", (PyCFunction)tensordot_ls<wcomplex, wcomplex, true>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "tensordot_ls_WT_PL", (PyCFunction)tensordot_ls<wcomplex, CUDAcpl::Tensor, true>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "tensordot_ls_TW_PL", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, wcomplex, true>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
-	{ "tensordot_ls_TT_PL", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, CUDAcpl::Tensor, true>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "tensordot_num_WW", (PyCFunction)tensordot_num<wcomplex, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
+	{ "tensordot_num_WT", (PyCFunction)tensordot_num<wcomplex, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
+	{ "tensordot_num_TW", (PyCFunction)tensordot_num<CUDAcpl::Tensor, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
+	{ "tensordot_num_TT", (PyCFunction)tensordot_num<CUDAcpl::Tensor, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
+	{ "tensordot_ls_WW", (PyCFunction)tensordot_ls<wcomplex, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "tensordot_ls_WT", (PyCFunction)tensordot_ls<wcomplex, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "tensordot_ls_TW", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
+	{ "tensordot_ls_TT", (PyCFunction)tensordot_ls<CUDAcpl::Tensor, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be two index lists." },
 	{ "permute", (PyCFunction)permute<wcomplex>, METH_VARARGS, "Return the permuted tdd." },
 	{ "permute_T", (PyCFunction)permute<CUDAcpl::Tensor>, METH_VARARGS, "Return the permuted tdd." },
 	{ "conj", (PyCFunction)conj<wcomplex>, METH_VARARGS, "Return the conjugate of the tdd." },
@@ -619,7 +565,5 @@ static PyModuleDef ctdd = {
 PyMODINIT_FUNC PyInit_ctdd() {
 	get_current_process();
 	setting_update();
-	reset<wcomplex>();
-	reset<CUDAcpl::Tensor>();
 	return PyModule_Create(&ctdd);
 }

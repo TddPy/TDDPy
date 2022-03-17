@@ -14,25 +14,20 @@ std::shared_mutex node::Node<wcomplex>::unique_table_m{};
 cache::unique_table<CUDAcpl::Tensor>* node::Node<CUDAcpl::Tensor>::mp_unique_table = new cache::unique_table<CUDAcpl::Tensor>();
 std::shared_mutex node::Node<CUDAcpl::Tensor>::unique_table_m{};
 
-cache::CUDAcpl_table<wcomplex>* cache::Global_Cache<wcomplex>::p_CUDAcpl_cache = new cache::CUDAcpl_table<wcomplex>();
-cache::sum_table<wcomplex>* cache::Global_Cache<wcomplex>::p_sum_cache = new cache::sum_table<wcomplex>();
-std::shared_mutex cache::Global_Cache<wcomplex>::sum_m{};
-cache::trace_table<wcomplex>* cache::Global_Cache<wcomplex>::p_trace_cache = new cache::trace_table<wcomplex>();
+std::pair<std::shared_mutex, cache::CUDAcpl_table<wcomplex>> cache::Global_Cache<wcomplex>::CUDAcpl_cache{};
+std::pair<std::shared_mutex, cache::sum_table<wcomplex>> cache::Global_Cache<wcomplex>::sum_cache{};
+std::pair<std::shared_mutex, cache::trace_table<wcomplex>> cache::Global_Cache<wcomplex>::trace_cache{};
 
-cache::CUDAcpl_table<CUDAcpl::Tensor>* cache::Global_Cache<CUDAcpl::Tensor>::p_CUDAcpl_cache = new cache::CUDAcpl_table<CUDAcpl::Tensor>();
-cache::sum_table<CUDAcpl::Tensor>* cache::Global_Cache<CUDAcpl::Tensor>::p_sum_cache = new cache::sum_table<CUDAcpl::Tensor>();
-std::shared_mutex cache::Global_Cache<CUDAcpl::Tensor>::sum_m{};
-cache::trace_table<CUDAcpl::Tensor>* cache::Global_Cache<CUDAcpl::Tensor>::p_trace_cache = new cache::trace_table<CUDAcpl::Tensor>();
+std::pair<std::shared_mutex, cache::CUDAcpl_table<CUDAcpl::Tensor>> cache::Global_Cache<CUDAcpl::Tensor>::CUDAcpl_cache{};
+std::pair<std::shared_mutex, cache::sum_table<CUDAcpl::Tensor>> cache::Global_Cache<CUDAcpl::Tensor>::sum_cache{};
+std::pair<std::shared_mutex, cache::trace_table<CUDAcpl::Tensor>> cache::Global_Cache<CUDAcpl::Tensor>::trace_cache{};
 
 
-cache::cont_table<wcomplex, wcomplex>* cache::Cont_Cache<wcomplex, wcomplex>::p_cont_cache = new cache::cont_table<wcomplex, wcomplex>();
-cache::cont_table<wcomplex, CUDAcpl::Tensor>* cache::Cont_Cache<wcomplex, CUDAcpl::Tensor>::p_cont_cache = new cache::cont_table<wcomplex, CUDAcpl::Tensor>();
-cache::cont_table<CUDAcpl::Tensor, wcomplex>* cache::Cont_Cache<CUDAcpl::Tensor, wcomplex>::p_cont_cache = new cache::cont_table<CUDAcpl::Tensor, wcomplex>();
-cache::cont_table<CUDAcpl::Tensor, CUDAcpl::Tensor>* cache::Cont_Cache<CUDAcpl::Tensor, CUDAcpl::Tensor>::p_cont_cache = new cache::cont_table<CUDAcpl::Tensor, CUDAcpl::Tensor>();
-shared_mutex cache::Cont_Cache<wcomplex, wcomplex>::m{};
-shared_mutex cache::Cont_Cache<wcomplex, CUDAcpl::Tensor>::m{};
-shared_mutex cache::Cont_Cache<CUDAcpl::Tensor, wcomplex>::m{};
-shared_mutex cache::Cont_Cache<CUDAcpl::Tensor, CUDAcpl::Tensor>::m{};
+
+std::pair<std::shared_mutex, cache::cont_table<wcomplex, wcomplex>> cache::Cont_Cache<wcomplex, wcomplex>::cont_cache{};
+std::pair<std::shared_mutex, cache::cont_table<wcomplex, CUDAcpl::Tensor>> cache::Cont_Cache<wcomplex, CUDAcpl::Tensor>::cont_cache{};
+std::pair<std::shared_mutex, cache::cont_table<CUDAcpl::Tensor, wcomplex>> cache::Cont_Cache<CUDAcpl::Tensor, wcomplex>::cont_cache{};
+std::pair<std::shared_mutex, cache::cont_table<CUDAcpl::Tensor, CUDAcpl::Tensor>> cache::Cont_Cache<CUDAcpl::Tensor, CUDAcpl::Tensor>::cont_cache{};
 
 ThreadPool* wnode::iter_para::p_thread_pool = new ThreadPool(DEFAULT_THREAD_NUM);
 

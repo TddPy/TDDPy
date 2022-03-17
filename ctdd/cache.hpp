@@ -121,6 +121,8 @@ namespace cache {
 		const node::Node<W>* p_node;
 		std::vector<int64_t> inner_shape;
 
+		CUDAcpl_table_key() {}
+
 		/// <summary>
 		/// Construction of a unique_table key (complex version)
 		/// </summary>
@@ -180,6 +182,8 @@ namespace cache {
 		std::vector<weight::WCode> nweight2_code1;
 		std::vector<weight::WCode> nweight2_code2;
 
+		//sum_key() {};
+		
 		/// <summary>
 		/// Construct the key. Note that id_1 will be set as the smaller one.
 		/// </summary>
@@ -319,6 +323,8 @@ namespace cache {
 		// first: the larger index to trace, seconde; the index value to select
 		pair_cmd waiting_ls;
 
+		//trace_key() {};
+
 		/// <summary>
 		/// Note: all pointer ownership borrowed.
 		/// </summary>
@@ -396,6 +402,8 @@ namespace cache {
 		std::vector<int64_t> b_new_order;
 
 		bool parallel_tensor;
+
+		//cont_key() {};
 
 		inline cont_key(const node::Node<W1>* _p_a, const node::Node<W2>* _p_b, const pair_cmd& _remained_ls, 
 			const pair_cmd& _a_waiting_ls, const pair_cmd& _b_waiting_ls,
@@ -488,19 +496,31 @@ namespace cache {
 	using cont_table = boost::unordered_map<cont_key<W1, W2>, node::wnode_cache<weight::W_C<W1, W2>>>;
 
 
-
+	template <typename CACHE>
+	inline void clean_cache(std::pair<std::shared_mutex, CACHE>& the_cache) {
+		the_cache.first.lock();
+		for (auto&& i = the_cache.second.begin(); i != the_cache.second.end();) {
+			if (i->second.is_garbage()) {
+				i = the_cache.second.erase(i);
+			}
+			else {
+				i++;
+			}
+			the_cache.first.unlock();
+			the_cache.first.lock();
+		}
+		the_cache.first.unlock();
+	}
 
 	template <typename W>
 	struct Global_Cache {
-		static CUDAcpl_table<W>* p_CUDAcpl_cache;
-		static sum_table<W>* p_sum_cache;
-		static std::shared_mutex sum_m;
-		static trace_table<W>* p_trace_cache;
+		static std::pair<std::shared_mutex, CUDAcpl_table<W>> CUDAcpl_cache;
+		static std::pair<std::shared_mutex, sum_table<W>> sum_cache;
+		static std::pair<std::shared_mutex, trace_table<W>> trace_cache;
 	};
 
 	template <typename W1, typename W2>
 	struct Cont_Cache {
-		static cont_table<W1, W2>* p_cont_cache;
-		static std::shared_mutex m;
+		static std::pair<std::shared_mutex, cont_table<W1, W2>> cont_cache;
 	};
 }

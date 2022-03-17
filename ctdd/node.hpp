@@ -25,7 +25,8 @@ namespace node {
 		//  0. reference count is triggered by weightednode construction and deconstruction
 		//	1. who owns the object is responsible for decrease the reference count when deconstructing
 		//	2. if std::move is used, than the ownership is transfered 
-		std::atomic_int m_ref_count;
+		int m_ref_count;
+		std::mutex ref_count_m;
 
 		/* The weight and node of the successors
 		*  Note: terminal nodes are represented by nullptr in the successors.
@@ -59,29 +60,63 @@ namespace node {
 		template <typename W>
 		friend class weightednode;
 
+		/// <summary>
+		/// thread safety: the only risk is to clean the 0-reference node when its reference count will be increased to 1.
+		/// however, unique_table_m is locked during reference increasing, so this should not happen.
+		/// </summary>
+		inline static void clean_unique_table() {
+			unique_table_m.lock();
+			for (auto&& i = mp_unique_table->begin(); i != mp_unique_table->end();) {
+				if (is_garbage(i->second)) {
+					i = mp_unique_table->erase(i);
+				}
+				else {
+					i++;
+				}
+			}
+			unique_table_m.unlock();
+		}
+
 		// note that due to the transfer semantics of successors, their reference counts will not be increased.
 		Node(int order, succ_ls<W>&& successors) :m_order(order), m_ref_count(1), m_successors(std::move(successors)) { }
 
+		/// <summary>
+		/// warning: this property should not be queried when parallel calculating is running.
+		/// </summary>
+		/// <returns></returns>
 		inline int get_ref_count() const {
-			return m_ref_count.load(std::memory_order::memory_order_relaxed);
+			return m_ref_count;
 		}
 
 		inline static bool is_garbage(const Node<W>* p_node) {
 			if (p_node) {
-				return p_node->m_ref_count.load(std::memory_order::memory_order_relaxed) == 0;
+				return p_node->m_ref_count == 0;
 			}
 			else {
 				return false;
 			}
 		}
 
+		inline static bool is_multi_ref(const Node<W>* p_node) {
+			if (!p_node) {
+				return true;
+			}
+			else {
+				return p_node->m_ref_count > 1;
+			}
+		}
 		static void ref_inc(Node<W>* p_node) {
 			if (p_node) {
+				p_node->ref_count_m.lock();
 				(p_node->m_ref_count)++;
-				if (p_node->m_ref_count.load(std::memory_order::memory_order_relaxed) == 1) {
+				if (p_node->m_ref_count == 1) {
+					p_node->ref_count_m.unlock();
 					for (auto&& succ : p_node->m_successors) {
 						ref_inc(succ.get_node());
 					}
+				}
+				else {
+					p_node->ref_count_m.unlock();
 				}
 			}
 
@@ -89,14 +124,18 @@ namespace node {
 
 		static void ref_dec(Node<W>* p_node) {
 			if (p_node) {
+				p_node->ref_count_m.lock();
 				(p_node->m_ref_count)--;
-				if (p_node->m_ref_count.load(std::memory_order::memory_order_relaxed) == 0) {
+				if (p_node->m_ref_count == 0) {
+					p_node->ref_count_m.unlock();
 					for (auto&& succ : p_node->m_successors) {
 						ref_dec(succ.get_node());
 					}
 				}
-				auto t = p_node->m_ref_count.load(std::memory_order::memory_order_relaxed);
-				assert(p_node->m_ref_count.load(std::memory_order::memory_order_relaxed) >= 0);
+				else {
+					p_node->ref_count_m.unlock();
+				}
+				assert(p_node->m_ref_count >= 0);
 			}
 		}
 
@@ -236,23 +275,17 @@ namespace node {
 			return *this;
 		}
 
-		template <bool PL>
 		static weightednode<W> get_wnode(W&& wei, int order, succ_ls<W>&& successors) {
 			auto&& key = cache::unique_table_key<W>(order, successors);
 
 			//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			if constexpr (PL) {
-				Node<W>::unique_table_m.lock();
-			}
+			Node<W>::unique_table_m.lock();
 			auto&& p_find_res = Node<W>::mp_unique_table->find(key);
 
 			if (p_find_res != Node<W>::mp_unique_table->end()) {
 				// and another reference
 				Node<W>::ref_inc(p_find_res->second);
-				if constexpr (PL) {
-					Node<W>::unique_table_m.unlock();
-				}
-
+				Node<W>::unique_table_m.unlock();
 				//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 				// construct at once to avoid accidental clean of p_find_res->second, (the node may have reference count of 0)
@@ -266,9 +299,7 @@ namespace node {
 			node::Node<W>* p_node = new node::Node<W>(order, std::move(successors));
 
 			(*Node<W>::mp_unique_table)[key] = p_node;
-			if constexpr (PL) {
-				Node<W>::unique_table_m.unlock();
-			}
+			Node<W>::unique_table_m.unlock();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 			weightednode<W> res;
@@ -283,7 +314,7 @@ namespace node {
 		}
 
 		inline bool is_multi_ref() const {
-			return node->m_ref_count.load(std::memory_order::memory_order_relaxed) > 1;
+			return Node<W>::is_multi_ref(node);
 		}
 
 		~weightednode() {
@@ -317,7 +348,7 @@ namespace node {
 		}
 
 		inline bool is_garbage() const {
-			return node->is_garbage();
+			return Node<W>::is_garbage(node);
 		}
 
 		inline weightednode<W> weightednode() const {

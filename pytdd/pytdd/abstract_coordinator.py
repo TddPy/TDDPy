@@ -99,7 +99,7 @@ class AbstractCoordinator:
 
 	def tensordot(self, wrapped_a: WrappedTDD, wrapped_b: WrappedTDD, 
 				  axes: int|Sequence[Sequence[int]], rearrangement: Sequence[bool] = [],
-				  parallel_tensor: bool = False, iteration_parallel: bool = True) -> WrappedTDD:
+				  parallel_tensor: bool = False) -> WrappedTDD:
 		
 		# need to check whether a and b are the same coordinator
 
@@ -109,7 +109,7 @@ class AbstractCoordinator:
 		new_coordinator_info = self.tensordot_order_info(wrapped_a.crd_info, wrapped_b.crd_info, axes)
 
 		return WrappedTDD(
-			TDD.tensordot(wrapped_a.tensor, wrapped_b.tensor, axes, rearrangement, parallel_tensor, iteration_parallel),
+			TDD.tensordot(wrapped_a.tensor, wrapped_b.tensor, axes, rearrangement, parallel_tensor),
 			new_coordinator_info)
 
 
