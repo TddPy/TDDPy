@@ -497,7 +497,7 @@ namespace cache {
 
 
 	template <typename CACHE>
-	inline void clean_cache(std::pair<std::shared_mutex, CACHE>& the_cache) {
+	inline void clean_garbage(std::pair<std::shared_mutex, CACHE>& the_cache) {
 		the_cache.first.lock();
 		for (auto&& i = the_cache.second.begin(); i != the_cache.second.end();) {
 			if (i->second.is_garbage()) {
@@ -506,8 +506,6 @@ namespace cache {
 			else {
 				i++;
 			}
-			the_cache.first.unlock();
-			the_cache.first.lock();
 		}
 		the_cache.first.unlock();
 	}

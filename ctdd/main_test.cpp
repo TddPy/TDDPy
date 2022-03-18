@@ -36,42 +36,26 @@ int main() {
 	auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 
 
-
-	double start = clock();
-	
-
-	for (int i = 0; i < 2; i++) {
-		cout << "=================== " << i << " ===================" << endl;
-
-		auto t1 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
-		auto t2 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
-
-		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
-		auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
-		auto tdd_res = tdd::tensordot<CUDAcpl::Tensor, wcomplex>(t1_tdd, t2_tdd, { 0,1,2 }, { 0,1,2 }, {}, true);
-		auto actual = tdd_res.CUDAcpl();
-	}
-	double end = clock();
-
-	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
-
-	
 	setting_update(4, 0, 1, 1E-14);
 
-	start = clock();
-	for (int i = 0; i < 4; i++) {
+	auto start = clock();
+	for (int i = 0; i < 10; i++) {
 		cout << "=================== " << i << " ===================" << endl;
 		
-		auto t1 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
-		auto t2 = torch::rand({ 2,2,2,2,2,2 }, CUDAcpl::tensor_opt);
+		auto t1 = torch::rand({ 14,2,2,2 }, CUDAcpl::tensor_opt);
+		auto t2 = torch::rand({ 14,2,2,2 }, CUDAcpl::tensor_opt);
 
-		auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
+		auto t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {});
 		auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
-		auto tdd_res = tdd::tensordot<CUDAcpl::Tensor, wcomplex>(t1_tdd, t2_tdd, { 0,1,2 }, { 0,1,2 }, {}, true);
-		auto actual = tdd_res.CUDAcpl();
+		auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, { 1 }, { 1 }, {});
+		//auto actual = tdd_res.CUDAcpl();
 
 	}
-	end = clock();
+	auto end = clock();
+	mng::clear_cache<wcomplex>();
+	mng::print_resource_state();
+
+	delete wnode::iter_para::p_thread_pool;
 
 	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
 	

@@ -31,7 +31,7 @@ namespace node {
 		/* The weight and node of the successors
 		*  Note: terminal nodes are represented by nullptr in the successors.
 		*/
-		const succ_ls<W> m_successors;
+		succ_ls<W> m_successors;
 
 	private:
 
@@ -64,10 +64,14 @@ namespace node {
 		/// thread safety: the only risk is to clean the 0-reference node when its reference count will be increased to 1.
 		/// however, unique_table_m is locked during reference increasing, so this should not happen.
 		/// </summary>
-		inline static void clean_unique_table() {
+		inline static void clean_garbage() {
 			unique_table_m.lock();
 			for (auto&& i = m_unique_table.begin(); i != m_unique_table.end();) {
 				if (is_garbage(i->second)) {
+					for (auto&& succ : i->second->m_successors) {
+						succ.disable();
+					}
+					delete i->second;
 					i = m_unique_table.erase(i);
 				}
 				else {
@@ -224,6 +228,14 @@ namespace node {
 			Node<W>::ref_dec(node);
 			node = _node;
 			Node<W>::ref_inc(node);
+		}
+
+		/// <summary>
+		/// disable the sub weightednodes when deleting
+		/// </summary>
+		/// <returns></returns>
+		inline void disable() noexcept {
+			node = nullptr;
 		}
 
 		weightednode(const weightednode<W>& other) noexcept {

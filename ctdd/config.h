@@ -16,3 +16,5 @@ const double DEFAULT_MEM_CHECK_PERIOD = 0.5;
 
 
 //#define DECONSTRUCTOR_DEBUG
+
+#define RESOURCE_OUTPUT

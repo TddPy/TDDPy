@@ -44,6 +44,15 @@ namespace mng {
 	}
 
 	template <typename W>
+	inline void clear_garbage() {
+		cache::clean_garbage(cache::Global_Cache<W>::sum_cache);
+		cache::clean_garbage(cache::Global_Cache<W>::trace_cache);
+		cache::clean_garbage(cache::Cont_Cache<W, wcomplex>::cont_cache);
+		cache::clean_garbage(cache::Cont_Cache<W, CUDAcpl::Tensor>::cont_cache);
+		node::Node<W>::clean_garbage();
+	}
+
+	template <typename W>
 	inline void clear_cache() {
 		cache::Global_Cache<W>::CUDAcpl_cache.first.lock();
 		cache::Global_Cache<W>::CUDAcpl_cache.second.clear();
@@ -65,8 +74,6 @@ namespace mng {
 		cache::Cont_Cache<W, CUDAcpl::Tensor>::cont_cache.first.lock();
 		cache::Cont_Cache<W, CUDAcpl::Tensor>::cont_cache.second.clear();
 		cache::Cont_Cache<W, CUDAcpl::Tensor>::cont_cache.first.unlock();
-
-		node::Node<W>::clean_unique_table();
 	}
 
 
@@ -98,8 +105,39 @@ namespace mng {
 	inline void cache_clear_check() {
 		auto current_vmem = get_vmem();
 		if (current_vmem > vmem_limit) {
-			clear_cache<wcomplex>();
-			clear_cache<CUDAcpl::Tensor>();
+#ifdef RESOURCE_OUTPUT
+			std::cout << "cleaning garbage ...";
+#endif
+			clear_garbage<wcomplex>();
+			clear_garbage<CUDAcpl::Tensor>();
+#ifdef RESOURCE_OUTPUT
+			std::cout << " done." << std::endl;
+#endif
+
+
+			// check whether further cleanning is needed
+			auto new_vmem = get_vmem();
+			if (new_vmem > vmem_limit) {
+#ifdef RESOURCE_OUTPUT
+				std::cout << "cleaning cache ...";
+#endif
+				clear_cache<wcomplex>();
+				clear_cache<CUDAcpl::Tensor>();
+#ifdef RESOURCE_OUTPUT
+				std::cout << " done." << std::endl;
+#endif
+
+				// if memory consumption still exceeds the limit, then throw the exception
+				auto final_vem = get_vmem();
+				if (final_vem > vmem_limit) {
+#ifdef RESOURCE_OUTPUT
+					std::cout << "memory consumption exceeds the limit after garbage collection, the calculation will be shut down" << std::endl;
+#endif
+					//throw std::exception("memory consumption exceeds the limit after garbage collection, the calculation will be shut down");
+					exit(-1);
+				}
+
+			}
 		}
 	}
 

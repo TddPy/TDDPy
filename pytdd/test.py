@@ -11,8 +11,12 @@ import pytdd_test
 
 #interface.reset()
 
-for i in range(1):
-    
+pytdd.setting_update(4, False, True, 3e-7, 0.5, 8000)
+
+for i in range(10000):
+    print()
+    print(i)
+    print()
     pytdd_test.test1()
     pytdd_test.test2()
     pytdd_test.test3()
@@ -31,10 +35,16 @@ for i in range(1):
 
     pytdd_test.test1_H()
     
-    pytdd.setting_update(1, True, True)
-    pytdd_test.test3_cuda();
 
-pytdd.clear_cache()
-pytdd.test()
+    a = torch.rand(1000,2,2,2)
+    b = torch.rand(1000,2,2,2)
+    tdd_a = pytdd.TDD.as_tensor(a)
+    tdd_b = pytdd.TDD.as_tensor(b)
+    res = pytdd.TDD.tensordot(tdd_a, tdd_b, [[1],[1]])
+    pytdd.clear_cache()
+
+    pytdd.test()
+
+
 
 os.system('pause')

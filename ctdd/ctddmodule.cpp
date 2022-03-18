@@ -52,6 +52,8 @@ delete_tdd(PyObject* self, PyObject* args) {
 /// <returns></returns>
 static PyObject*
 clear_cache(PyObject* self, PyObject* args) {
+	clear_garbage<wcomplex>();
+	clear_garbage<CUDAcpl::Tensor>();
 	clear_cache<wcomplex>();
 	clear_cache<CUDAcpl::Tensor>();
 	return Py_BuildValue("");

@@ -53,16 +53,6 @@
     <Compile Include="pytdd_test.py" />
     <Compile Include="pytdd\trival_coordinator.py" />
     <Compile Include="pytdd\__init__.py" />
-    <Compile Include="tdd\CUDAcpl\config.py" />
-    <Compile Include="tdd\CUDAcpl\main.py" />
-    <Compile Include="tdd\CUDAcpl\quantum_basic.py" />
-    <Compile Include="tdd\CUDAcpl\__init__.py" />
-    <Compile Include="tdd\global_val.py" />
-    <Compile Include="tdd\methods.py" />
-    <Compile Include="tdd\node.py" />
-    <Compile Include="tdd\tdd.py" />
-    <Compile Include="tdd\weighted_node.py" />
-    <Compile Include="tdd\__init__.py" />
     <Compile Include="tdd_origin\TDD.py" />
     <Compile Include="tdd_origin\TDD_Q.py" />
     <Compile Include="tdd_origin\TN.py" />
@@ -76,8 +66,6 @@
     <Folder Include="experiments\test_order\" />
     <Folder Include="pytdd\" />
     <Folder Include="pytdd\CUDAcpl\" />
-    <Folder Include="tdd" />
-    <Folder Include="tdd\CUDAcpl" />
     <Folder Include="tdd_origin" />
   </ItemGroup>
   <ItemGroup>
