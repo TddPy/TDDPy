@@ -80,13 +80,6 @@ namespace node {
 		// note that due to the transfer semantics of successors, their reference counts will not be increased.
 		Node(int order, succ_ls<W>&& successors) noexcept :m_order(order), m_ref_count(1), m_successors(std::move(successors)) { }
 
-		/// <summary>
-		/// warning: this property should not be queried when parallel calculating is running.
-		/// </summary>
-		/// <returns></returns>
-		inline int get_ref_count() const noexcept {
-			return m_ref_count;
-		}
 
 		inline static bool is_garbage(const Node<W>* p_node) noexcept {
 			if (p_node) {
@@ -145,6 +138,14 @@ namespace node {
 
 		inline int get_range() const noexcept {
 			return m_successors.size();
+		}
+
+		/// <summary>
+		/// warning: this property should not be queried when parallel calculating is running.
+		/// </summary>
+		/// <returns></returns>
+		inline int get_ref_count() const noexcept {
+			return m_ref_count;
 		}
 
 		void print() const noexcept {

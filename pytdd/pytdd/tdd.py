@@ -43,10 +43,6 @@ class TDD:
         return self._pointer
 
     @property
-    def coordinator_info(self) -> OrderInfo:
-        return self._coordinator_info
-
-    @property
     def node(self) -> Node:
         return Node(self._info["node"], self._tensor_weight)
 

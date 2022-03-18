@@ -99,4 +99,3 @@ class GlobalOrderCoordinator(AbstractCoordinator):
 			res[i] = order_info[perm[i]]
 
 		return res
-

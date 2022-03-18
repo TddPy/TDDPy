@@ -486,11 +486,11 @@ get_node_info(PyObject* self, PyObject* args) {
 	if (!PyArg_ParseTuple(args, "L", &code)) {
 		return NULL;
 	}
-	const Node<W>* p_node = (const Node<W>*)code;
+	Node<W>* p_node = (Node<W>*)code;
 
 	auto&& node_order = p_node->get_order();
 	auto&& node_range = p_node->get_range();
-
+	auto&& node_ref_count = p_node->get_ref_count();
 	auto&& node_successors = p_node->get_successors();
 
 	auto&& py_successors = PyTuple_New(node_range);
@@ -501,10 +501,10 @@ get_node_info(PyObject* self, PyObject* args) {
 		
 		PyTuple_SetItem(py_successors, i, temp_succ);
 	}
-
 	return Py_BuildValue("{sisisisO}",
 		"order", node_order,
 		"range", node_range,
+		"reference count", node_ref_count,
 		"successors", py_successors
 	);
 }
