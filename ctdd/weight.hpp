@@ -75,6 +75,18 @@ namespace weight {
 	}
 
 	/// <summary>
+	/// check whether every element in two CUDAcpl::Tensors are equal in the element wise way
+	/// </summary>
+	/// <param name="a"></param>
+	/// <param name="b"></param>
+	/// <returns>Note: include the extra inner shape</returns>
+	inline CUDAcpl::Tensor element_wise_equal(const CUDAcpl::Tensor& a, const CUDAcpl::Tensor& b) {
+		auto this_eps = CUDAcpl::norm(a) * EPS;
+		this_eps = torch::stack({ this_eps, this_eps }, this_eps.dim());
+		return  torch::abs(a - b) < this_eps;
+	}
+
+	/// <summary>
 	/// check the relative equality (up the EPS difference)
 	/// </summary>
 	/// <typeparam name="W"></typeparam>
@@ -89,9 +101,7 @@ namespace weight {
 				abs(a.imag() - b.imag()) < this_eps;
 		}
 		else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
-			auto this_eps = CUDAcpl::norm(a) * EPS;
-			this_eps = torch::stack({ this_eps, this_eps }, this_eps.dim());
-			return  torch::all(torch::abs(a - b) < this_eps).item().toBool();
+			return  torch::all(element_wise_equal(a, b)).item().toBool();
 		}
 	}
 

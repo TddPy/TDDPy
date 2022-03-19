@@ -96,14 +96,92 @@ namespace wnode {
 		return (a.get_node() == b.get_node() && weight::is_equal(a.weight, b.weight));
 	}
 
+	inline bool is_equal_mask(const node::weightednode<CUDAcpl::Tensor>& a,
+		const node::weightednode<CUDAcpl::Tensor>& b, const torch::Tensor& mask) {
+
+		auto dim = a.weight.dim() - 1;
+		auto element_equality = weight::element_wise_equal(a.weight, b.weight);
+		element_equality = torch::logical_and(element_equality.select(dim, 0), element_equality.select(dim, 1));
+		auto all_equality = torch::logical_or(element_equality, mask);
+
+		return (a.get_node() == b.get_node()) && torch::all(all_equality).item().toBool();
+	}
+
 	/// <summary>
-/// Conduct the normalization of this wnode.
-/// This method only normalize the given wnode, and assumes the wnodes under it are already normalized.
-/// (not terminal node)
-/// </summary>
-/// <returns>Return the normalized node and normalization coefficients as a wnode.</returns>
+	/// for node merging check of tensor weight tdds
+	/// </summary>
+	/// <param name="a"></param>
+	/// <param name="b"></param>
+	/// <returns></returns>
+	inline void zero_element_copy(node::weightednode<CUDAcpl::Tensor>& a, 
+		node::weightednode<CUDAcpl::Tensor>& b) noexcept {
+
+		if (a.get_node() == nullptr || b.get_node() == nullptr) {
+			return;
+		}
+
+		if (a.get_node()->get_order() != b.get_node()->get_order()) {
+			return;
+		}
+
+		auto dim = a.weight.dim() - 1;
+
+		// first check whether there is zero elements
+		auto zero_item_a = torch::logical_and((a.weight.select(dim, 0) == 0.), (a.weight.select(dim, 1) == 0.));
+		auto zero_item_b = torch::logical_and((b.weight.select(dim, 0) == 0.), (b.weight.select(dim, 1) == 0.));
+
+		bool any_zero_item_a = torch::any(zero_item_a).item().toBool();
+		bool any_zero_item_b = torch::any(zero_item_b).item().toBool();
+		if (any_zero_item_a || any_zero_item_b) {
+			// check whether the tensor weighted nodes from i and j are identical except the zero element positions
+			auto successors_a = a.get_node()->get_successors();
+			auto successors_b = b.get_node()->get_successors();
+
+			// corresponds to real elements. true elements in the mask tolerants the difference when comparing tensor weight equality
+			auto equality_mask = torch::logical_or(zero_item_a, zero_item_b);
+
+			// only subnodes of other elements identical may be merged
+			for (int i = 0; i < successors_a.size(); i++) {
+				if (!is_equal_mask(successors_a[i], successors_b[i], equality_mask)) {
+					return;
+				}
+			}
+
+			// merge the nodes, construct the new common weighted nodes.
+			std::vector<node::weightednode<CUDAcpl::Tensor>> new_successors{ successors_a.size()};
+			auto all_zero_item_a = zero_item_a.unsqueeze(dim).expand_as(a.weight);
+			for (int i = 0; i < new_successors.size(); i++) {
+				new_successors[i].weight = torch::where(all_zero_item_a, successors_b[i].weight, successors_a[i].weight);
+				new_successors[i].set_node(successors_a[i].get_node());
+			}
+
+			auto common_wnode = node::weightednode<CUDAcpl::Tensor>::get_wnode(
+				std::move(a.weight), a.get_node()->get_order(), std::move(new_successors));
+
+			a = common_wnode;
+			b.set_node(common_wnode.get_node());
+		}
+	}
+
+	/// <summary>
+	/// Conduct the normalization of this wnode.
+	/// This method only normalize the given wnode, and assumes the wnodes under it are already normalized.
+	/// (not terminal node)
+	/// </summary>
+	/// <returns>Return the normalized node and normalization coefficients as a wnode.</returns>
 	template <class W>
 	node::weightednode<W> normalize(const W& wei, int order, std::vector<node::weightednode<W>>&& successors) {
+
+		// for tensor weight tdds, the extra node merging check is needed.
+		// because tensor weights can be partially zero at the same position, in which situation multiple nodes in unique_table can represent it.
+		if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+			// note that double loop is needed to fully check node merging
+			for (int i = 0; i < successors.size() - 1; i++) {
+				for (int j = i + 1; j < successors.size(); j++) {
+					zero_element_copy(successors[i], successors[j]);
+				}
+			}
+		}
 
 		// subnode equality check
 		bool all_equal = true;

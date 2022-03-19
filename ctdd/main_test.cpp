@@ -38,6 +38,20 @@ int main() {
 
 	setting_update(4, 0, 1, 1E-14);
 
+
+	auto&& normal = CUDAcpl::tensordot(
+		torch::rand({ 2,2 }, CUDAcpl::tensor_opt), torch::rand({ 2,2 }, CUDAcpl::tensor_opt), {}, {});
+
+	auto&& special = torch::tensor({ 1., 2., 3., 4., 0., 0., 0., 0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
+
+	auto&& normal_2 = CUDAcpl::tensordot(normal, normal, {}, {});
+	auto&& normal_special = CUDAcpl::tensordot(normal, special, {}, {});
+	auto&& stacked = torch::stack({ normal, special }, 0);
+
+	auto&& stacked_tdd = TDD<CUDAcpl::Tensor>::as_tensor(stacked, 1, {});
+	cout << stacked_tdd.size() << endl;
+
+	/*
 	auto start = clock();
 	for (int i = 0; i < 10; i++) {
 		cout << "=================== " << i << " ===================" << endl;
@@ -58,7 +72,7 @@ int main() {
 	delete wnode::iter_para::p_thread_pool;
 
 	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
-	
+	*/
 
 	return 0;
 }
