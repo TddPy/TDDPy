@@ -81,15 +81,15 @@ class TDD:
         return str(self.numpy())
 
 
-    def show(self, path: str='output', full_output: bool=False, precision: int=2):
+    def show(self, path: str='output', full_output: bool=True, precision: int=2):
         '''
-            full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
+            full_output: if True, then the edge weight will appear.
         '''
         edge=[]              
         tdd_node = self.node
 
         dot=Digraph(name='reduced_tree')
-        dot=tdd_node.layout(self.storage_order, self.parallel_shape, dot, edge, full_output,precision)
+        dot=tdd_node.layout(self.storage_order, self.parallel_shape, dot, edge, full_output, precision, self.tensor_weight)
         dot.node('-0','',shape='none')
 
         if tdd_node.pointer == 0:
@@ -98,13 +98,15 @@ class TDD:
             id_str = str(tdd_node.pointer)
 
         tdd_weight = self.info["weight"]
-        if self.info["dim parallel"]==0:
-            label= str(complex(tdd_weight[0].cpu().item(),tdd_weight[1].cpu().item()))
-        else:
-            if full_output == True:
+
+        if full_output:
+            if self.tensor_weight:
                 label = str(CUDAcpl2np(tdd_weight))
             else:
-                label =str(self.parallel_shape)
+                label= str(complex(tdd_weight[0].cpu().item(),tdd_weight[1].cpu().item()))
+        else:
+            label = ""
+
         dot.edge('-0',id_str,color="blue",label = 
                  "paralell shape: " +str(self.parallel_shape) + 
                  "\ndata shape:" + str(self.shape) + "\n" + label 

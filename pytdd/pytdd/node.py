@@ -53,9 +53,9 @@ class Node:
         return self.__info["order"]
 
     def layout(self, storage_order: Sequence[int], parallel_shape: Sequence[int],
-                 dot=Digraph(), succ: List=[], full_output: bool=False, precision: int = 2):
+                 dot=Digraph(), succ: List=[], full_output: bool=False, precision: int = 2, tensor_weight: bool = False):
         '''
-            full_output: if True, then the edge will appear as a tensor, not the parallel index shape.
+            full_output: if True, then the edge weight will appear.
         '''
 
 
@@ -77,15 +77,14 @@ class Node:
             node_successors = node_info["successors"]
             for k in range(self.range):
                 #if there is no parallel index, directly demonstrate the edge values
-                if list(node_successors[0]["weight"].shape) == [2]:
-                    label1=str(complex(round(node_successors[k]["weight"][0].cpu().item(),precision),
-                                        round(node_successors[k]["weight"][1].cpu().item(),precision)))
-                #otherwise, demonstrate the parallel index shape
-                else:
-                    if full_output:
-                        label1 = str(CUDAcpl2np(node_successors[k]["weight"]))
+                if full_output:
+                    if tensor_weight:
+                        label_weight = str(CUDAcpl2np(node_successors[k]["weight"]))
                     else:
-                        label1 = str(parallel_shape)
+                        label_weight=str(complex(round(node_successors[k]["weight"][0].cpu().item(),precision),
+                                            round(node_successors[k]["weight"][1].cpu().item(),precision)))
+                else:
+                    label_weight = ""
                 
                 temp_node = Node(node_successors[k]["node"], self.tensor_weight)
                 if (temp_node.pointer == 0):
@@ -94,9 +93,9 @@ class Node:
                     id_str = str(temp_node.__pointer)
                 
                 if not temp_node.pointer in succ:
-                    dot=temp_node.layout(storage_order, parallel_shape, dot,succ,full_output)
-                    dot.edge(str(self.__pointer),id_str,color=col[k%4],label=label1)
+                    dot=temp_node.layout(storage_order, parallel_shape, dot,succ,full_output, precision, tensor_weight)
+                    dot.edge(str(self.__pointer),id_str,color=col[k%4],label=label_weight)
                     succ.append(temp_node.pointer)
                 else:
-                    dot.edge(str(self.__pointer),id_str,color=col[k%4],label=label1)
+                    dot.edge(str(self.__pointer),id_str,color=col[k%4],label=label_weight)
         return dot    

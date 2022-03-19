@@ -556,9 +556,19 @@ namespace tdd {
 			a.m_inner_data_shape, b.m_inner_data_shape,
 			inner_indices_cmd, a_inner_order, b_inner_order, parallel_tensor);
 
-		std::vector<int64_t> new_para_shape(a.m_para_shape);
-		if (parallel_tensor) {
-			new_para_shape.insert(new_para_shape.end(), b.m_para_shape.begin(), b.m_para_shape.end());
+		std::vector<int64_t> new_para_shape;
+		// decide the parallel shape accordingly
+		if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, CUDAcpl::Tensor>) {
+			new_para_shape = std::vector<int64_t>(b.m_para_shape);
+		}
+		else if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, wcomplex>) {
+			new_para_shape = std::vector<int64_t>(a.m_para_shape);
+		}
+		else {
+			new_para_shape = std::vector<int64_t>(a.m_para_shape);
+			if (parallel_tensor) {
+				new_para_shape.insert(new_para_shape.end(), b.m_para_shape.begin(), b.m_para_shape.end());
+			}
 		}
 
 		return TDD<weight::W_C<W1, W2>>(std::move(res_wnode), std::move(new_para_shape),
