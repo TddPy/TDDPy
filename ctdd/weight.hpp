@@ -209,7 +209,7 @@ namespace weight {
 
 	// expand the dimensions at the back of the tensor weight
 	template <typename W1, typename W2>
-	inline W_C<W1, W2> weight_expanded_back(const W1& weight, const std::vector<int64_t>& para_shape_b, bool parallel_tensor) {
+	inline W_C<W1, W2> weight_expanded_back(const W1& weight, const std::vector<int64_t>& para_shape_res, bool parallel_tensor) {
 		if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, wcomplex>) {
 			return weight;
 		}
@@ -217,18 +217,18 @@ namespace weight {
 			if (parallel_tensor) {
 				auto&& sizes = weight.sizes();
 				auto size = sizes.size();
-				std::vector<int64_t> temp_shape(size + para_shape_b.size());
-				temp_shape[size + para_shape_b.size() - 1] = 2;
+				std::vector<int64_t> temp_shape(para_shape_res.size() + 1);
+				temp_shape[para_shape_res.size()] = 2;
 				for (int i = 0; i < size - 1; i++) {
 					temp_shape[i] = sizes[i];
 				}
-				for (int i = 0; i < para_shape_b.size(); i++) {
-					temp_shape[size - 1 + i] = 1;
+				for (int i = size - 1; i < para_shape_res.size(); i++) {
+					temp_shape[i] = 1;
 				}
 				auto res = weight.view(temp_shape);
 
-				for (int i = 0; i < para_shape_b.size(); i++) {
-					temp_shape[size - 1 + i] = para_shape_b[i];
+				for (int i = size - 1; i < para_shape_res.size(); i++) {
+					temp_shape[size - 1 + i] = para_shape_res[i];
 				}
 				return res.expand(temp_shape);
 
@@ -241,13 +241,13 @@ namespace weight {
 			return weight;
 		}
 		else if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, CUDAcpl::Tensor>) {
-			return CUDAcpl::mul_element_wise(CUDAcpl::ones(para_shape_b), weight);
+			return CUDAcpl::mul_element_wise(CUDAcpl::ones(para_shape_res), weight);
 		}
 	}
 
 	// expand the dimensions at the front of the tensor weight
 	template <typename W1, typename W2>
-	inline W_C<W1, W2> weight_expanded_front(const W2& weight, const std::vector<int64_t>& para_shape_a, bool parallel_tensor) {
+	inline W_C<W1, W2> weight_expanded_front(const W2& weight, const std::vector<int64_t>& para_shape_res, bool parallel_tensor) {
 		if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, wcomplex>) {
 			return weight;
 		}
@@ -255,17 +255,17 @@ namespace weight {
 			if (parallel_tensor) {
 				auto&& sizes = weight.sizes();
 				auto size = sizes.size();
-				std::vector<int64_t> temp_shape(size + para_shape_a.size());
-				for (int i = 0; i < para_shape_a.size(); i++) {
+				std::vector<int64_t> temp_shape(para_shape_res.size() + 1);
+				for (int i = 0; i < para_shape_res.size() - size + 1; i++) {
 					temp_shape[i] = 1;
 				}
 				for (int i = 0; i < size; i++) {
-					temp_shape[para_shape_a.size() + i] = sizes[i];
+					temp_shape[para_shape_res.size() - size + 1 + i] = sizes[i];
 				}
 				auto res = weight.view(temp_shape);
 
-				for (int i = 0; i < para_shape_a.size(); i++) {
-					temp_shape[i] = para_shape_a[i];
+				for (int i = 0; i < para_shape_res.size() - size + 1; i++) {
+					temp_shape[i] = para_shape_res[i];
 				}
 				return res.expand(temp_shape);
 
@@ -275,7 +275,7 @@ namespace weight {
 			}
 		}
 		else if constexpr (std::is_same_v<W1, CUDAcpl::Tensor> && std::is_same_v<W2, wcomplex>) {
-			return CUDAcpl::mul_element_wise(CUDAcpl::ones(para_shape_a), weight);
+			return CUDAcpl::mul_element_wise(CUDAcpl::ones(para_shape_res), weight);
 		}
 		else if constexpr (std::is_same_v<W1, wcomplex> && std::is_same_v<W2, CUDAcpl::Tensor>) {
 			return weight;

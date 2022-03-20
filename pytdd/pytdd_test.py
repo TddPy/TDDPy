@@ -288,3 +288,39 @@ def test1_H():
     actual = TDD.tensordot(tdd_a, tdd_b, [[0],[0]],[], False).CUDAcpl()
 
     compare("test1_H", expected,actual)
+
+def test_node_merge():
+
+    def zero_state(n):
+    '''
+        get the tdd of n-qubit |0000...0> state
+    '''
+    res = pytdd.TDD.as_tensor(np.array(1))
+    zero = pytdd.TDD.as_tensor(np.array([1,0]))
+    for i in range(n):
+        res = pytdd.TDD.tensordot(zero, res, 0)
+    return res
+
+
+    a = CUDAcpl.quantum_basic.Rx(CUDAcpl._U_(torch.tensor,[1., 1.]))
+
+    b = CUDAcpl.quantum_basic.Rx(CUDAcpl._U_(torch.tensor,[1., 0.]))
+
+    u = CUDAcpl.einsum("iab,icd->iabcd",b,a)
+    expected = CUDAcpl.einsum("iabcd,bd->iac", u, CUDAcpl.np2CUDAcpl(np.array([[1,0],[0,0]])))
+
+
+    tdd_a = TDD.as_tensor((a,1,[]))
+    tdd_b = TDD.as_tensor((b,1,[]))
+
+    res = tdd_a
+    res = TDD.tensordot(tdd_b, res, 0)
+    res.show("unitary")
+    #res = TDD.tensordot(tdd_a, res, 0)
+    #res = TDD.tensordot(tdd_b, res, 0)
+
+    res = TDD.tensordot(res, zero_state(2), [[1,3],[0,1]])
+    res.show("final_state")
+    # nodes in final state should merge, but they don't
+
+

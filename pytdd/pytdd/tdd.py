@@ -19,6 +19,7 @@ TERMINAL_ID = -1
 
 class TDD:
 
+    para_check = True
 
     # different invocations for scalar and tensor weight
     def get_tdd_info(self):
@@ -33,6 +34,9 @@ class TDD:
         self._tensor_weight = tensor_weight
         self._info = self.get_tdd_info()
 
+    @staticmethod
+    def check_parameter(check: bool) -> None:
+        TDD.para_check = check
 
     @property
     def tensor_weight(self)->bool:
@@ -165,11 +169,22 @@ class TDD:
             tensor = CUDAcpl.np2CUDAcpl(tensor)
 
         # examination
-
-        data_shape = list(tensor.shape[parallel_i_num:-1])
-
-        if len(data_shape)!=len(storage_order) and len(storage_order)!=0:
-            raise Exception('The number of indices must match that provided by tensor.')
+        if (TDD.para_check):
+            data_shape = list(tensor.shape[parallel_i_num:-1])
+            if len(data_shape) < parallel_i_num:
+                raise Exception("Parallel index number must not exceed the dimension of input tensor.")
+            if len(data_shape)!=len(storage_order) + parallel_i_num and len(storage_order)!=0:
+                raise Exception('The number of indices indicated by storage order and parallel indices must match that provided by tensor.')
+            len_storage_order = len(storage_order)
+            if len_storage_order != 0:
+                repeat = [False]*len_storage_order
+                for i in storage_order:
+                    if i < 0 or i >= len_storage_order:
+                        raise Exception('Elements in storage order must be integers from 0 to '+str(len_storage_order-1)+'.')
+                    if repeat[i]:
+                        raise Exception('Elements in storage order must not repeat.')
+                    repeat[i] = True
+        # examination done
 
         tensor_weight = (parallel_i_num != 0)
 
@@ -219,11 +234,14 @@ class TDD:
             return the summation of two tdds
             Note that the coordinator information is not changed.
         '''
+        # examination
+        if TDD.para_check:
+            if self.storage_order != other.storage_order \
+                or self.parallel_shape != other.parallel_shape \
+                or self.tensor_weight != other.tensor_weight:
+                raise "Only two tdds of the same storage order and the same parallel shape can be summed up."
+        # examination done
 
-        if self.storage_order != other.storage_order \
-            or self.parallel_shape != other.parallel_shape \
-            or self.tensor_weight != other.tensor_weight:
-            raise "Only two tdds of the same storage order and the same parallel shape can be summed up."
         if self.tensor_weight:
             pointer = ctdd.sum_T(self.pointer, other.pointer)
         else:
@@ -236,9 +254,21 @@ class TDD:
         '''
             Trace the TDD at given indices.
         '''
+
         # examination
-        if len(axes[0]) != len(axes[1]):
-            raise Exception("The indices given by parameter axes does not match.")
+        if TDD.para_check:
+            if len(axes[0]) != len(axes[1]):
+                raise Exception("The indices given by parameter axes does not match.")
+            dim = len(tensor.shape)
+            repeat = [False]*dim
+            for i in range(len(axes[0])):
+                if axes[0][i] < 0 or axes[0][i] >= dim or axes[1][i] < 0 or axes[1][i] >= dim:
+                    raise Exception('Elements in axes must be integers from 0 to '+str(dim-1)+'.')
+                if repeat[axes[0][i]] or repeat[axes[1][i]]:
+                    raise Exception('Elements in axes must not repeat.')
+                repeat[axes[0][i]] = True
+                repeat[axes[0][i]] = True
+        # examination done
 
         if tensor.tensor_weight:
             pointer = ctdd.trace_T(tensor.pointer, list(axes[0]), list(axes[1]))
@@ -258,7 +288,43 @@ class TDD:
             rearrangement: If not [], then will rearrange according to the parameter. Otherwise, it will rearrange according to the coordinator.
             parallel_tensor: Whether to tensor on the parallel indices.
         '''
+
+        # examination
+        if TDD.para_check:
+            dim_a = len(a.shape)
+            dim_b = len(b.shape)
+            if isinstance(axes, int):
+                num_pairs = axes
+                if num_pairs > dim_a or num_pairs > dim_b:
+                    raise Exception("Given pair number of contracting indices must not exceed dimension of tensor a or b.")
+            else:
+                if len(axes[0]) != len(axes[1]):
+                    raise Exception("The indices given by parameter axes does not match.")
+                num_pairs = len(axes[0])
+                repeat_a = [False]*dim_a
+                repeat_b = [False]*dim_b
+                for i in range(num_pairs):
+                    if axes[0][i] < 0 or axes[0][i] >= dim_a or axes[1][i] < 0 or axes[1][i] >= dim_b:
+                        raise Exception('Elements in axes must be integers from 0 to '+str(dim_a-1)+' and '+str(dim_b-1) +' respectively.')
+                    if repeat_a[axes[0][i]] or repeat_b[axes[1][i]]:
+                        raise Exception('Elements in axes must not repeat for tensor a or b.')
+                    repeat_a[axes[0][i]] = True
+                    repeat_b[axes[1][i]] = True
+            if len(rearrangement) != 0:
+                num_i_a = 0
+                num_i_b = 0
+                for choice in rearrangement:
+                    if choice:
+                        num_i_a += 1 
+                    else:
+                        num_i_b += 1
+                if num_i_a != dim_a - num_pairs or num_i_b != dim_b - num_pairs:
+                    raise Exception('The provided rearrangement is not valid.')
+        # examination done
+
+
         parallel_tensor = 1 if parallel_tensor else 0
+
 
         if isinstance(axes, int):
             # conditioning on the weight version and iteration parallelism
@@ -278,8 +344,6 @@ class TDD:
         else:
             i1 = list(axes[0])
             i2 = list(axes[1])
-            if len(i1) != len(i2):
-                raise Exception("The list of indices provided")
             
             # conditioning on the weight version and iteration parallelism
             if not a.tensor_weight and not b.tensor_weight:
@@ -301,6 +365,20 @@ class TDD:
 
     @staticmethod
     def permute(tensor: TDD, perm: Sequence[int]) -> TDD:
+        # examination
+        if TDD.para_check:
+            dim = len(tensor.shape)
+            if len(perm) != dim:
+                raise Exception("Given permutation is not valid.")
+            repeat = [False]*dim
+            for i in perm:
+                if i < 0 or i >= dim:
+                    raise Exception("Elements in the given permutation must be from 0 to "+str(dim-1)+".")
+                if repeat[i]:
+                    raise Exception("Elements in the given permutation must not repeat.")
+                repeat[i] = True
+        # examination done
+
         if tensor.tensor_weight:
             return TDD(ctdd.permute_T(tensor.pointer, list(perm)), True);
         else:
