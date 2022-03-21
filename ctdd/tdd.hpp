@@ -328,7 +328,7 @@ namespace tdd {
 		/// trace the tdd according to the specified data_indices. Return the reduced result.
 		/// data_indices should be counted in the data indices only.
 		/// </summary>
-		/// <param name="indices">first less than second should hold for every pair</param>
+		/// <param name="indices"></param>
 		/// <returns></returns>
 		TDD<W> trace(const cache::pair_cmd& indices) const {
 			if (indices.empty()) {
@@ -339,14 +339,15 @@ namespace tdd {
 				cache::pair_cmd inner_indices_cmd(indices.size());
 				for (int i = 0; i < indices.size(); i++) {
 					// arrange the smaller index at the first
-					if (indices[i].first < indices[i].second) {
-						inner_indices_cmd[i].first = m_inversed_order[indices[i].first];
-						inner_indices_cmd[i].second = m_inversed_order[indices[i].second];
+					auto smaller = m_inversed_order[indices[i].first];
+					auto larger = m_inversed_order[indices[i].second];
+					if (smaller > larger) {
+						auto temp = smaller;
+						smaller = larger;
+						larger = temp;
 					}
-					else {
-						inner_indices_cmd[i].first = m_inversed_order[indices[i].second];
-						inner_indices_cmd[i].second = m_inversed_order[indices[i].first];
-					}
+					inner_indices_cmd[i].first = smaller;
+					inner_indices_cmd[i].second = larger;
 				}
 
 				std::vector<int64_t> inner_i_reduced(indices.size() * 2);

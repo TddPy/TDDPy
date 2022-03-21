@@ -52,13 +52,15 @@ int main() {
 
 	}
 	auto end = clock();
-	mng::clear_cache<wcomplex>();
-	mng::print_resource_state();
-
-	delete wnode::iter_para::p_thread_pool;
-
 	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
 	
 
+	auto cx_tdd = TDD<wcomplex>::as_tensor(cz, 0, { 0,2,1,3 });
+	cache::pair_cmd cmd;
+	cmd.push_back({ 1, 2 });
+	auto res = cx_tdd.trace(cmd);
+	cout << res.CUDAcpl() << endl;
+
+	delete wnode::iter_para::p_thread_pool;
 	return 0;
 }
