@@ -1,8 +1,8 @@
 from . import main 
-from . import quantum_basic
+from . import quantum_circ
 import torch
-from .config import Config
 
+from .config import Config
 
 #the data type provided
 CUDAcpl_Tensor = main.CUDAcpl_Tensor
@@ -27,4 +27,4 @@ eye = main.eye
 ones = main.ones
 zeros = main.zeros
 
-conj = main .conj
+conj = main.conj

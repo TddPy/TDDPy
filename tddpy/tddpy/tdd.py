@@ -207,18 +207,17 @@ class TDD:
 
         return TDD(pointer, tensor_weight)
 
-    @staticmethod
-    def conj(tensor: TDD) -> TDD:
+    def conj(self: TDD) -> TDD:
         '''
             Return the conjugate of the tdd tensor.
             # note that the coordinator information is not changed.
         '''
-        if tensor._tensor_weight:
-            pointer = ctdd.conj_T(tensor.pointer)
+        if self._tensor_weight:
+            pointer = ctdd.conj_T(self.pointer)
         else:
-            pointer = ctdd.conj(tensor.pointer)
+            pointer = ctdd.conj(self.pointer)
 
-        return TDD(pointer, tensor.tensor_weight)
+        return TDD(pointer, self.tensor_weight)
 
     @staticmethod
     def mul(tensor: TDD, scalar: CUDAcpl_Tensor|complex) -> TDD:
@@ -261,8 +260,7 @@ class TDD:
 
         return TDD(pointer, self._tensor_weight)
 
-    @staticmethod
-    def trace(tensor: TDD, axes:Sequence[Sequence[int]]) -> TDD:
+    def trace(self: TDD, axes:Sequence[Sequence[int]]) -> TDD:
         '''
             Trace the TDD at given indices.
         '''
@@ -271,7 +269,7 @@ class TDD:
         if TDD.para_check:
             if len(axes[0]) != len(axes[1]):
                 raise Exception("The indices given by parameter axes does not match.")
-            dim = len(tensor.shape)
+            dim = len(self.shape)
             repeat = [False]*dim
             for i in range(len(axes[0])):
                 if axes[0][i] < 0 or axes[0][i] >= dim or axes[1][i] < 0 or axes[1][i] >= dim:
@@ -282,12 +280,12 @@ class TDD:
                 repeat[axes[0][i]] = True
         # examination done
 
-        if tensor.tensor_weight:
-            pointer = ctdd.trace_T(tensor.pointer, list(axes[0]), list(axes[1]))
+        if self.tensor_weight:
+            pointer = ctdd.trace_T(self.pointer, list(axes[0]), list(axes[1]))
         else:
-            pointer = ctdd.trace(tensor.pointer, list(axes[0]), list(axes[1]))
+            pointer = ctdd.trace(self.pointer, list(axes[0]), list(axes[1]))
 
-        return TDD(pointer, tensor.tensor_weight)
+        return TDD(pointer, self.tensor_weight)
 
 
     @staticmethod
@@ -375,11 +373,10 @@ class TDD:
         return res
 
 
-    @staticmethod
-    def permute(tensor: TDD, perm: Sequence[int]) -> TDD:
+    def permute(self: TDD, perm: Sequence[int]) -> TDD:
         # examination
         if TDD.para_check:
-            dim = len(tensor.shape)
+            dim = len(self.shape)
             if len(perm) != dim:
                 raise Exception("Given permutation is not valid.")
             repeat = [False]*dim
@@ -391,7 +388,7 @@ class TDD:
                 repeat[i] = True
         # examination done
 
-        if tensor.tensor_weight:
-            return TDD(ctdd.permute_T(tensor.pointer, list(perm)), True);
+        if self.tensor_weight:
+            return TDD(ctdd.permute_T(self.pointer, list(perm)), True);
         else:
-            return TDD(ctdd.permute(tensor.pointer, list(perm)), False);
+            return TDD(ctdd.permute(self.pointer, list(perm)), False);

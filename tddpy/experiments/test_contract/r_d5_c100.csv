@@ -1,4 +1,4 @@
-count, width, torch_time, size_tdd1, size_tdd2, time_pytdd_construct, time_pytdd_contract, time_pytdd_construct_T, time_pytdd_contract_T, size_res_pytdd
+count, width, torch_time, size_tdd1, size_tdd2, time_tddpy_construct, time_tddpy_contract, time_tddpy_construct_T, time_tddpy_contract_T, size_res_tddpy
 100, 4, 0.06139540000000032, 46, 56, 0.008886899999999365, 0.0006128000000007461, 0.11517930000000032, 0.10131710000000016, 24
 100, 5, 0.19421599999999994, 102, 136, 0.03861030000000021, 0.006955900000000348, 0.3317633000000004, 0.7497205999999998, 213
 100, 6, 0.8115816000000002, 266, 1204, 0.1306048999999998, 0.03236699999999981, 1.4649485000000002, 6.129977200000001, 1232

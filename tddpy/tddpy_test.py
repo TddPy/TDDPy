@@ -2,7 +2,7 @@
 import numpy as np
 import torch
 from torch._C import dtype
-from pytdd import TDD, CUDAcpl, GlobalOrderCoordinator
+from tddpy import TDD, CUDAcpl, GlobalOrderCoordinator
 
 def compare(title, expected: CUDAcpl.CUDAcpl_Tensor,
             actual: CUDAcpl.CUDAcpl_Tensor):
@@ -17,7 +17,7 @@ def test1():
     '''
     direct contraction
     '''
-    a = CUDAcpl.quantum_basic.sigmax()
+    a = CUDAcpl.quantum_circ.sigmax()
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.tensordot(a,b,1)
     
@@ -31,7 +31,7 @@ def test1_T():
     '''
     direct contraction
     '''
-    a = CUDAcpl.quantum_basic.sigmax()
+    a = CUDAcpl.quantum_circ.sigmax()
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.einsum("ia,ia->i",a,b)
 
@@ -45,7 +45,7 @@ def test1_T2():
     '''
     direct contraction
     '''
-    a = CUDAcpl.quantum_basic.sigmax()
+    a = CUDAcpl.quantum_circ.sigmax()
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.einsum("ia,ja->ij",a,b)
 
@@ -99,8 +99,8 @@ def test3_q():
     '''
     tracing (quantum tensors)
     '''
-    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmay(), CUDAcpl.quantum_basic.sigmax(), 0)
-    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard(), a, 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_circ.sigmay(), CUDAcpl.quantum_circ.sigmax(), 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_circ.hadamard(), a, 0)
     expected = torch.einsum("ijijklm->klm",a)
     
     tdd_a = TDD.as_tensor(a)
@@ -112,8 +112,8 @@ def test3_q_T():
     '''
     tracing (quantum tensors)
     '''
-    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmay(), CUDAcpl.quantum_basic.sigmax(), 0)
-    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard(), a, 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_circ.sigmay(), CUDAcpl.quantum_circ.sigmax(), 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_circ.hadamard(), a, 0)
     expected = torch.einsum("klijijm->klm",a)
     
     tdd_a = TDD.as_tensor((a,2,[]))
@@ -126,11 +126,11 @@ def test4():
     large tensor contraction
     '''
 
-    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmay(), CUDAcpl.quantum_basic.sigmax(), 0)
-    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard(), a, 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_circ.sigmay(), CUDAcpl.quantum_circ.sigmax(), 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_circ.hadamard(), a, 0)
 
-    b = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard(), CUDAcpl.quantum_basic.hadamard(), 0)
-    b = CUDAcpl.tensordot(CUDAcpl.quantum_basic.hadamard(), b, 0)
+    b = CUDAcpl.tensordot(CUDAcpl.quantum_circ.hadamard(), CUDAcpl.quantum_circ.hadamard(), 0)
+    b = CUDAcpl.tensordot(CUDAcpl.quantum_circ.hadamard(), b, 0)
 
     expected = CUDAcpl.tensordot(a,b,[[1,5,3],[4,0,5]])
     
@@ -146,9 +146,9 @@ def test5():
     small tensor contraction
     '''
 
-    a = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmay(), CUDAcpl.quantum_basic.hadamard(), 0)
+    a = CUDAcpl.tensordot(CUDAcpl.quantum_circ.sigmay(), CUDAcpl.quantum_circ.hadamard(), 0)
 
-    b = CUDAcpl.tensordot(CUDAcpl.quantum_basic.sigmax(), CUDAcpl.quantum_basic.hadamard(), 0)
+    b = CUDAcpl.tensordot(CUDAcpl.quantum_circ.sigmax(), CUDAcpl.quantum_circ.hadamard(), 0)
 
     expected = CUDAcpl.tensordot(a,b,[[1,3],[3,2]])
     
@@ -165,7 +165,7 @@ def test6():
 
     a = CUDAcpl._U_(torch.rand,(2,2,2))
 
-    b = CUDAcpl.quantum_basic.hadamard()
+    b = CUDAcpl.quantum_circ.hadamard()
 
     expected = CUDAcpl.tensordot(a,b,[[0,1],[1,0]])
     
@@ -180,11 +180,11 @@ def test7():
     qft_2 stepwise
     '''
 
-    cz = CUDAcpl.quantum_basic.CZ().reshape((2,2,2,2,2))
+    cz = CUDAcpl.quantum_circ.CZ().reshape((2,2,2,2,2))
     tdd_cz = TDD.as_tensor(cz)
     I = CUDAcpl.eye(2)
     tdd_I = TDD.as_tensor(I)
-    h = CUDAcpl.quantum_basic.hadamard()
+    h = CUDAcpl.quantum_circ.hadamard()
     tdd_h = TDD.as_tensor(h)
 
     #step 1
@@ -218,12 +218,12 @@ def test8():
     '''
     coordinator = GlobalOrderCoordinator();
 
-    cz = CUDAcpl.quantum_basic.CZ().reshape((2,2,2,2,2))
+    cz = CUDAcpl.quantum_circ.CZ().reshape((2,2,2,2,2))
     tdd_cz = coordinator.as_tensor((cz,[2,5,3,6]))
     I = CUDAcpl.eye(2)
     tdd_I1 = coordinator.as_tensor((I,[0,1]))
     tdd_I2 = coordinator.as_tensor((I,[4,5]))
-    h = CUDAcpl.quantum_basic.hadamard()
+    h = CUDAcpl.quantum_circ.hadamard()
     tdd_h1 = coordinator.as_tensor((h,[1,2]))
     tdd_h2 = coordinator.as_tensor((h,[6,7]))
 
@@ -268,7 +268,7 @@ def test10():
     '''
     scalar multiply
     '''
-    a = CUDAcpl.quantum_basic.CZ()
+    a = CUDAcpl.quantum_circ.CZ()
     expected = CUDAcpl.tensordot(CUDAcpl._U_(torch.tensor, [0,1]), a, 0)
 
     a_tdd = TDD.as_tensor(a)
@@ -280,7 +280,7 @@ def test1_H():
     '''
     hybrid direct contraction
     '''
-    a = CUDAcpl.quantum_basic.sigmax()
+    a = CUDAcpl.quantum_circ.sigmax()
     b = torch.rand((2,2,2), dtype=torch.double)
     expected = CUDAcpl.einsum("ia,aj->ij",a,b)
 
@@ -303,9 +303,9 @@ def test_node_merge():
         return res
 
 
-    a = CUDAcpl.quantum_basic.Rx(CUDAcpl._U_(torch.tensor,[1., 1.]))
+    a = CUDAcpl.quantum_circ.Rx(CUDAcpl._U_(torch.tensor,[1., 1.]))
 
-    b = CUDAcpl.quantum_basic.Rx(CUDAcpl._U_(torch.tensor,[1., 0.]))
+    b = CUDAcpl.quantum_circ.Rx(CUDAcpl._U_(torch.tensor,[1., 0.]))
 
     u = CUDAcpl.einsum("iab,icd->iabcd",b,a)
     expected = CUDAcpl.einsum("iabcd,bd->iac", u, CUDAcpl.np2CUDAcpl(np.array([[1,0],[0,0]])))

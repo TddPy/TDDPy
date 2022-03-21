@@ -18,7 +18,7 @@ from tdd import CUDAcpl
 from tdd_origin import TDD, TN
 import tqdm
 
-from pytdd import interface
+from tddpy import interface
 
 
 

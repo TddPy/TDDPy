@@ -2,7 +2,7 @@
 __pycache__/
 
 # the original tdd package
-#pytdd/tdd_origin/
+#tddpy/tdd_origin/
 
 # Visual Studio
 .vs/
@@ -22,4 +22,8 @@ ctdd.pyd
 
 #experiments
 
-#pytdd/experiments
+#tddpy/experiments
+
+#publish
+/dist
+*.egg-info

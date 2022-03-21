@@ -4,14 +4,11 @@ import time
 import random
 from qiskit import QuantumCircuit
 import torch
-from qiskit.circuit.random import random_circuit
-from qiskit import Aer, transpile
-import qiskit.quantum_info as qi
+
 from qiskit.circuit.random import random_circuit
 from qiskit import Aer, transpile
 import qiskit.quantum_info as qi
 from os import system
-from CUDAcpl import CUDAcpl2np
 
 import tdd
 from tdd import CUDAcpl
@@ -21,7 +18,7 @@ from tdd import CUDAcpl
 from tdd_origin import TDD, TN
 import tqdm
 
-import pytdd
+import tddpy
 
 
 
@@ -44,13 +41,10 @@ def PyTorch():
     indices1 =[]
     indices2 =[]
     for i in range(width):
-        indices1.append(1+i*2+1)
-        indices2.append(1+i*2)
+        indices1.append(i*2+1)
+        indices2.append(i*2)
 
-    result = CUDAcpl.tensordot(gates_1, gates_2, [indices1, indices2])
-    axes = [0,width+1]+list(range(1,width+1))+list(range(width+2,2*width+2))+[len(result.shape)-1]
-    result = result.permute(tuple(axes))
-    result = CUDAcpl2np(CUDAcpl.einsum1("ii...->i...",result))
+    result = CUDAcpl.CUDAcpl2np(CUDAcpl.tensordot(gates_1, gates_2, [indices1, indices2]))
 
 def TDD_original_construct_contract():
     global result, gates_1_np, gates_2_np
@@ -95,16 +89,16 @@ def TDD_original_construct():
     tdd2 = ts2.tdd()
 
 
-def pytdd_construct():
+def tddpy_construct():
     global tdd1,tdd2, gates_1, gates_2
     index_order = []
     for i in range(width):
         index_order.append(i)
         index_order.append(i+width)
-    tdd1 = pytdd.TDD.as_tensor((gates_1[0],0,[]))
-    tdd2 = pytdd.TDD.as_tensor((gates_2[0],0,[]))
+    tdd1 = tddpy.TDD.as_tensor(((gates_1,0,[]),None))
+    tdd2 = tddpy.TDD.as_tensor(((gates_2,0,[]),None))
 
-def pytdd_contract():
+def tddpy_contract():
     global result
     indices1 =[]
     indices2 =[]
@@ -112,26 +106,7 @@ def pytdd_contract():
     for i in range(width):
         indices1.append(i*2+1)
         indices2.append(i*2)
-    result = pytdd.TDD.tensordot(tdd1, tdd2, [indices1, indices2], iteration_parallel=True)
-
-def pytdd_construct_T():
-    global tdd1,tdd2, gates_1, gates_2
-    index_order = []
-    for i in range(width):
-        index_order.append(i)
-        index_order.append(i+width)
-    tdd1 = pytdd.TDD.as_tensor((gates_1.to(dtype=torch.float64).cuda(),1,[]))
-    tdd2 = pytdd.TDD.as_tensor((gates_2.to(dtype=torch.float64).cuda(),1,[]))
-
-def pytdd_contract_T():
-    global result
-    indices1 =[]
-    indices2 =[]
-
-    for i in range(width):
-        indices1.append(i*2+1)
-        indices2.append(i*2)
-    result = pytdd.TDD.tensordot(tdd1, tdd2, [indices1, indices2], iteration_parallel=True)
+    result = tddpy.TDD.tensordot(tdd1, tdd2, [indices1, indices2])
 
 
 
@@ -141,25 +116,23 @@ def pytdd_contract_T():
 
 if __name__ == "__main__":
 
-    pytdd.setting_update(4, True)
-    count = 100
-    width_max = 8
-    depth = 3
+    width_max = 10
+    depth = 5
 
-    with open("D:/r_d{}_c{}.csv".format(depth, count), "a") as pfile:
-        pfile.write("count, width, torch_time, size_tdd1, size_tdd2, time_pytdd_construct, time_pytdd_contract, time_pytdd_construct_T, time_pytdd_contract_T, size_res_pytdd\n")
+    with open("D:/r_d{}.csv".format(depth), "a") as pfile:
+        pfile.write("width, torch_time, size_tdd1, size_tdd2, time_ori_construct, time_ori_contract, size_res_ori, time_tddpy_construct, time_tddpy_contract, size_res_tddpy\n")
         while (True):
             for width in range(4, width_max+1):
                 system("pause")
-                gates_1_np = np.expand_dims(random_quantum_u(width, depth),0).repeat(count,0)
-                gates_2_np = np.expand_dims(random_quantum_u(width, depth),0).repeat(count,0)
+                gates_1_np = random_quantum_u(width, depth)
+                gates_2_np = random_quantum_u(width, depth)
                 gates_1 = CUDAcpl.np2CUDAcpl(gates_1_np)
                 gates_2 = CUDAcpl.np2CUDAcpl(gates_2_np)
 
                 #===================================
 
                 print("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n")
-                print('width: {}, depth: {}, count: {}'.format(width, depth, count))
+                print('width: {}, depth: {}'.format(width, depth))
                 print('input tensor shape: ', gates_1_np.shape)
                 print()
 
@@ -170,7 +143,6 @@ if __name__ == "__main__":
                 result_pytorch = result
 
 
-                '''
                 print('===================================================')
                 print('TDD original, construction:')
                 time_original_construct = timing(TDD_original_construct, 1)
@@ -183,44 +155,34 @@ if __name__ == "__main__":
                 #result.show('original_result')
                 size_result_original = result.size()
                 print("result tdd size: {}".format(size_result_original))
-                '''
 
 
-                pytdd.reset()
+
+                tddpy.reset()
 
                 print('===================================================')
-                print('pytdd scalar weight single, construction:')
-                time_pytdd_construct = timing(pytdd_construct, 1)
+                print('tddpy, construction:')
+                time_tddpy_construct = timing(tddpy_construct, 1)
                 print()
+                #tdd1.show('ctdd_tdd1')
+
+                print('tddpy, contraction:')
+                time_tddpy_contract = timing(tddpy_contract, 1)
+                print()
+                #result.show("tddpy_result")
                 size_tdd_1 = tdd1.size()
                 size_tdd_2 = tdd2.size()
-
-                print('pytdd scalar weight single, contraction:')
-                time_pytdd_contract = timing(pytdd_contract, 1)
-                print()
                 print("tdd1 size: {}, tdd2 size: {}".format(size_tdd_1, size_tdd_2))
-                size_result_pytdd = result.size()
-                print("result tdd size: {}".format(size_result_pytdd))
-
-                
-                pytdd.reset()
-
-                print('===================================================')
-                print('pytdd tensor weight, construction:')
-                time_pytdd_construct_T = timing(pytdd_construct_T, 1)
-                #tdd1.show()
-
-                print('pytdd tensor weight, contraction:')
-                time_pytdd_contract_T = timing(pytdd_contract_T, 1)
-                print("result tdd size: {}".format(result.size()))
+                size_result_tddpy = result.size()
+                print("result tdd size: {}".format(size_result_tddpy))
 
 
-                print("<<diff pytdd>> ")
+                print("<<diff tddpy>> ")
                 print(np.max(result_pytorch - result.numpy()))
 
                 pfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n"
-                            .format(count, width, time_pytorch, size_tdd_1, size_tdd_2, time_pytdd_construct,
-                                    time_pytdd_contract, time_pytdd_construct_T, time_pytdd_contract_T, size_result_pytdd))
-                
+                            .format(width, time_pytorch, size_tdd_1, size_tdd_2, time_original_construct, 
+                                    time_original_total - time_original_construct, size_result_original, time_tddpy_construct,
+                                    time_tddpy_contract, size_result_tddpy))
                 pfile.flush()
 

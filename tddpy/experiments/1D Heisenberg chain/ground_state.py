@@ -1,8 +1,8 @@
 import numpy as np
 import CUDAcpl
 from CUDAcpl import _U_
-import pytdd
-from pytdd import TDD
+import tddpy
+from tddpy import TDD
 from os import system
 
 import torch
@@ -19,7 +19,7 @@ def compare(title, expected: CUDAcpl.CUDAcpl_Tensor,
     else:
         print(title+" passed, diff: ",max_diff)
 
-pytdd.setting_update(4, False, True, eps = 1E-14)
+tddpy.setting_update(4, False, True, eps = 1E-14)
 
 
 sx = CUDAcpl.np2CUDAcpl([[0., 0.5],[0.5, 0.]])
@@ -94,7 +94,7 @@ if __name__ == "__main__":
             norm = CUDAcpl.CUDAcpl2np(TDD.tensordot(next_state_conj, state, [ils,ils]).CUDAcpl())
 
             print("1 - fidelity: ", 1 - norm)
-            pytdd.clear_cache()
+            tddpy.clear_cache()
 
         state = next_state
         print(state.size())

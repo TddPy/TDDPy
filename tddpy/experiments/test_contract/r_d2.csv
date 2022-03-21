@@ -1,4 +1,4 @@
-width, torch_time, size_tdd1, size_tdd2, time_ori_construct, time_ori_contract, size_res_ori, time_pytdd_construct, time_pytdd_contract, size_res_pytdd
+width, torch_time, size_tdd1, size_tdd2, time_ori_construct, time_ori_contract, size_res_ori, time_tddpy_construct, time_tddpy_contract, size_res_tddpy
 4,0.0007851,20,24,0.0235902,0.0111648,49,0.0050077,0.0002938,16
 5,0.0043901,67,37,0.0987715,0.0330013,55,0.0207615,0.0030565,143
 6,0.0020172,56,121,0.3076788,0.0129216,69,0.1003324,0.0011259,32
