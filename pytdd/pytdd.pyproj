@@ -32,6 +32,7 @@
     <Compile Include="experiments\test_contract\test_contract _T_width.py" />
     <Compile Include="experiments\test_contract\test_contract.py" />
     <Compile Include="experiments\test_order\test_order.py" />
+    <Compile Include="LICENSE" />
     <Compile Include="pytdd\abstract_coordinator.py" />
     <Compile Include="pytdd\global_method.py">
       <SubType>Code</SubType>
@@ -50,6 +51,7 @@
     <Compile Include="pytdd_test.py" />
     <Compile Include="pytdd\trival_coordinator.py" />
     <Compile Include="pytdd\__init__.py" />
+    <Compile Include="setup.py" />
     <Compile Include="tdd_origin\TDD.py" />
     <Compile Include="tdd_origin\TDD_Q.py" />
     <Compile Include="tdd_origin\TN.py" />
@@ -76,6 +78,10 @@
       <Project>{ecd4f1fe-f476-4029-8bc1-08304f398b9c}</Project>
       <Private>True</Private>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="README.md" />
+    <Content Include="setup.cfg" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

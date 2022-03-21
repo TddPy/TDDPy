@@ -2,7 +2,7 @@
 __pycache__/
 
 # the original tdd package
-pytdd/tdd_origin/
+#pytdd/tdd_origin/
 
 # Visual Studio
 .vs/
@@ -22,4 +22,4 @@ ctdd.pyd
 
 #experiments
 
-pytdd/experiments
+#pytdd/experiments
