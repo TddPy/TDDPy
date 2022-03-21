@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="dependency">
+      <UniqueIdentifier>{1ccf561b-e55b-4ab4-88d9-c6a7da386e68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dependency\CUDAcpl">
+      <UniqueIdentifier>{e9d281cd-5961-485d-8c1f-1c8281a5c653}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="interface">
+      <UniqueIdentifier>{9795b591-2bd9-4d5f-9565-c38b3fcf61c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="templates &amp; headers">
+      <UniqueIdentifier>{678aa3af-6305-4bfe-ae1d-a3197adb8358}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sources">
+      <UniqueIdentifier>{ffaad942-2a03-4fff-9da1-5dfe3117b529}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CUDAcpl.h">
+      <Filter>dependency\CUDAcpl</Filter>
+    </ClInclude>
+    <ClInclude Include="simpletools.h">
+      <Filter>dependency</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>dependency</Filter>
+    </ClInclude>
+    <ClInclude Include="cache.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="manage.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="node.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="tdd.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="weight.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="wnode.hpp">
+      <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CUDAcpl.cpp">
+      <Filter>dependency\CUDAcpl</Filter>
+    </ClCompile>
+    <ClCompile Include="manage.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="tdd.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ctddmodule.cpp">
+      <Filter>interface</Filter>
+    </ClCompile>
+    <ClCompile Include="main_test.cpp">
+      <Filter>interface</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

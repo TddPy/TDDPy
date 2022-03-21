@@ -12,4 +12,7 @@ const uint64_t DEFAULT_VMEM_LIMIT = 8 * 1024. * 1024. * 1024.;
 
 const double DEFAULT_MEM_CHECK_PERIOD = 0.5;
 
+// the info line num in /proc/{pid}/status file
+#define VMRSS_LINE 22
+
 //#define RESOURCE_OUTPUT

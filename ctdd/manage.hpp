@@ -84,7 +84,9 @@ namespace mng {
 	extern std::atomic<std::chrono::duration<double>> garbage_check_period;
 
 	inline void get_current_process() {
+#ifdef __WIN__
 		current_process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, getpid());
+#endif
 	}
 
 	/// <summary>
@@ -92,6 +94,7 @@ namespace mng {
 	/// </summary>
 	/// <returns></returns>
 	inline uint64_t get_vmem() {
+#ifdef __WIN__
 		PROCESS_MEMORY_COUNTERS pmc;
 		// get process hanlde by pid
 		if (GetProcessMemoryInfo(current_process, &pmc, sizeof(pmc)))
@@ -99,6 +102,30 @@ namespace mng {
 			return pmc.PagefileUsage;
 		}
 		return 0;
+#endif
+
+#ifdef __LINUX__
+		char file_name[64] = { 0 };
+		FILE* fd;
+		char line_buff[512] = { 0 };
+		std::sprintf(file_name, "/proc/%d/status", pid);
+
+		fd = fopen(file_name, "r");
+		if (nullptr == fd)
+			return 0;
+
+		char name[64];
+		int vmrss = 0;
+		for (int i = 0; i < VMRSS_LINE - 1; i++)
+			fgets(line_buff, sizeof(line_buff), fd);
+
+		fgets(line_buff, sizeof(line_buff), fd);
+		sscanf(line_buff, "%s %d", name, &vmrss);
+		fclose(fd);
+
+		// cnvert VmRSS from KB to MB
+		return vmrss / 1024.0;
+#endif
 	}
 
 

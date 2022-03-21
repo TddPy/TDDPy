@@ -5,6 +5,7 @@
 
 
 #include <cmath>
+#include <stdio.h>
 #include <iostream>
 #include <complex>
 #include <boost/unordered_map.hpp>
@@ -23,11 +24,23 @@
 
 // resource management
 
+#ifdef __WIN__
 #include <windows.h>  
 #include <psapi.h>  
 //#include <tlhelp32.h>
 #include <direct.h>
 #include <process.h>
+#endif
+
+#ifdef __LINUX__
+#include <sys/stat.h>
+#include <sys/sysinfo.h>
+#include <sys/time.h>
+#include <unistd.h>
+#endif
+
+
+
 
 // multi-thread
 #include <shared_mutex>
