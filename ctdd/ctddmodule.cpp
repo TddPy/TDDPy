@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "tdd.hpp"
+#include "wnode.hpp"
 #include "manage.hpp"
 
 using namespace std;
@@ -20,6 +21,33 @@ test(PyObject* self, PyObject* args) {
 	mng::print_resource_state();
 	return Py_BuildValue("");
 }
+
+
+/// <summary>
+/// return the current configuration in a dictionary
+/// </summary>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+static PyObject*
+get_config(PyObject* self, PyObject* args) {
+
+	int thread_num = wnode::iter_para::p_thread_pool->thread_num();
+	bool device_cuda = CUDAcpl::tensor_opt.device_opt() == c10::DeviceType::CUDA;
+	bool double_type = CUDAcpl::tensor_opt.dtype_opt() == c10::ScalarType::Double;
+	double eps = weight::EPS;
+	double gc_check_period = mng::garbage_check_period.load().count();
+	double vmem_limit_MB = mng::vmem_limit / 1024. / 1024.;
+
+	return Py_BuildValue("{sisbsbsdsdsd}",
+		"thread num", thread_num,
+		"device cuda", device_cuda,
+		"dtype double", double_type,
+		"EPS", eps,
+		"gc check period", gc_check_period,
+		"vmem limit", vmem_limit_MB);
+}
+
 
 
 /// <summary>
@@ -71,12 +99,12 @@ static PyObject*
 setting_update(PyObject* self, PyObject* args) {
 	int thread_num, device_cuda, double_type;
 	double new_eps, gc_check_period;
-	uint64_t vem_limit_MB;
-	if (!PyArg_ParseTuple(args, "iiiddK", &thread_num, &device_cuda, &double_type, &new_eps, &gc_check_period, &vem_limit_MB))
+	uint64_t vmem_limit_MB;
+	if (!PyArg_ParseTuple(args, "iiiddK", &thread_num, &device_cuda, &double_type, &new_eps, &gc_check_period, &vmem_limit_MB))
 		return NULL;
 
 	// note that the settings here are shared between scalar and tensor weight.
-	setting_update(thread_num, device_cuda, double_type, new_eps, gc_check_period, vem_limit_MB);
+	setting_update(thread_num, device_cuda, double_type, new_eps, gc_check_period, vmem_limit_MB);
 
 	return Py_BuildValue("");
 }
@@ -516,7 +544,8 @@ get_node_info(PyObject* self, PyObject* args) {
 
 static PyMethodDef ctdd_methods[] = {
 	{ "test", (PyCFunction)test, METH_VARARGS, "this method is for testing purpose" },
-
+	
+	{ "get_config", (PyCFunction)get_config, METH_VARARGS, "return the current configuration in a dictionary" },
 	{ "delete_tdd", (PyCFunction)delete_tdd<wcomplex>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "delete_tdd_T", (PyCFunction)delete_tdd<CUDAcpl::Tensor>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "clear_cache", (PyCFunction)clear_cache, METH_VARARGS, " clear all the caches." },

@@ -3,7 +3,7 @@ from typing import Any, NewType, Sequence, Union, Tuple, List
 import numpy as np
 import torch
 
-from .config import device,dtype
+from .config import Config
 
 CUDAcpl_Tensor = torch.Tensor
 
@@ -13,7 +13,7 @@ def _U_(p,*a):
     p : torch method
     *a : parameters for p
     '''
-    return p(*a,device = device,dtype = dtype)
+    return p(*a, device = Config.device, dtype = Config.dtype)
 
 def np2CUDAcpl(array: np.ndarray) -> CUDAcpl_Tensor:
     '''

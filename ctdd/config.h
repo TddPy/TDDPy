@@ -1,7 +1,5 @@
 #pragma once
 
-#include <chrono>
-
 typedef std::complex<double> wcomplex;
 
 const double DEFAULT_EPS = 3E-7;
@@ -14,7 +12,4 @@ const uint64_t DEFAULT_VMEM_LIMIT = 8 * 1024. * 1024. * 1024.;
 
 const double DEFAULT_MEM_CHECK_PERIOD = 0.5;
 
-
-//#define DECONSTRUCTOR_DEBUG
-
-#define RESOURCE_OUTPUT
+//#define RESOURCE_OUTPUT

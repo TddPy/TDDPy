@@ -1,12 +1,7 @@
 from . import main 
 from . import quantum_basic
 import torch
-from .config import device
-
-
-print()
-print('# DEVICE : ' + device)
-print()
+from .config import Config
 
 
 #the data type provided

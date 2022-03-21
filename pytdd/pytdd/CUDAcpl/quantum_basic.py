@@ -22,17 +22,25 @@ def Rz(theta: torch.Tensor) -> CUDAcpl_Tensor:
         _U_(torch.tensor,[[[1.,0.],[0.,0.]],[[0.,0.],[0.,0.]]]),0) 
     return a + b
 
-CZ: CUDAcpl_Tensor = _U_(torch.tensor,
+def CZ() -> CUDAcpl_Tensor():
+    return _U_(torch.tensor,
     [[[1.,0],[0,0],[0,0],[0,0]],\
     [[0,0],[1.,0.],[0,0],[0,0]],\
     [[0,0],[0,0],[1.,0],[0,0]],\
     [[0,0],[0,0],[0,0],[-1.,0]]])
 
 
-sigmax: CUDAcpl_Tensor = _U_(torch.tensor,[[[0,0],[1.,0]],[[1.,0],[0,0]]])
-sigmay: CUDAcpl_Tensor = _U_(torch.tensor,[[[0,0],[0,-1.]],[[0,1.],[0,0]]])
-sigmaz: CUDAcpl_Tensor = _U_(torch.tensor,[[[1.,0],[0,0]],[[0,0],[-1.,0]]])
-hadamard : CUDAcpl_Tensor = _U_(torch.tensor, [[[1.,0.],[1.,0.]],[[1.,0.],[-1.,0.]]])/2**0.5
+def sigmax() -> CUDAcpl_Tensor:
+    return _U_(torch.tensor,[[[0,0],[1.,0]],[[1.,0],[0,0]]])
+
+def sigmay() -> CUDAcpl_Tensor:
+    return _U_(torch.tensor,[[[0,0],[0,-1.]],[[0,1.],[0,0]]])
+
+def sigmaz() -> CUDAcpl_Tensor:
+    return _U_(torch.tensor,[[[1.,0],[0,0]],[[0,0],[-1.,0]]])
+
+def hadamard() -> CUDAcpl_Tensor:
+    return _U_(torch.tensor, [[[1.,0.],[1.,0.]],[[1.,0.],[-1.,0.]]])/2**0.5
 
 
 

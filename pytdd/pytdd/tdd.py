@@ -2,7 +2,9 @@
 from __future__ import annotations
 from typing import Any, Dict, Tuple, List, Union, Sequence;
 import numpy as np
-from . import CUDAcpl;
+import torch
+
+from . import CUDAcpl
 from .CUDAcpl import CUDAcpl_Tensor, CUDAcpl2np
 
 # the C++ package
@@ -10,6 +12,9 @@ from . import ctdd
 
 # the TDD index node
 from .node import Node
+
+# the global configuration
+from .global_method import GlobalVar
 
 # for tdd graphing
 from graphviz import Digraph
@@ -170,6 +175,13 @@ class TDD:
 
         # examination
         if (TDD.para_check):
+            # check dtype and device
+            if (tensor.dtype == torch.float64) != GlobalVar.current_config["dtype double"]:
+                raise Exception("The dtype of provided tensor does not match the current configurations.")
+            if (tensor.device == torch.device('cpu')) != (not GlobalVar.current_config["device cuda"]):
+                raise Exception("The device of provided tensor does not match the current configurations.")
+
+            # check shape and order
             data_shape = list(tensor.shape[parallel_i_num:-1])
             if len(data_shape) < parallel_i_num:
                 raise Exception("Parallel index number must not exceed the dimension of input tensor.")

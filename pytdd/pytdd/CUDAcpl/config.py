@@ -2,12 +2,21 @@ import torch
 
 
 #here you can control the device and dtype used by CUDAcpl (_U_, particularly)
-if torch.cuda.is_available():
-    device = 'cuda'
-else:
+
+class Config:
     device = 'cpu'
+    dtype = torch.float64
 
-device = 'cpu'
+    @staticmethod
+    def setting_update(device_cuda: bool, double_type: bool) -> None:
+        if device_cuda:
+            Config.device = 'cuda'
+        else:
+            Config.device = 'cpu'
 
-dtype = torch.float64
-torch.set_printoptions(precision=15)
+        if double_type:
+            Config.dtype = torch.float64
+        else:
+            Config.dtype = torch.float32
+
+#torch.set_printoptions(precision=15)

@@ -14,6 +14,7 @@ import pytdd_test
 pytdd.setting_update(4, False, True, 3e-7, 0.5, 8000)
 
 for i in range(10000):
+    print(pytdd.get_config())
     print()
     print(i)
     print()
@@ -36,8 +37,8 @@ for i in range(10000):
     pytdd_test.test1_H()
     
 
-    a = torch.rand(1000,2,2,2)
-    b = torch.rand(1000,2,2,2)
+    a = torch.rand(1000,2,2,2, dtype = torch.double)
+    b = torch.rand(1000,2,2,2, dtype = torch.double)
     tdd_a = pytdd.TDD.as_tensor(a)
     tdd_b = pytdd.TDD.as_tensor(b)
     res = pytdd.TDD.tensordot(tdd_a, tdd_b, [[1],[1]])
