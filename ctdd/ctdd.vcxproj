@@ -86,7 +86,7 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.pyd</TargetExt>
     <LibraryPath>D:\anaconda3\libs;D:\anaconda3\Lib\site-packages\torch\lib;$(libtorch)\lib;$(Boost)\stage\lib;$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)pytdd\pytdd\</OutDir>
+    <OutDir>$(SolutionDir)tddpy\tddpy\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Inner|Win32'">
     <ClCompile>

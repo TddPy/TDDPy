@@ -9,7 +9,7 @@ An introduction to TDD (Tensor Network Decision Diagram) can be found at:
 ```
 pip3 install tddpy
 ```
-
+The graphing methods in TddPy rely on the graphviz package, which cannot be installed automatically. Please [download here](http://graphviz.org/download/) and install it manually.
 ## Documentation
 
 To be written ...
