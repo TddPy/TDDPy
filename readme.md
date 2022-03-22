@@ -6,10 +6,14 @@ An introduction to TDD (Tensor Network Decision Diagram) can be found at:
 - [A Tensor Network based Decision Diagram for Representation of Quantum Circuits](https://arxiv.org/abs/2009.02618)
 
 ## Installation
+- Platform: Windows
+- Python  Version: Python 3.9
 ```
 pip3 install tddpy
 ```
 The graphing methods in TddPy rely on the graphviz package, which cannot be installed automatically. Please [download here](http://graphviz.org/download/) and install it manually.
+
+TddPy supports CUDA devices for calculation. To enable this ability, the NVIDIA CUDA Toolkit is needed, whose installation package can be [downloaded here](https://developer.nvidia.com/cuda-downloads).
 ## Documentation
 
 To be written ...
