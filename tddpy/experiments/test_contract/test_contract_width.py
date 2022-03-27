@@ -10,22 +10,23 @@ from qiskit import Aer, transpile
 import qiskit.quantum_info as qi
 from os import system
 
-import tdd
-from tdd import CUDAcpl
+import tddpy
+from tddpy import CUDAcpl
 
 import tdd_origin
-from tdd import CUDAcpl
 from tdd_origin import TDD, TN
 import tqdm
-
-import tddpy
 
 
 
 def random_quantum_u(width: int, depth: int) -> np.ndarray:
     circ = random_circuit(width, depth, max_operands=3, measure=False)
     op = qi.Operator(circ)
-    return op.data.reshape((2,)*width*2)
+    axes = []
+    for i in range(width):
+        axes.append(i)
+        axes.append(i+width)
+    return op.data.reshape((2,)*width*2).transpose(axes)
 
 #timing method
 def timing(method, count=1):
@@ -47,7 +48,7 @@ def PyTorch():
     result = CUDAcpl.CUDAcpl2np(CUDAcpl.tensordot(gates_1, gates_2, [indices1, indices2]))
 
 def TDD_original_construct_contract():
-    global result, gates_1_np, gates_2_np
+    global result, gates_1_np, gates_2_np, time_original_cont
     index_order = [str(i) for i in range(3*width)]
 
     TDD.Ini_TDD(index_order)
@@ -65,38 +66,13 @@ def TDD_original_construct_contract():
     ts2 = TN.Tensor(gates_2_np, var2)
 
     tn = TN.TensorNetwork([ts1,ts2])
-    result = tn.cont()
-
-
-def TDD_original_construct():
-    global gates_1_np, gates_2_np, tdd1
-    index_order = [str(i) for i in range(3*width)]
-
-    TDD.Ini_TDD(index_order)
-
-    var1 = []
-    var2 = []
-    for i in range(width):
-        var1.append(TN.Index(str(i*3)))
-        var1.append(TN.Index(str(i*3+1)))
-        var2.append(TN.Index(str(i*3+1)))
-        var2.append(TN.Index(str(i*3+2)))
-
-    
-    ts1 = TN.Tensor(gates_1_np, var1)
-    tdd1 = ts1.tdd()
-    ts2 = TN.Tensor(gates_2_np, var2)
-    tdd2 = ts2.tdd()
+    result, time_original_cont = tn.cont(None, True)
 
 
 def tddpy_construct():
     global tdd1,tdd2, gates_1, gates_2
-    index_order = []
-    for i in range(width):
-        index_order.append(i)
-        index_order.append(i+width)
-    tdd1 = tddpy.TDD.as_tensor(((gates_1,0,[]),None))
-    tdd2 = tddpy.TDD.as_tensor(((gates_2,0,[]),None))
+    tdd1 = tddpy.TDD.as_tensor((gates_1,0,[]))
+    tdd2 = tddpy.TDD.as_tensor((gates_2,0,[]))
 
 def tddpy_contract():
     global result
@@ -116,6 +92,8 @@ def tddpy_contract():
 
 if __name__ == "__main__":
 
+    tddpy.setting_update(4, False)
+
     width_max = 10
     depth = 5
 
@@ -123,7 +101,7 @@ if __name__ == "__main__":
         pfile.write("width, torch_time, size_tdd1, size_tdd2, time_ori_construct, time_ori_contract, size_res_ori, time_tddpy_construct, time_tddpy_contract, size_res_tddpy\n")
         while (True):
             for width in range(4, width_max+1):
-                system("pause")
+                #system("pause")
                 gates_1_np = random_quantum_u(width, depth)
                 gates_2_np = random_quantum_u(width, depth)
                 gates_1 = CUDAcpl.np2CUDAcpl(gates_1_np)
@@ -144,21 +122,16 @@ if __name__ == "__main__":
 
 
                 print('===================================================')
-                print('TDD original, construction:')
-                time_original_construct = timing(TDD_original_construct, 1)
-                print()
-                #tdd1.show('original_tdd1',real_label = True)
-
                 print('TDD original, construction and contraction:')
                 time_original_total = timing(TDD_original_construct_contract, 1)
-                print()
+                print(" cont time: ", time_original_cont)
                 #result.show('original_result')
                 size_result_original = result.size()
                 print("result tdd size: {}".format(size_result_original))
 
 
 
-                tddpy.reset()
+                tddpy.clear_cache()
 
                 print('===================================================')
                 print('tddpy, construction:')
@@ -177,12 +150,12 @@ if __name__ == "__main__":
                 print("result tdd size: {}".format(size_result_tddpy))
 
 
-                print("<<diff tddpy>> ")
-                print(np.max(result_pytorch - result.numpy()))
+                #print("<<diff tddpy>> ")
+                #print(np.max(result_pytorch - result.numpy()))
 
                 pfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n"
-                            .format(width, time_pytorch, size_tdd_1, size_tdd_2, time_original_construct, 
-                                    time_original_total - time_original_construct, size_result_original, time_tddpy_construct,
+                            .format(width, time_pytorch, size_tdd_1, size_tdd_2, time_original_total - time_original_cont,
+                                    time_original_cont, size_result_original, time_tddpy_construct,
                                     time_tddpy_contract, size_result_tddpy))
                 pfile.flush()
 

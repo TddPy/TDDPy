@@ -109,30 +109,24 @@ if __name__ == "__main__":
     count = 100
     depth = 3
 
-    do_pytorch = True
-    tddpy.setting_update(4, False, vmem_limit_MB=90000)
+    do_pytorch = False
+    tddpy.setting_update(4, True, vmem_limit_MB=90000)
 
     width = 4
-    '''
-    gates_1_np_core = random_quantum_u(width, depth)
-    gates_2_np_core = random_quantum_u(width, depth)
-    np.save('gate_1_np_core.npy', gates_1_np_core)
-    np.save('gate_2_np_core.npy', gates_2_np_core)
-    '''
     gates_1_np_core = np.load('gate_1_np_core.npy')
     gates_2_np_core = np.load('gate_2_np_core.npy')
 
-
-    with open("D:/r_d{}_count.csv".format(depth), "a") as pfile:
-        pfile.write("count, width, torch_time, size_tdd1, size_tdd2, time_tddpy_construct, time_tddpy_contract, time_tddpy_construct_T, time_tddpy_contract_T, size_res_tddpy\n")
+    with open("D:/r_d{}_count_CUDA.csv".format(depth), "a") as pfile:
+        pfile.write("count, width, torch_time, time_tddpy_construct_CUDA, time_tddpy_contract_CUDA\n")
         while (True):
             #system("pause")
-            #===================================
             gates_1_np = np.expand_dims(gates_1_np_core,0).repeat(count,0)
             gates_2_np = np.expand_dims(gates_2_np_core,0).repeat(count,0)
             gates_1 = CUDAcpl.np2CUDAcpl(gates_1_np)
             gates_2 = CUDAcpl.np2CUDAcpl(gates_2_np)
 
+
+            #===================================
             print("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n")
             print('width: {}, depth: {}, count: {}'.format(width, depth, count))
             print('input tensor shape: ', gates_1_np.shape)
@@ -147,37 +141,9 @@ if __name__ == "__main__":
 
                 tddpy.clear_cache()
             else:
-                time_pytorch = 0
+                time_pytorch = 0            
 
             
-            tddpy.clear_cache()
-            print('===================================================')
-            print('tddpy scalar weight single, construction:')
-            time_tddpy_construct = timing(tddpy_construct, 1) * count
-            print()
-            size_tdd_1 = tdd1.size()
-            size_tdd_2 = tdd2.size()
-
-            print('tddpy scalar weight single, contraction:')
-            time_tddpy_contract = timing(tddpy_contract, 1) * count
-            print()
-            print("tdd1 size: {}, tdd2 size: {}".format(size_tdd_1, size_tdd_2))
-            size_result_tddpy = result.size()
-            print("result tdd size: {}".format(size_result_tddpy))
-            
-
-
-            tddpy.clear_cache()
-            print('===================================================')
-            print('tddpy tensor weight, construction:')
-            time_tddpy_construct_T = timing(tddpy_construct_T, 1)
-            #tdd1.show()
-
-            print('tddpy tensor weight, contraction:')
-            time_tddpy_contract_T = timing(tddpy_contract_T, 1)
-            print("result tdd size: {}".format(result.size()))
-
-            '''
             tddpy.clear_cache()
             print('===================================================')
             print('tddpy tensor weight CUDA, construction:')
@@ -187,16 +153,15 @@ if __name__ == "__main__":
             print('tddpy tensor weight CUDA, contraction:')
             time_tddpy_contract_CUDA = timing(tddpy_contract_CUDA, 1)
             print("result tdd size: {}".format(result.size()))
-            '''
+            
 
             #print("<<diff tddpy>> ")
             #print(np.max(result_pytorch - result.numpy()))
 
-            pfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n"
-                        .format(count, width, time_pytorch, size_tdd_1, size_tdd_2,
-                                time_tddpy_construct, time_tddpy_contract,
-                                time_tddpy_construct_T, time_tddpy_contract_T,
-                                size_result_tddpy))
+            pfile.write("{}, {}, {}, {}, {}\n"
+                        .format(count, width, time_pytorch,
+                                time_tddpy_construct_CUDA, time_tddpy_contract_CUDA,
+                                ))
                 
             pfile.flush()
 

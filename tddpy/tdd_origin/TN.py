@@ -2,6 +2,7 @@ import numpy as np
 from .TDD import Index,get_tdd,get_identity_tdd,cont
 import networkx as nx
 from networkx.algorithms.approximation.treewidth import treewidth_min_degree,treewidth_min_fill_in
+import time
 
 common_tensor_table = dict()
 
@@ -26,7 +27,7 @@ class TensorNetwork:
 #             self.index_set=self.get_index_set()
 #         if len(data)>0 and len(index_2_node)==0:
 #             self.index_2_node=self.get_index_2_node()
-    def cont(self,optimizer=None):
+    def cont(self,optimizer=None, timing = False):
         tdd=get_identity_tdd()        
         if optimizer=='tree_decomposition':
             decom_tree,tree_width=get_tree_decomposition(self)
@@ -71,10 +72,17 @@ class TensorNetwork:
                 tdd=cont(tdd,temp_tdd)
             return tdd        
         
+        time_sum = 0
         for ts in self.tensors:
             temp_tdd=ts.tdd()
+            start = time.perf_counter()
             tdd=cont(tdd,temp_tdd)
-        return tdd
+            end = time.perf_counter()
+            time_sum += end - start
+        if timing:
+            return tdd, time_sum
+        else:
+            return tdd
 
     def get_index_set(self):
         for ts in self.tensors:

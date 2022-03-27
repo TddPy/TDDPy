@@ -242,7 +242,7 @@ namespace tdd {
 				m_wnode.get_node()->print();
 			}
 			else {
-				std::cout << ">node: " << nullptr << std::endl;
+				std::cout << ">node: " << "terminal" << std::endl;
 			}
 		}
 

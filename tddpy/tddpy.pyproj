@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{5f5efa84-b7f3-4cd6-afeb-60291febebb3}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>test.py</StartupFile>
+    <StartupFile>experiments\test_contract\test_contract _T_count.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -34,8 +34,7 @@
   <ItemGroup>
     <Compile Include="experiments\1D Heisenberg chain\ground_state.py" />
     <Compile Include="experiments\test_contract\test_contract _T_count.py" />
-    <Compile Include="experiments\test_contract\test_contract _T_width.py" />
-    <Compile Include="experiments\test_contract\test_contract.py" />
+    <Compile Include="experiments\test_contract\test_contract_width.py" />
     <Compile Include="experiments\test_order\test_order.py" />
     <Compile Include="readme_test.py" />
     <Compile Include="tddpy\abstract_coordinator.py" />
@@ -70,9 +69,6 @@
     <Folder Include="tests\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="experiments\test_contract\r_d2.csv" />
-    <Content Include="experiments\test_contract\r_d5.csv" />
-    <Content Include="experiments\test_contract\r_d5_c100.csv" />
     <Content Include="experiments\test_order\r_d2.csv" />
     <Content Include="experiments\test_order\r_d4.csv" />
     <Content Include="tddpy\ctdd.exp" />

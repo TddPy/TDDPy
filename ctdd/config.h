@@ -15,4 +15,5 @@ const double DEFAULT_MEM_CHECK_PERIOD = 0.5;
 // the info line num in /proc/{pid}/status file
 #define VMRSS_LINE 22
 
+//#define VMEM_SHUT_DOWN
 //#define RESOURCE_OUTPUT

@@ -450,7 +450,7 @@ namespace wnode {
 		auto found_in_cache = (p_find_res != cache::Global_Cache<W>::sum_cache.second.end());
 
 		if (found_in_cache) {
-			res = p_find_res->second.weightednode();
+			res = p_find_res->second.get_weightednode();
 			cache::Global_Cache<W>::sum_cache.first.unlock_shared();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			res.weight = weight::mul(res.weight, renorm_coef);
@@ -596,7 +596,7 @@ namespace wnode {
 		cache::Global_Cache<W>::trace_cache.first.lock_shared();
 		auto&& p_find_res = cache::Global_Cache<W>::trace_cache.second.find(key);
 		if (p_find_res != cache::Global_Cache<W>::trace_cache.second.end()) {
-			res = p_find_res->second.weightednode();
+			res = p_find_res->second.get_weightednode();
 			cache::Global_Cache<W>::trace_cache.first.unlock_shared();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			res.weight = weight::mul(res.weight, w_node.weight);
@@ -939,7 +939,7 @@ namespace wnode {
 		auto found_in_cache = (p_find_res != cache::Cont_Cache<W1, W2>::cont_cache.second.end());
 
 		if (found_in_cache) {
-			res = p_find_res->second.weightednode();
+			res = p_find_res->second.get_weightednode();
 			cache::Cont_Cache<W1, W2>::cont_cache.first.unlock_shared();
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			res.weight = weight::mul(res.weight, weight);

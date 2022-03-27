@@ -54,9 +54,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|ARM64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings" />
@@ -65,6 +69,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'">
     <TargetExt>.so</TargetExt>
+    <WSLPath>Ubuntu</WSLPath>
+    <IncludePath>/usr/libtorch/include/;/usr/libtorch/include/torch/csrc/api/include;/usr/include/;/usr/include/python3.9/;$(IncludePath)</IncludePath>
+    <LibraryPath>/usr/lib/x86_64-linux-gnu/;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
+    <WSLPath>Ubuntu</WSLPath>
+    <IncludePath>/usr/libtorch/include/;/usr/libtorch/include/torch/csrc/api/include;/usr/include/;/usr/include/python3.9/;$(IncludePath)</IncludePath>
+    <LibraryPath>/usr/lib/x86_64-linux-gnu/;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemGroup>
     <ClInclude Include="cache.hpp" />
@@ -80,7 +92,9 @@
     <ClInclude Include="wnode.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ctddmodule.cpp" />
+    <ClCompile Include="ctddmodule.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="CUDAcpl.cpp" />
     <ClCompile Include="main_test.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
@@ -91,12 +105,20 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'">
     <ClCompile>
       <PreprocessorDefinitions>__LINUX__;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libjitbackend_test.so;/usr/libtorch/lib/libc10d_cuda_test.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorchbind_test.so;/usr/libtorch/lib/libcaffe2_nvrtc.so;/usr/libtorch/lib/libtorch_cuda_cu.so;/usr/libtorch/lib/libtorch.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libbackend_with_compiler.so;/usr/libtorch/lib/libtorch_cuda_cpp.so;/usr/libtorch/lib/libtorch_global_deps.so;/usr/libtorch/lib/libc10.so;/usr/libtorch/lib/libtorch_cuda.so;/usr/libtorch/lib/libc10_cuda.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
     <ClCompile>
       <PreprocessorDefinitions>__LINUX__;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libjitbackend_test.so;/usr/libtorch/lib/libc10d_cuda_test.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorchbind_test.so;/usr/libtorch/lib/libcaffe2_nvrtc.so;/usr/libtorch/lib/libtorch_cuda_cu.so;/usr/libtorch/lib/libtorch.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libbackend_with_compiler.so;/usr/libtorch/lib/libtorch_cuda_cpp.so;/usr/libtorch/lib/libtorch_global_deps.so;/usr/libtorch/lib/libc10.so;/usr/libtorch/lib/libtorch_cuda.so;/usr/libtorch/lib/libc10_cuda.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

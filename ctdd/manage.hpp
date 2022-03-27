@@ -78,8 +78,10 @@ namespace mng {
 
 
 	extern uint64_t vmem_limit;
-
+	
+#ifdef __WIN__
 	extern HANDLE current_process;
+#endif
 
 	extern std::atomic<std::chrono::duration<double>> garbage_check_period;
 
@@ -108,7 +110,7 @@ namespace mng {
 		char file_name[64] = { 0 };
 		FILE* fd;
 		char line_buff[512] = { 0 };
-		std::sprintf(file_name, "/proc/%d/status", pid);
+		std::sprintf(file_name, "/proc/%d/status", getpid());
 
 		fd = fopen(file_name, "r");
 		if (nullptr == fd)
@@ -157,11 +159,13 @@ namespace mng {
 				// if memory consumption still exceeds the limit, then throw the exception
 				auto final_vem = get_vmem();
 				if (final_vem > vmem_limit) {
+#ifdef VMEM_SHUT_DOWN
 #ifdef RESOURCE_OUTPUT
 					std::cout << "memory consumption exceeds the limit after garbage collection, the calculation will be shut down" << std::endl;
 #endif
 					//throw std::exception("memory consumption exceeds the limit after garbage collection, the calculation will be shut down");
 					exit(-1);
+#endif
 				}
 
 			}

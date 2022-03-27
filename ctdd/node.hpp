@@ -57,7 +57,7 @@ namespace node {
 
 	public:
 
-		template <typename W>
+		template <typename T>
 		friend class weightednode;
 
 		/// <summary>
@@ -349,7 +349,7 @@ namespace node {
 			return Node<W>::is_garbage(node);
 		}
 
-		inline weightednode<W> weightednode() const noexcept {
+		inline weightednode<W> get_weightednode() const noexcept {
 			return node::weightednode<W>(W{ weight }, node);
 		}
 	};
