@@ -19,6 +19,7 @@ ctdd.exp
 ctdd.lib
 ctdd.pdb
 ctdd.pyd
+ctdd.so
 
 #experiments
 

@@ -1,2 +1,3 @@
 include ./tddpy/tddpy/ctdd.pyd
+include ./tddpy/tddpy/ctdd.so
 exclude ./tddpy/tdd_origin/*

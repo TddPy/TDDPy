@@ -72,6 +72,8 @@
     <WSLPath>Ubuntu</WSLPath>
     <IncludePath>/usr/libtorch/include/;/usr/libtorch/include/torch/csrc/api/include;/usr/include/;/usr/include/python3.9/;$(IncludePath)</IncludePath>
     <LibraryPath>/usr/lib/x86_64-linux-gnu/;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)tddpy\tddpy\</OutDir>
+    <TargetName>ctdd</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
     <WSLPath>Ubuntu</WSLPath>
@@ -108,7 +110,7 @@
       <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libjitbackend_test.so;/usr/libtorch/lib/libc10d_cuda_test.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorchbind_test.so;/usr/libtorch/lib/libcaffe2_nvrtc.so;/usr/libtorch/lib/libtorch_cuda_cu.so;/usr/libtorch/lib/libtorch.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libbackend_with_compiler.so;/usr/libtorch/lib/libtorch_cuda_cpp.so;/usr/libtorch/lib/libtorch_global_deps.so;/usr/libtorch/lib/libc10.so;/usr/libtorch/lib/libtorch_cuda.so;/usr/libtorch/lib/libc10_cuda.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libc10.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
@@ -117,7 +119,7 @@
       <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libjitbackend_test.so;/usr/libtorch/lib/libc10d_cuda_test.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorchbind_test.so;/usr/libtorch/lib/libcaffe2_nvrtc.so;/usr/libtorch/lib/libtorch_cuda_cu.so;/usr/libtorch/lib/libtorch.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libbackend_with_compiler.so;/usr/libtorch/lib/libtorch_cuda_cpp.so;/usr/libtorch/lib/libtorch_global_deps.so;/usr/libtorch/lib/libc10.so;/usr/libtorch/lib/libtorch_cuda.so;/usr/libtorch/lib/libc10_cuda.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libc10.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
