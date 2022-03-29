@@ -821,7 +821,7 @@ namespace wnode {
 	class iter_cont {
 	public:
 		/// <summary>
-		/// The sub-program to decide the iteration strategy for non-parallel and parallel methods, respectively
+		/// The sub-program to decide the iteration strategy for parallel methods
 		/// </summary>
 		/// <typeparam name="W1"></typeparam>
 		/// <typeparam name="W2"></typeparam>
@@ -870,9 +870,16 @@ namespace wnode {
 					//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 				}
 				else {
+					/*
+					iter_para::Para_Crd<W1, W2>::m.lock();
+					std::cout << "Thread ID: " << iter_para::p_thread_pool->get_thread_num(std::this_thread::get_id())
+						<< " choice: " << next_iter_index << " count: " << thread_count_min << std::endl;
+					iter_para::Para_Crd<W1, W2>::m.unlock();
+					*/
 					p_iter_state->state[next_iter_index].thread_count += 1;
 					p_iter_state->m.unlock();
 					//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 					auto res = func(next_iter_index);
 
 					//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

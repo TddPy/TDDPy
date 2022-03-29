@@ -18,8 +18,48 @@ void compare(const torch::Tensor& a, const torch::Tensor& b) {
 }
 
 int main() {
+	/*
+	int thread_count = 10;
 
-	setting_update(1, 0, 1, 1E-14);
+	ThreadPool pool(thread_count);
+
+	std::shared_mutex m;
+	int current = 0;
+
+	int count = 1000;
+
+	auto start_ = clock();
+
+	std::vector<std::future<void>> results(thread_count);
+
+	for (int i = 0; i < thread_count; i++) {
+		results[i] = pool.enqueue(
+			[&] {
+				m.lock();
+				while (current < count) {
+					current++;
+					m.unlock();
+					double temp = 0.3333;
+					for (int j = 0; j < 5000000; j++) {
+						temp = temp * temp + temp;
+					}
+					m.lock();
+				}
+				m.unlock();
+			}
+		);
+	}	
+	for (int i = 0; i < thread_count; i++) {
+		results[i].get();
+	}
+	auto end_ = clock();
+	cout << "total time: " << (double)(end_ - start_) / CLOCKS_PER_SEC << " s" << endl;
+
+	std::cout << current << std::endl;
+
+	return 0;
+	*/
+
 	
 	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
@@ -36,31 +76,23 @@ int main() {
 	auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 
 
-	setting_update(4, 0, 1, 1E-14);
-
+	setting_update(2);
+	int range = 3;
 	auto start = clock();
-	for (int i = 0; i < 10; i++) {
+	auto t1 = torch::rand({ range,range,range,range,range,range,range,range,2 }, CUDAcpl::tensor_opt);
+	auto t2 = torch::rand({ range,range,range,range,range,range,range,range,2 }, CUDAcpl::tensor_opt);
+	auto t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {});
+	auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
+	for (int i = 0; i < 1; i++) {
 		cout << "=================== " << i << " ===================" << endl;
-		
-		auto t1 = torch::rand({ 14,2,2,2 }, CUDAcpl::tensor_opt);
-		auto t2 = torch::rand({ 14,2,2,2 }, CUDAcpl::tensor_opt);
-
-		auto t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {});
-		auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
-		auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, { 1 }, { 1 }, {});
+		mng::clear_cache<wcomplex>();
+		auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, {1,2,3,5}, {0,2,1,4}, {});
 		//auto actual = tdd_res.CUDAcpl();
 
 	}
 	auto end = clock();
-	cout << "total time: " << (end - start) / CLOCKS_PER_SEC << " s" << endl;
+	cout << "total time: " << (double)(end - start) / CLOCKS_PER_SEC << " s" << endl;
 	
-
-	auto cx_tdd = TDD<wcomplex>::as_tensor(cz, 0, { 0,2,1,3 });
-	cache::pair_cmd cmd;
-	cmd.push_back({ 1, 2 });
-	auto res = cx_tdd.trace(cmd);
-	cout << res.CUDAcpl() << endl;
-
 	delete wnode::iter_para::p_thread_pool;
 	return 0;
 }

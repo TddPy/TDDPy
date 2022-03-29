@@ -20,6 +20,15 @@ public:
     int thread_num() const {
         return workers.size();
     }
+    int get_thread_num(std::thread::id id) const {
+        int i = 0;
+        for (; i < thread_id_ls.size(); i++) {
+            if (thread_id_ls[i] == id) {
+                return i;
+            }
+        }
+        return -1;
+    }
     ~ThreadPool();
 private:
     // need to keep track of threads so we can join them
@@ -31,6 +40,8 @@ private:
     std::mutex queue_mutex;
     std::condition_variable condition;
     bool stop;
+    std::vector< std::thread::id > thread_id_ls;
+    std::mutex thread_id_ls_mutex;
 };
  
 // the constructor just launches some amount of workers
@@ -41,6 +52,9 @@ inline ThreadPool::ThreadPool(size_t threads)
         workers.emplace_back(
             [this]
             {
+                thread_id_ls_mutex.lock();
+                thread_id_ls.push_back(std::this_thread::get_id());
+                thread_id_ls_mutex.unlock();
                 for(;;)
                 {
                     std::function<void()> task;

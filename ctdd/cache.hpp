@@ -397,7 +397,7 @@ namespace cache {
 		// first: the larger index to trace, seconde; the index value to select
 		pair_cmd a_waiting_ls;
 		pair_cmd b_waiting_ls;
-		// true: the next index is from A. false: the next index is from B.
+		// the remained new order designation for a and b
 		std::vector<int64_t> a_new_order;
 		std::vector<int64_t> b_new_order;
 
