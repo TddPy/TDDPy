@@ -77,6 +77,7 @@ namespace mng {
 	}
 
 
+
 	extern uint64_t vmem_limit;
 	
 #ifdef __WIN__
@@ -173,9 +174,17 @@ namespace mng {
 	}
 
 
-	inline void setting_update(int thread_num = DEFAULT_THREAD_NUM,
+	inline void reset(int thread_num = DEFAULT_THREAD_NUM,
 		bool device_cuda = false, bool double_type = true, double new_eps = DEFAULT_EPS,
 		double gc_check_period = DEFAULT_MEM_CHECK_PERIOD, uint64_t vmem_limit_MB = DEFAULT_VMEM_LIMIT / 1024. / 1024.) {
+
+		// reset the system first.
+		tdd::TDD<wcomplex>::reset();
+		clear_garbage<wcomplex>();
+		clear_cache<wcomplex>();
+		tdd::TDD<CUDAcpl::Tensor>::reset();
+		clear_garbage<CUDAcpl::Tensor>();
+		clear_cache<CUDAcpl::Tensor>();
 
 		vmem_limit = vmem_limit_MB * 1024. * 1024.;
 

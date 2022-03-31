@@ -92,7 +92,7 @@ def tddpy_contract():
 
 if __name__ == "__main__":
 
-    tddpy.setting_update(4, False)
+    tddpy.reset(4, False)
 
     width_max = 10
     depth = 5

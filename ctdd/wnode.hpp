@@ -121,14 +121,13 @@ namespace wnode {
 		}
 
 		// start to normalize the weights
-		W weig_max = get_normalizer(successors);
+		W weig_max{ get_normalizer(successors) };
 		if (weight::is_exact_zero(weig_max)) {
 			// in this case, all nodes in succesors should be the terminal node
 			return node::weightednode<W>{ std::move(weig_max), nullptr };
 		}
 
-		W reciprocal = weight::reciprocal_without_zero(weig_max);
-
+		W reciprocal{ weight::reciprocal_without_zero(weig_max) };
 		for (auto&& succ : successors) {
 			succ.weight = weight::mul(succ.weight, reciprocal);
 			// check whether the successor weight is zero, and redirect to terminal node if so

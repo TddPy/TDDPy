@@ -17,3 +17,5 @@ const double DEFAULT_MEM_CHECK_PERIOD = 0.5;
 
 //#define VMEM_SHUT_DOWN
 //#define RESOURCE_OUTPUT
+
+//#define NO_LOCK_TEST

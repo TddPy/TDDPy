@@ -110,7 +110,7 @@ if __name__ == "__main__":
     depth = 3
 
     do_pytorch = False
-    tddpy.setting_update(4, True, vmem_limit_MB=90000)
+    tddpy.reset(4, True, vmem_limit_MB=90000)
 
     width = 4
     gates_1_np_core = np.load('gate_1_np_core.npy')

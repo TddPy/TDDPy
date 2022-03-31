@@ -93,7 +93,7 @@ def tddpy_contract_CUDA():
 
 if __name__ == "__main__":
 
-    count = 1
+    count = 1000
 
 
     depth = 3
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         for thread in range(1,max_thread_num+1):
 
             tddpy.clear_cache()
-            tddpy.setting_update(thread, False, vmem_limit_MB=90000)
+            tddpy.reset(thread, False, vmem_limit_MB=90000)
 
             #system("pause")
             #===================================

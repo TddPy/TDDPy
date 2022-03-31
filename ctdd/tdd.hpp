@@ -156,6 +156,15 @@ namespace tdd {
 			return m_all_tdds;
 		}
 
+		/// <summary>
+		/// delete all the stored tdds.
+		/// </summary>
+		inline static void reset() {
+			for (auto&& item: m_all_tdds) {
+				item->m_wnode.set_node(nullptr);
+			}
+		}
+
 		TDD(TDD&& other) noexcept {
 			*this = std::move(other);
 
@@ -173,7 +182,6 @@ namespace tdd {
 			m_wnode = other.m_wnode;
 
 			m_all_tdds.insert(this);
-
 		}
 
 		~TDD() noexcept {

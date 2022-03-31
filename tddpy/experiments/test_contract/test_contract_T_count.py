@@ -84,9 +84,9 @@ def tddpy_contract_T():
     result = tddpy.TDD.tensordot(tdd1, tdd2, [indices1, indices2])
 
 def tddpy_construct_CUDA():
-    global tdd1,tdd2, gates_1, gates_2
-    tdd1 = tddpy.TDD.as_tensor((gates_1.to(dtype=torch.float64).cuda(),1,[]))
-    tdd2 = tddpy.TDD.as_tensor((gates_2.to(dtype=torch.float64).cuda(),1,[]))
+    global tdd1,tdd2, gates_1_np, gates_2_np
+    tdd1 = tddpy.TDD.as_tensor((gates_1_np,1,[]))
+    tdd2 = tddpy.TDD.as_tensor((gates_2_np,1,[]))
 
 def tddpy_contract_CUDA():
     global result
@@ -106,26 +106,29 @@ def tddpy_contract_CUDA():
 
 if __name__ == "__main__":
 
-    count = 100
-    depth = 3
+    count = 4
+    depth = 2
 
     do_pytorch = True
-    tddpy.setting_update(4, False, vmem_limit_MB=90000)
+    tddpy.reset(4, False, vmem_limit_MB=90000)
 
-    width = 4
-    '''
+    width = 2
+    
     gates_1_np_core = random_quantum_u(width, depth)
     gates_2_np_core = random_quantum_u(width, depth)
     np.save('gate_1_np_core.npy', gates_1_np_core)
     np.save('gate_2_np_core.npy', gates_2_np_core)
-    '''
-    gates_1_np_core = np.load('gate_1_np_core.npy')
-    gates_2_np_core = np.load('gate_2_np_core.npy')
+    
+    #gates_1_np_core = np.load('gate_1_np_core.npy')
+    #gates_2_np_core = np.load('gate_2_np_core.npy')
 
 
     with open("D:/r_d{}_count.csv".format(depth), "a") as pfile:
         pfile.write("count, width, torch_time, size_tdd1, size_tdd2, time_tddpy_construct, time_tddpy_contract, time_tddpy_construct_T, time_tddpy_contract_T, size_res_tddpy\n")
         while (True):
+
+            tddpy.reset(4, False, vmem_limit_MB=90000)
+
             #system("pause")
             #===================================
             gates_1_np = np.expand_dims(gates_1_np_core,0).repeat(count,0)
@@ -150,7 +153,6 @@ if __name__ == "__main__":
                 time_pytorch = 0
 
             
-            tddpy.clear_cache()
             print('===================================================')
             print('tddpy scalar weight single, construction:')
             time_tddpy_construct = timing(tddpy_construct, 1) * count
@@ -167,7 +169,6 @@ if __name__ == "__main__":
             
 
 
-            tddpy.clear_cache()
             print('===================================================')
             print('tddpy tensor weight, construction:')
             time_tddpy_construct_T = timing(tddpy_construct_T, 1)
@@ -177,17 +178,19 @@ if __name__ == "__main__":
             time_tddpy_contract_T = timing(tddpy_contract_T, 1)
             print("result tdd size: {}".format(result.size()))
 
-            '''
-            tddpy.clear_cache()
+            
+            tddpy.reset(4, True, vmem_limit_MB=90000)
+            tddpy.test()
             print('===================================================')
             print('tddpy tensor weight CUDA, construction:')
             time_tddpy_construct_CUDA = timing(tddpy_construct_CUDA, 1)
             #tdd1.show()
 
+            tddpy.test()
             print('tddpy tensor weight CUDA, contraction:')
             time_tddpy_contract_CUDA = timing(tddpy_contract_CUDA, 1)
             print("result tdd size: {}".format(result.size()))
-            '''
+            
 
             #print("<<diff tddpy>> ")
             #print(np.max(result_pytorch - result.numpy()))

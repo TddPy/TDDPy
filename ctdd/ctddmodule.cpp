@@ -90,13 +90,13 @@ clear_cache(PyObject* self, PyObject* args) {
 
 
 /// <summary>
-/// update the settings.
+/// reset the system and update the settings.
 /// </summary>
 /// <param name="self"></param>
 /// <param name="args"></param>
 /// <returns></returns>
 static PyObject*
-setting_update(PyObject* self, PyObject* args) {
+reset(PyObject* self, PyObject* args) {
 	int thread_num, device_cuda, double_type;
 	double new_eps, gc_check_period;
 	uint64_t vmem_limit_MB;
@@ -104,7 +104,7 @@ setting_update(PyObject* self, PyObject* args) {
 		return NULL;
 
 	// note that the settings here are shared between scalar and tensor weight.
-	setting_update(thread_num, device_cuda, double_type, new_eps, gc_check_period, vmem_limit_MB);
+	reset(thread_num, device_cuda, double_type, new_eps, gc_check_period, vmem_limit_MB);
 
 	return Py_BuildValue("");
 }
@@ -137,7 +137,6 @@ as_tensor(PyObject* self, PyObject* args)
 
 	//construct the tdd
 	auto&& p_res = new TDD<W>(TDD<W>::as_tensor(t, dim_parallel, storage_order));
-
 	// convert to long long
 	int64_t code = (int64_t)p_res;
 	return Py_BuildValue("L", code);
@@ -549,7 +548,7 @@ static PyMethodDef ctdd_methods[] = {
 	{ "delete_tdd", (PyCFunction)delete_tdd<wcomplex>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "delete_tdd_T", (PyCFunction)delete_tdd<CUDAcpl::Tensor>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "clear_cache", (PyCFunction)clear_cache, METH_VARARGS, " clear all the caches." },
-	{ "setting_update", (PyCFunction)setting_update, METH_VARARGS, " update the settings." },
+	{ "reset", (PyCFunction)reset, METH_VARARGS, " reset the system and update the settings." },
 	{ "as_tensor", (PyCFunction)as_tensor<wcomplex>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },
 	{ "as_tensor_T", (PyCFunction)as_tensor<CUDAcpl::Tensor>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },
 	{ "as_tensor_clone", (PyCFunction)as_tensor_clone<wcomplex>, METH_VARARGS, "Return the cloned tdd." },
@@ -595,6 +594,6 @@ static PyModuleDef ctdd = {
 
 PyMODINIT_FUNC PyInit_ctdd() {
 	get_current_process();
-	setting_update();
+	reset();
 	return PyModule_Create(&ctdd);
 }

@@ -166,7 +166,7 @@ The *Order coordinator* is an extra design above TDD, which provides the interfa
 ## Settings
 The run-time settings for tddpy package can be adjusted by the method
 ```Python
-tddpy.setting_update(thread_num, device_cuda, dtype_double, eps, gc_check_period, vmem_limit_MB)
+tddpy.reset(thread_num, device_cuda, dtype_double, eps, gc_check_period, vmem_limit_MB)
 ```
 It designates the thread number in parallelism, the device for tensor weight calculation, the float number type, the float comparison EPS and garbage collection settings.
 

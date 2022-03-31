@@ -9,10 +9,6 @@ import tddpy
 
 import tddpy_test
 
-#interface.reset()
-
-tddpy.setting_update(4, False, True, 3e-7, 0.5, 8000)
-
 for i in range(10000):
     print(tddpy.get_config())
     print()

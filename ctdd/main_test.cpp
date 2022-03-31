@@ -60,7 +60,8 @@ int main() {
 	return 0;
 	*/
 
-	
+	reset(4,true);
+
 	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 	auto&& hadamard = torch::tensor({ 1.,0.,1.,0.,1.,0.,-1.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 }) / sqrt(2);
@@ -76,23 +77,26 @@ int main() {
 	auto&& I = torch::tensor({ 1., 0., 0., 0., 0., 0., 1., 0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 
 
-	setting_update(2);
-	int range = 3;
-	auto start = clock();
-	auto t1 = torch::rand({ range,range,range,range,range,range,range,range,2 }, CUDAcpl::tensor_opt);
-	auto t2 = torch::rand({ range,range,range,range,range,range,range,range,2 }, CUDAcpl::tensor_opt);
-	auto t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {});
-	auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
-	for (int i = 0; i < 1; i++) {
-		cout << "=================== " << i << " ===================" << endl;
-		mng::clear_cache<wcomplex>();
-		auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, {1,2,3,5}, {0,2,1,4}, {});
-		//auto actual = tdd_res.CUDAcpl();
+	int range = 2;
+	int count = 1000;
+	auto t1 = torch::rand({ count, range,range,range,range,range,2 }, CUDAcpl::tensor_opt);
+	auto t2 = torch::rand({ count, range,range,range,range,range,2 }, CUDAcpl::tensor_opt);
+	auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
+	auto t2_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t2, 1, {});
+	for (int ti = 1; ti < 5; ti++) {
+		cout << "thread num: " << ti << endl;
+		reset(ti,true);
+		auto start = clock();
+		for (int i = 0; i < 1; i++) {
+			cout << "=================== " << i << " ===================" << endl;
+			mng::clear_cache<CUDAcpl::Tensor>();
+			auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, { 1,2 }, { 0,2 }, {});
+			//auto actual = tdd_res.CUDAcpl();
 
+		}
+		auto end = clock();
+		cout << "total time: " << (double)(end - start) / CLOCKS_PER_SEC << " s" << endl;
 	}
-	auto end = clock();
-	cout << "total time: " << (double)(end - start) / CLOCKS_PER_SEC << " s" << endl;
-	
 	delete wnode::iter_para::p_thread_pool;
 	return 0;
 }

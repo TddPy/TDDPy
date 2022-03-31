@@ -19,7 +19,7 @@ def compare(title, expected: CUDAcpl.CUDAcpl_Tensor,
     else:
         print(title+" passed, diff: ",max_diff)
 
-tddpy.setting_update(4, False, True, eps = 1E-14)
+tddpy.reset(4, False, True, eps = 1E-14)
 
 
 sx = CUDAcpl.np2CUDAcpl([[0., 0.5],[0.5, 0.]])
