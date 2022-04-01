@@ -576,8 +576,8 @@ namespace tdd {
 		}
 
 		// note that rearrangement does not need be processed.
-		auto&& res_wnode = wnode::contract<W1, W2>(a.m_wnode, b.m_wnode, para_shape_res,
-			a.m_inner_data_shape, b.m_inner_data_shape,
+		auto&& res_wnode = wnode::contract<W1, W2>(a.m_wnode, a.m_para_shape, b.m_wnode, b.m_para_shape,
+			para_shape_res,	a.m_inner_data_shape, b.m_inner_data_shape,
 			inner_indices_cmd, a_inner_order, b_inner_order, parallel_tensor);
 
 

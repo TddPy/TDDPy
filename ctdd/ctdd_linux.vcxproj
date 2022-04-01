@@ -1,6 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="build_debug|ARM">
+      <Configuration>build_debug</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="build_debug|ARM64">
+      <Configuration>build_debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="build_debug|x64">
+      <Configuration>build_debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="build_debug|x86">
+      <Configuration>build_debug</Configuration>
+      <Platform>x86</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="build|ARM">
       <Configuration>build</Configuration>
       <Platform>ARM</Platform>
@@ -48,7 +64,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|ARM'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|ARM'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x86'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|x86'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'" Label="Configuration">
@@ -56,7 +78,15 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>WSL2_1_0</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|x64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|ARM64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|ARM64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Inner|x64'">
@@ -68,6 +98,14 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'">
+    <TargetExt>.so</TargetExt>
+    <WSLPath>Ubuntu</WSLPath>
+    <IncludePath>/usr/libtorch/include/;/usr/libtorch/include/torch/csrc/api/include;/usr/include/;/usr/include/python3.9/;$(IncludePath)</IncludePath>
+    <LibraryPath>/usr/lib/x86_64-linux-gnu/;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)tddpy\tddpy\</OutDir>
+    <TargetName>ctdd</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|x64'">
     <TargetExt>.so</TargetExt>
     <WSLPath>Ubuntu</WSLPath>
     <IncludePath>/usr/libtorch/include/;/usr/libtorch/include/torch/csrc/api/include;/usr/include/;/usr/include/python3.9/;$(IncludePath)</IncludePath>
@@ -100,6 +138,7 @@
     <ClCompile Include="CUDAcpl.cpp" />
     <ClCompile Include="main_test.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build_debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="manage.cpp" />
     <ClCompile Include="tdd.cpp" />
@@ -108,6 +147,16 @@
     <ClCompile>
       <PreprocessorDefinitions>__LINUX__;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libc10.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>__LINUX__;DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libc10.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>

@@ -13,6 +13,7 @@ Debug/
 Release/
 Inner/
 build/
+build_debug/
 
 # the C++ ctdd package
 ctdd.exp

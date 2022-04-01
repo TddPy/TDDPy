@@ -116,6 +116,10 @@ namespace cache {
 
 
 
+	/// <summary>
+	/// The distinguishes of para_type is only necessary for terminal nodes, which will not be cached here.
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
 	template <class W>
 	struct CUDAcpl_table_key {
 		const node::Node<W>* p_node;
@@ -388,10 +392,13 @@ namespace cache {
 	// under extreame case this key is not secure, because the "data shape" information is not stored here.
 	// It is a potential flaw, but we can avoid it by using it only in quantum circuits.
 	// It is left for future, when quantum situation is devided from general situation.
+	// para_shape information is need if p_a or p_b is the terminal node.
 	template <class W1,class W2>
 	struct cont_key {
 		const node::Node<W1>* p_a;
+		std::vector<int64_t> para_shape_a;
 		const node::Node<W2>* p_b;
+		std::vector<int64_t> para_shape_b;
 		// first: the smaller index to trace, second: the larger index to trace
 		pair_cmd remained_ls;
 		// first: the larger index to trace, seconde; the index value to select
@@ -405,14 +412,23 @@ namespace cache {
 
 		//cont_key() {};
 
-		inline cont_key(const node::Node<W1>* _p_a, const node::Node<W2>* _p_b, const pair_cmd& _remained_ls, 
+		inline cont_key(
+			const node::Node<W1>* _p_a, const std::vector<int64_t>& _para_shape_a,
+			const node::Node<W2>* _p_b, const std::vector<int64_t>& _para_shape_b,
+			const pair_cmd& _remained_ls, 
 			const pair_cmd& _a_waiting_ls, const pair_cmd& _b_waiting_ls,
 			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b, bool _parallel_tensor) {
 
 			// in theory, we can further increase the reuseage of cont_cache, by eliminating the swaping freedom
 			// but it is time consuming and maybe not that worthy.
 			p_a = _p_a;
+			if (!p_a) {
+				para_shape_a = _para_shape_a;
+			}
 			p_b = _p_b;
+			if (!p_b) {
+				para_shape_b = _para_shape_b;
+			}
 			remained_ls = _remained_ls;
 			a_waiting_ls = _a_waiting_ls;
 			b_waiting_ls = _b_waiting_ls;
@@ -421,11 +437,20 @@ namespace cache {
 			parallel_tensor = _parallel_tensor;
 		}
 
-		inline cont_key(const node::Node<W1>* _p_a, const node::Node<W2>* _p_b, pair_cmd&& _remained_ls, 
+		inline cont_key(
+			const node::Node<W1>* _p_a, const std::vector<int64_t>& _para_shape_a,
+			const node::Node<W2>* _p_b, const std::vector<int64_t>& _para_shape_b,
+			pair_cmd&& _remained_ls,
 			pair_cmd&& _a_waiting_ls, pair_cmd&& _b_waiting_ls,
 			const std::vector<int64_t>& _a_new_order, int pos_a, const std::vector<int64_t>& _b_new_order, int pos_b, bool _parallel_tensor) noexcept {
 			p_a = _p_a;
+			if (!p_a) {
+				para_shape_a = _para_shape_a;
+			}
 			p_b = _p_b;
+			if (!p_b) {
+				para_shape_b = _para_shape_b;
+			}
 			remained_ls = std::move(_remained_ls);
 			a_waiting_ls = std::move(_a_waiting_ls);
 			b_waiting_ls = std::move(_b_waiting_ls);
@@ -436,7 +461,13 @@ namespace cache {
 
 		inline cont_key(const cont_key& other) noexcept {
 			p_a = other.p_a;
+			if (!p_a) {
+				para_shape_a = other.para_shape_a;
+			}
 			p_b = other.p_b;
+			if (!p_b) {
+				para_shape_b = other.para_shape_b;
+			}
 			remained_ls = other.remained_ls;
 			a_waiting_ls = other.a_waiting_ls;
 			b_waiting_ls = other.b_waiting_ls;
@@ -446,7 +477,9 @@ namespace cache {
 		}
 		inline cont_key& operator =(cont_key&& other) noexcept {
 			p_a = other.p_a;
+			para_shape_a = std::move(other.para_shape_a);
 			p_b = other.p_b;
+			para_shape_b = std::move(other.para_shape_b);
 			remained_ls = std::move(other.remained_ls);
 			a_waiting_ls = std::move(other.a_waiting_ls);
 			b_waiting_ls = std::move(other.b_waiting_ls);
@@ -459,7 +492,7 @@ namespace cache {
 
 	template <class W1, class W2>
 	inline bool operator == (const cont_key<W1, W2>& a, const cont_key<W1, W2>& b) noexcept {
-		return (a.p_a == b.p_a && a.p_b == b.p_b &&
+		return (a.p_a == b.p_a && a.para_shape_a == b.para_shape_a && a.p_b == b.p_b && a.para_shape_b == b.para_shape_b &&
 			a.remained_ls == b.remained_ls && a.a_waiting_ls == b.a_waiting_ls && a.b_waiting_ls == b.b_waiting_ls &&
 			a.a_new_order == b.a_new_order && a.b_new_order == b.b_new_order && a.parallel_tensor == b.parallel_tensor);
 	}
@@ -468,7 +501,13 @@ namespace cache {
 	inline std::size_t hash_value(const cont_key<W1, W2>& key) noexcept {
 		std::size_t seed = 0;
 		boost::hash_combine(seed, key.p_a);
+		for (const auto& item : key.para_shape_a) {
+			boost::hash_combine(seed, item);
+		}
 		boost::hash_combine(seed, key.p_b);
+		for (const auto& item : key.para_shape_b) {
+			boost::hash_combine(seed, item);
+		}
 		for (const auto& cmd : key.remained_ls) {
 			boost::hash_combine(seed, cmd.first);
 			boost::hash_combine(seed, cmd.second);
