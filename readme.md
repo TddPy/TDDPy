@@ -13,7 +13,16 @@ pip3 install tddpy
 ```
 The graphing methods in TddPy rely on the graphviz package, which cannot be installed automatically. Please [download here](http://graphviz.org/download/) and install it manually.
 
-TddPy supports CUDA devices for calculation. To enable this ability, the NVIDIA CUDA Toolkit is needed, whose installation package can be [downloaded here](https://developer.nvidia.com/cuda-downloads).
+TddPy supports CUDA devices for calculation. To enable this ability, follow the instructions after installing TddPy:
+-  The NVIDIA CUDA Toolkit is needed, whose installation package can be [downloaded here](https://developer.nvidia.com/cuda-downloads).
+-  Uninstall the original CPU version PyTorch with
+  ```
+  pip3 uninstall torch
+  ```
+- Install the corresponding CUDA version of PyTorch
+```
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+```
 ## Documentation
 
 To be written ...

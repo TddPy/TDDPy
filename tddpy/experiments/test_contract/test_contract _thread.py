@@ -55,12 +55,12 @@ def tddpy_contract():
         indices2.append(i*2)
     result = tddpy.TDD.tensordot(tdd1, tdd2, [indices1, indices2])
 
-def tddpy_construct_T():
+def tddpy_construct_CPU():
     global tdd1,tdd2, gates_1, gates_2
     tdd1 = tddpy.TDD.as_tensor((gates_1.to(dtype=torch.float64),1,[]))
     tdd2 = tddpy.TDD.as_tensor((gates_2.to(dtype=torch.float64),1,[]))
 
-def tddpy_contract_T():
+def tddpy_contract_CPU():
     global result
     indices1 =[]
     indices2 =[]
@@ -93,11 +93,13 @@ def tddpy_contract_CUDA():
 
 if __name__ == "__main__":
 
-    count = 1000
+    CUDA_started = False
+
+    count_ls = [1,10,100,1000,10000]
 
 
     depth = 3
-    width = 6
+    width = 4
     gates_1_np_core = random_quantum_u(width, depth)
     gates_2_np_core = random_quantum_u(width, depth)
     #np.save('gate_1_np_core.npy', gates_1_np_core)
@@ -107,70 +109,70 @@ if __name__ == "__main__":
 
     max_thread_num = 10
 
-    with open("D:/r_d{}_count.csv".format(depth), "a") as pfile:
-        pfile.write("count, width, thread_num, size_tdd1, size_tdd2, time_tddpy_construct, time_tddpy_contract\n")
-        for thread in range(1,max_thread_num+1):
+    vmem_limit = 90000
 
-            tddpy.clear_cache()
-            tddpy.reset(thread, False, vmem_limit_MB=90000)
+    with open("D:/r_d{}_thread.csv".format(depth), "a") as pfile:
+        pfile.write("count, width, thread_num, time_tddpy_construct, time_tddpy_contract, time_tddpy_construct_CPU, time_tddpy_contract_CPU, time_tddpy_construct_CUDA, time_tddpy_contract_CUDA\n")
+        for count in count_ls:
+            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            for thread in range(1,max_thread_num+1):
 
-            #system("pause")
-            #===================================
-            gates_1_np = np.expand_dims(gates_1_np_core,0).repeat(count,0)
-            gates_2_np = np.expand_dims(gates_2_np_core,0).repeat(count,0)
-            gates_1 = CUDAcpl.np2CUDAcpl(gates_1_np)
-            gates_2 = CUDAcpl.np2CUDAcpl(gates_2_np)
 
-            print("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n")
-            print('width: {}, depth: {}, count: {}, thread: {}'.format(width, depth, count, thread))
-            print('input tensor shape: ', gates_1_np.shape)
-            print()
+                #system("pause")
+
+                #===================================
+                tddpy.reset(thread, False, vmem_limit_MB=vmem_limit)
+                gates_1_np = np.expand_dims(gates_1_np_core,0).repeat(count,0)
+                gates_2_np = np.expand_dims(gates_2_np_core,0).repeat(count,0)
+                gates_1 = CUDAcpl.np2CUDAcpl(gates_1_np)
+                gates_2 = CUDAcpl.np2CUDAcpl(gates_2_np)
+
+                print("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n")
+                print('width: {}, depth: {}, count: {}, thread: {}'.format(width, depth, count, thread))
+                print('input tensor shape: ', gates_1_np.shape)
+                print()
 
             
-            print('===================================================')
-            print('tddpy scalar weight single, construction:')
-            time_tddpy_construct = timing(tddpy_construct, 1) * count
-            print()
-            size_tdd_1 = tdd1.size()
-            size_tdd_2 = tdd2.size()
+                print('===================================================')
+                print('tddpy scalar weight single, construction:')
+                time_tddpy_construct = timing(tddpy_construct, 1) * count
+                print()
 
-            print('tddpy scalar weight single, contraction:')
-            time_tddpy_contract = timing(tddpy_contract, 1) * count
-            print()
-            print("tdd1 size: {}, tdd2 size: {}".format(size_tdd_1, size_tdd_2))
-            size_result_tddpy = result.size()
-            print("result tdd size: {}".format(size_result_tddpy))
+                print('tddpy scalar weight single, contraction:')
+                time_tddpy_contract = timing(tddpy_contract, 1) * count
+                print()
             
 
-            '''
-            tddpy.clear_cache()
-            print('===================================================')
-            print('tddpy tensor weight, construction:')
-            time_tddpy_construct_T = timing(tddpy_construct_T, 1)
-            #tdd1.show()
-
-            print('tddpy tensor weight, contraction:')
-            time_tddpy_contract_T = timing(tddpy_contract_T, 1)
-            print("result tdd size: {}".format(result.size()))
-            '''
-
-            '''
-            tddpy.clear_cache()
-            print('===================================================')
-            print('tddpy tensor weight CUDA, construction:')
-            time_tddpy_construct_CUDA = timing(tddpy_construct_CUDA, 1)
-            #tdd1.show()
-
-            print('tddpy tensor weight CUDA, contraction:')
-            time_tddpy_contract_CUDA = timing(tddpy_contract_CUDA, 1)
-            print("result tdd size: {}".format(result.size()))
-            '''
-
-            #print("<<diff tddpy>> ")
-            #print(np.max(result_pytorch - result.numpy()))
-
-            pfile.write("{}, {}, {}, {}, {}, {}, {}\n"
-                        .format(count, width, thread, size_tdd_1, size_tdd_2,
-                                time_tddpy_construct, time_tddpy_contract))
                 
-            pfile.flush()
+                print('===================================================')
+                print('tddpy tensor weight CPU, construction:')
+                time_tddpy_construct_CPU = timing(tddpy_construct_CPU, 1)
+
+                print('tddpy tensor weight CPU, contraction:')
+                time_tddpy_contract_CPU = timing(tddpy_contract_CPU, 1)
+
+
+                tddpy.reset(thread, True, vmem_limit_MB=vmem_limit)
+                if not CUDA_started:
+                    print("starting CUDA...")
+                    tddpy_construct_CUDA()
+                    tddpy.reset(thread, True, vmem_limit_MB=vmem_limit)
+                    CUDA_started = True
+
+                print('===================================================')
+                print('tddpy tensor weight CUDA, construction:')
+                time_tddpy_construct_CUDA = timing(tddpy_construct_CUDA, 1)
+
+                print('tddpy tensor weight CUDA, contraction:')
+                time_tddpy_contract_CUDA = timing(tddpy_contract_CUDA, 1)
+
+                #print("<<diff tddpy>> ")
+                #print(np.max(result_pytorch - result.numpy()))
+
+                pfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}\n"
+                            .format(count, width, thread,
+                                    time_tddpy_construct, time_tddpy_contract,
+                                    time_tddpy_construct_CPU, time_tddpy_contract_CPU,
+                                    time_tddpy_construct_CUDA, time_tddpy_contract_CUDA))
+                
+                pfile.flush()
