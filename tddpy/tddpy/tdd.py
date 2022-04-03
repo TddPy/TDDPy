@@ -320,6 +320,10 @@ class TDD:
                         raise Exception('Elements in axes must not repeat for tensor a or b.')
                     repeat_a[axes[0][i]] = True
                     repeat_b[axes[1][i]] = True
+            # check whether the parallel dimensions match
+            if a.tensor_weight and b.tensor_weight and not parallel_tensor:
+                if a.parallel_shape != b.parallel_shape:
+                    raise Exception("The parallel shape of a and b must match for element-wise contraction.")
             if len(rearrangement) != 0:
                 num_i_a = 0
                 num_i_b = 0
