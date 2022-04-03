@@ -276,6 +276,24 @@ def test10():
 
     compare("test10", expected, actual)
 
+def test11():
+    '''
+    parallel weight tensor, not element-wise
+    '''
+    a = torch.rand((4,3,4,2), dtype = torch.double)
+    a_tdd = TDD.as_tensor((a,1,[]))
+    b = torch.rand((10,4,2), dtype = torch.double)
+    b_tdd = TDD.as_tensor((b,1,[]))
+    expected = CUDAcpl.einsum("abc,ij->aibcj", a, b)
+
+    res_tdd = TDD.tensordot(a_tdd, b_tdd, 0, [], True)
+    actual = res_tdd.CUDAcpl()
+
+    compare("test11", expected, actual)
+
+
+
+
 def test1_H():
     '''
     hybrid direct contraction

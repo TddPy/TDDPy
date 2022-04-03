@@ -25,6 +25,7 @@ for i in range(10000):
     tddpy_test.test8()
     tddpy_test.test9()
     tddpy_test.test10()
+    tddpy_test.test11()
 
     tddpy_test.test1_T()
     tddpy_test.test1_T2()

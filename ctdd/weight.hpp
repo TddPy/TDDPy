@@ -228,7 +228,7 @@ namespace weight {
 				auto res = weight.view(temp_shape);
 
 				for (int i = size - 1; i < para_shape_res.size(); i++) {
-					temp_shape[size - 1 + i] = para_shape_res[i];
+					temp_shape[i] = para_shape_res[i];
 				}
 				return res.expand(temp_shape);
 

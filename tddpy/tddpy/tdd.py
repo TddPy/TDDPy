@@ -337,8 +337,6 @@ class TDD:
         # examination done
 
 
-        parallel_tensor = 1 if parallel_tensor else 0
-
 
         if isinstance(axes, int):
             # conditioning on the weight version and iteration parallelism

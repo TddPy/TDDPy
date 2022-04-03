@@ -97,10 +97,11 @@ clear_cache(PyObject* self, PyObject* args) {
 /// <returns></returns>
 static PyObject*
 reset(PyObject* self, PyObject* args) {
-	int thread_num, device_cuda, double_type;
+	int thread_num;
+	bool device_cuda, double_type;
 	double new_eps, gc_check_period;
 	uint64_t vmem_limit_MB;
-	if (!PyArg_ParseTuple(args, "iiiddK", &thread_num, &device_cuda, &double_type, &new_eps, &gc_check_period, &vmem_limit_MB))
+	if (!PyArg_ParseTuple(args, "ibbddK", &thread_num, &device_cuda, &double_type, &new_eps, &gc_check_period, &vmem_limit_MB))
 		return NULL;
 
 	// note that the settings here are shared between scalar and tensor weight.
@@ -255,8 +256,8 @@ tensordot_num(PyObject* self, PyObject* args) {
 	int64_t code_a, code_b;
 	int dim;
 	PyObject* p_rearrangement_pyo;
-	int parallel_tensor;
-	if (!PyArg_ParseTuple(args, "LLiOi", &code_a, &code_b, &dim, &p_rearrangement_pyo, &parallel_tensor)) {
+	bool parallel_tensor;
+	if (!PyArg_ParseTuple(args, "LLiOb", &code_a, &code_b, &dim, &p_rearrangement_pyo, &parallel_tensor)) {
 		return NULL;
 	}
 	TDD<W1>* p_tdda = (TDD<W1>*)code_a;
@@ -286,8 +287,8 @@ static PyObject*
 tensordot_ls(PyObject* self, PyObject* args) {
 	int64_t code_a, code_b;
 	PyObject* p_i1_pyo, * p_i2_pyo, * p_rearrangement_pyo;
-	int parallel_tensor;
-	if (!PyArg_ParseTuple(args, "LLOOOi", &code_a, &code_b, &p_i1_pyo, &p_i2_pyo, &p_rearrangement_pyo, &parallel_tensor)) {
+	bool parallel_tensor;
+	if (!PyArg_ParseTuple(args, "LLOOOb", &code_a, &code_b, &p_i1_pyo, &p_i2_pyo, &p_rearrangement_pyo, &parallel_tensor)) {
 		return NULL;
 	}
 	TDD<W1>* p_tdda = (TDD<W1>*)code_a;
