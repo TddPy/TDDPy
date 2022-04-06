@@ -1,5 +1,5 @@
 from .tdd import TDD
-from .global_method import test, clear_cache, get_config, reset
+from .global_method import test, clear_garbage, clear_cache, get_config, reset
 from . import CUDAcpl
 
 # coordinators for tensor network

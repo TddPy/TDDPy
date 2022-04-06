@@ -1249,13 +1249,14 @@ namespace wnode {
 		for (int i = 0; i < iter_para::p_thread_pool->thread_num(); i++) {
 			results[i] = iter_para::p_thread_pool->enqueue(
 				[&] {
-					return contract_iterate<W1, W2>(
+					auto && res = contract_iterate<W1, W2>(
 						w_node_a.get_node(), para_shape_a,
 						w_node_b.get_node(), para_shape_b,
 						prepared_weight,
 						para_shape_res,
 						data_shape_a, data_shape_b, sorted_remained_ls, cache::pair_cmd(), cache::pair_cmd(),
 						a_new_order, b_new_order, parallel_tensor);
+					return res;
 				}
 			);
 		}

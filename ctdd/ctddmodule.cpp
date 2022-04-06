@@ -70,7 +70,17 @@ delete_tdd(PyObject* self, PyObject* args) {
 	return Py_BuildValue("");
 }
 
-
+/// <summary>
+/// clear the garbage only
+/// </summary>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+static PyObject*
+clear_garbage(PyObject* self, PyObject* args) {
+	clear_garbage();
+	return Py_BuildValue("");
+}
 
 /// <summary>
 ///  clear all the caches.
@@ -80,10 +90,8 @@ delete_tdd(PyObject* self, PyObject* args) {
 /// <returns></returns>
 static PyObject*
 clear_cache(PyObject* self, PyObject* args) {
-	clear_garbage<wcomplex>();
-	clear_garbage<CUDAcpl::Tensor>();
-	clear_cache<wcomplex>();
-	clear_cache<CUDAcpl::Tensor>();
+	clear_garbage();
+	clear_cache();
 	return Py_BuildValue("");
 }
 
@@ -548,6 +556,7 @@ static PyMethodDef ctdd_methods[] = {
 	{ "get_config", (PyCFunction)get_config, METH_VARARGS, "return the current configuration in a dictionary" },
 	{ "delete_tdd", (PyCFunction)delete_tdd<wcomplex>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
 	{ "delete_tdd_T", (PyCFunction)delete_tdd<CUDAcpl::Tensor>, METH_VARARGS, "delete the tdd passed in (garbage collection)" },
+	{ "clear_garbage", (PyCFunction)clear_garbage, METH_VARARGS, " clear the garbage only." },
 	{ "clear_cache", (PyCFunction)clear_cache, METH_VARARGS, " clear all the caches." },
 	{ "reset", (PyCFunction)reset, METH_VARARGS, " reset the system and update the settings." },
 	{ "as_tensor", (PyCFunction)as_tensor<wcomplex>, METH_VARARGS, "Take in the CUDAcpl tensor, transform to TDD and returns the pointer." },

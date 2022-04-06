@@ -10,6 +10,9 @@ def test() -> None:
     '''
     ctdd.test()
 
+def clear_garbage() -> None:
+    ctdd.clear_garbage()
+
 def clear_cache() -> None:
     ctdd.clear_cache()
 

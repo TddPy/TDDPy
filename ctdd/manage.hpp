@@ -43,37 +43,63 @@ namespace mng {
 		std::cout << std::endl;
 	}
 
-	template <typename W>
 	inline void clear_garbage() {
-		cache::clean_garbage(cache::Global_Cache<W>::sum_cache);
-		cache::clean_garbage(cache::Global_Cache<W>::trace_cache);
-		cache::clean_garbage(cache::Cont_Cache<W, wcomplex>::cont_cache);
-		cache::clean_garbage(cache::Cont_Cache<W, CUDAcpl::Tensor>::cont_cache);
-		node::Node<W>::clean_garbage();
+		cache::clean_garbage(cache::Global_Cache<wcomplex>::sum_cache);
+		cache::clean_garbage(cache::Global_Cache<wcomplex>::trace_cache);
+		cache::clean_garbage(cache::Cont_Cache<wcomplex, wcomplex>::cont_cache);
+		cache::clean_garbage(cache::Cont_Cache<wcomplex, CUDAcpl::Tensor>::cont_cache);
+		cache::clean_garbage(cache::Global_Cache<CUDAcpl::Tensor>::sum_cache);
+		cache::clean_garbage(cache::Global_Cache<CUDAcpl::Tensor>::trace_cache);
+		cache::clean_garbage(cache::Cont_Cache<CUDAcpl::Tensor, wcomplex>::cont_cache);
+		cache::clean_garbage(cache::Cont_Cache<CUDAcpl::Tensor, CUDAcpl::Tensor>::cont_cache);
+		node::Node<wcomplex>::clean_garbage();
+		node::Node<CUDAcpl::Tensor>::clean_garbage();
 	}
 
-	template <typename W>
 	inline void clear_cache() {
-		cache::Global_Cache<W>::CUDAcpl_cache.first.lock();
-		cache::Global_Cache<W>::CUDAcpl_cache.second.clear();
-		cache::Global_Cache<W>::CUDAcpl_cache.first.unlock();
+		// wcomplex
+		cache::Global_Cache<wcomplex>::CUDAcpl_cache.first.lock();
+		cache::Global_Cache<wcomplex>::CUDAcpl_cache.second.clear();
+		cache::Global_Cache<wcomplex>::CUDAcpl_cache.first.unlock();
 
-		cache::Global_Cache<W>::sum_cache.first.lock();
-		cache::Global_Cache<W>::sum_cache.second.clear();
-		cache::Global_Cache<W>::sum_cache.first.unlock();
+		cache::Global_Cache<wcomplex>::sum_cache.first.lock();
+		cache::Global_Cache<wcomplex>::sum_cache.second.clear();
+		cache::Global_Cache<wcomplex>::sum_cache.first.unlock();
 
 
-		cache::Global_Cache<W>::trace_cache.first.lock();
-		cache::Global_Cache<W>::trace_cache.second.clear();
-		cache::Global_Cache<W>::trace_cache.first.unlock();
+		cache::Global_Cache<wcomplex>::trace_cache.first.lock();
+		cache::Global_Cache<wcomplex>::trace_cache.second.clear();
+		cache::Global_Cache<wcomplex>::trace_cache.first.unlock();
 
-		cache::Cont_Cache<W, wcomplex>::cont_cache.first.lock();
-		cache::Cont_Cache<W, wcomplex>::cont_cache.second.clear();
-		cache::Cont_Cache<W, wcomplex>::cont_cache.first.unlock();
+		cache::Cont_Cache<wcomplex, wcomplex>::cont_cache.first.lock();
+		cache::Cont_Cache<wcomplex, wcomplex>::cont_cache.second.clear();
+		cache::Cont_Cache<wcomplex, wcomplex>::cont_cache.first.unlock();
 
-		cache::Cont_Cache<W, CUDAcpl::Tensor>::cont_cache.first.lock();
-		cache::Cont_Cache<W, CUDAcpl::Tensor>::cont_cache.second.clear();
-		cache::Cont_Cache<W, CUDAcpl::Tensor>::cont_cache.first.unlock();
+		cache::Cont_Cache<wcomplex, CUDAcpl::Tensor>::cont_cache.first.lock();
+		cache::Cont_Cache<wcomplex, CUDAcpl::Tensor>::cont_cache.second.clear();
+		cache::Cont_Cache<wcomplex, CUDAcpl::Tensor>::cont_cache.first.unlock();
+
+		// CUDAcpl::Tensor
+		cache::Global_Cache<CUDAcpl::Tensor>::CUDAcpl_cache.first.lock();
+		cache::Global_Cache<CUDAcpl::Tensor>::CUDAcpl_cache.second.clear();
+		cache::Global_Cache<CUDAcpl::Tensor>::CUDAcpl_cache.first.unlock();
+
+		cache::Global_Cache<CUDAcpl::Tensor>::sum_cache.first.lock();
+		cache::Global_Cache<CUDAcpl::Tensor>::sum_cache.second.clear();
+		cache::Global_Cache<CUDAcpl::Tensor>::sum_cache.first.unlock();
+
+
+		cache::Global_Cache<CUDAcpl::Tensor>::trace_cache.first.lock();
+		cache::Global_Cache<CUDAcpl::Tensor>::trace_cache.second.clear();
+		cache::Global_Cache<CUDAcpl::Tensor>::trace_cache.first.unlock();
+
+		cache::Cont_Cache<CUDAcpl::Tensor, wcomplex>::cont_cache.first.lock();
+		cache::Cont_Cache<CUDAcpl::Tensor, wcomplex>::cont_cache.second.clear();
+		cache::Cont_Cache<CUDAcpl::Tensor, wcomplex>::cont_cache.first.unlock();
+
+		cache::Cont_Cache<CUDAcpl::Tensor, CUDAcpl::Tensor>::cont_cache.first.lock();
+		cache::Cont_Cache<CUDAcpl::Tensor, CUDAcpl::Tensor>::cont_cache.second.clear();
+		cache::Cont_Cache<CUDAcpl::Tensor, CUDAcpl::Tensor>::cont_cache.first.unlock();
 	}
 
 
@@ -138,8 +164,7 @@ namespace mng {
 #ifdef RESOURCE_OUTPUT
 			std::cout << "cleaning garbage ...";
 #endif
-			clear_garbage<wcomplex>();
-			clear_garbage<CUDAcpl::Tensor>();
+			clear_garbage();
 #ifdef RESOURCE_OUTPUT
 			std::cout << " done." << std::endl;
 #endif
@@ -151,8 +176,7 @@ namespace mng {
 #ifdef RESOURCE_OUTPUT
 				std::cout << "cleaning cache ...";
 #endif
-				clear_cache<wcomplex>();
-				clear_cache<CUDAcpl::Tensor>();
+				clear_cache();
 #ifdef RESOURCE_OUTPUT
 				std::cout << " done." << std::endl;
 #endif
@@ -180,11 +204,9 @@ namespace mng {
 
 		// reset the system first.
 		tdd::TDD<wcomplex>::reset();
-		clear_garbage<wcomplex>();
-		clear_cache<wcomplex>();
 		tdd::TDD<CUDAcpl::Tensor>::reset();
-		clear_garbage<CUDAcpl::Tensor>();
-		clear_cache<CUDAcpl::Tensor>();
+		clear_garbage();
+		clear_cache();
 
 		vmem_limit = vmem_limit_MB * 1024. * 1024.;
 

@@ -281,6 +281,10 @@ namespace cache {
 			nweight2_code2 = std::move(other.nweight2_code2);
 			return *this;
 		}
+
+		inline bool is_garbage() const noexcept {
+			return node::Node<W>::is_garbage(p_node_1) || node::Node<W>::is_garbage(p_node_2);
+		}
 	};
 
 	template <class W>
@@ -362,6 +366,10 @@ namespace cache {
 			waiting_ls = std::move(other.waiting_ls);
 			return *this;
 		}
+
+		inline bool is_garbage() const noexcept {
+			return node::Node<W>::is_garbage(p_node);
+		}
 	};
 
 	template <class W>
@@ -387,7 +395,7 @@ namespace cache {
 	template <class W>
 	using trace_table = boost::unordered_map<trace_key<W>, node::wnode_cache<W>>;
 
-	
+
 	// the type for contract cache
 	// under extreame case this key is not secure, because the "data shape" information is not stored here.
 	// It is a potential flaw, but we can avoid it by using it only in quantum circuits.
@@ -488,6 +496,10 @@ namespace cache {
 			parallel_tensor = std::move(other.parallel_tensor);
 			return *this;
 		}
+
+		inline bool is_garbage() const noexcept {
+			return node::Node<W1>::is_garbage(p_a) || node::Node<W2>::is_garbage(p_b);
+		}
 	};
 
 	template <class W1, class W2>
@@ -539,7 +551,7 @@ namespace cache {
 	inline void clean_garbage(std::pair<std::shared_mutex, CACHE>& the_cache) {
 		the_cache.first.lock();
 		for (auto&& i = the_cache.second.begin(); i != the_cache.second.end();) {
-			if (i->second.is_garbage()) {
+			if (i->first.is_garbage() || i->second.is_garbage()) {
 				i = the_cache.second.erase(i);
 			}
 			else {
