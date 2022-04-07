@@ -17,6 +17,22 @@
       <Configuration>build_debug</Configuration>
       <Platform>x86</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="build_libtorch|ARM">
+      <Configuration>build_libtorch</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="build_libtorch|ARM64">
+      <Configuration>build_libtorch</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="build_libtorch|x64">
+      <Configuration>build_libtorch</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="build_libtorch|x86">
+      <Configuration>build_libtorch</Configuration>
+      <Platform>x86</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="build|ARM">
       <Configuration>build</Configuration>
       <Platform>ARM</Platform>
@@ -64,10 +80,16 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|ARM'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_libtorch|ARM'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|ARM'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x86'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_libtorch|x86'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|x86'" Label="Configuration">
@@ -78,12 +100,20 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>WSL2_1_0</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_libtorch|x64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|x64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>WSL2_1_0</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|ARM64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_libtorch|ARM64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|ARM64'" Label="Configuration">
@@ -100,7 +130,15 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build|x64'">
     <TargetExt>.so</TargetExt>
     <WSLPath>Ubuntu</WSLPath>
-    <IncludePath>/usr/libtorch/include/;/usr/libtorch/include/torch/csrc/api/include;/usr/include/;/usr/include/python3.9/;$(IncludePath)</IncludePath>
+    <IncludePath>/home/xuyingte/anaconda3/lib/python3.9/site-packages/torch/include/;/home/xuyingte/anaconda3/lib/python3.9/site-packages/torch/include/torch/csrc/api/include/;/usr/include/;/home/xuyingte/anaconda3/include/python3.9/;$(IncludePath)</IncludePath>
+    <LibraryPath>/usr/lib/x86_64-linux-gnu/;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)tddpy\tddpy\</OutDir>
+    <TargetName>ctdd</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='build_libtorch|x64'">
+    <TargetExt>.so</TargetExt>
+    <WSLPath>Ubuntu</WSLPath>
+    <IncludePath>/home/xuyingte/anaconda3/lib/python3.9/site-packages/torch/include/;/home/xuyingte/anaconda3/lib/python3.9/site-packages/torch/include/torch/csrc/api/include/;/usr/include/;/home/xuyingte/anaconda3/include/python3.9/;$(IncludePath)</IncludePath>
     <LibraryPath>/usr/lib/x86_64-linux-gnu/;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)tddpy\tddpy\</OutDir>
     <TargetName>ctdd</TargetName>
@@ -138,6 +176,7 @@
     <ClCompile Include="CUDAcpl.cpp" />
     <ClCompile Include="main_test.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build_libtorch|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='build_debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="manage.cpp" />
@@ -147,9 +186,21 @@
     <ClCompile>
       <PreprocessorDefinitions>__LINUX__;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++17</CppLanguageStandard>
+      <ExceptionHandling>Enabled</ExceptionHandling>
+      <AdditionalOptions>-D_GLIBCXX_USE_CXX11_ABI=0 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>/usr/lib/python3.9/config-3.9-x86_64-linux-gnu/libpython3.9.so;/usr/libtorch/lib/libtorch_python.so;/usr/libtorch/lib/libtorch_cpu.so;/usr/libtorch/lib/libc10.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>/home/xuyingte/anaconda3/lib/libpython3.9.so;/home/xuyingte/anaconda3/lib/python3.9/site-packages/torch/lib/libtorch_python.so;/home/xuyingte/anaconda3/lib/python3.9/site-packages/torch/lib/libtorch_cpu.so;/home/xuyingte/anaconda3/lib/python3.9/site-packages/torch/lib/libc10.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='build_libtorch|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>__LINUX__;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <ExceptionHandling>Enabled</ExceptionHandling>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>/home/xuyingte/anaconda3/lib/libpython3.9.so;/home/xuyingte/libtorch/lib/libtorch_python.so;/home/xuyingte/libtorch/lib/libtorch_cpu.so;/home/xuyingte/libtorch/lib/libc10.so;/usr/lib/x86_64-linux-gnu/libpthread.so;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='build_debug|x64'">
