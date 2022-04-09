@@ -103,11 +103,13 @@ def scale(s: int|float, tensor: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
     imag = tensor[...,0]*s.imag+tensor[...,1]*s.real
     return torch.stack((real, imag), dim=-1)    
 
-def e_i_theta(theta: torch.Tensor) -> CUDAcpl_Tensor:
+def e_i_theta(theta: torch.Tensor|np.ndarray) -> CUDAcpl_Tensor:
     '''
     theta: common tensor
     output: CUDA complex tensor
     '''
+    if isinstance(theta, np.ndarray):
+        theta = _U_(torch.tensor, theta)
     return torch.stack((torch.cos(theta),torch.sin(theta)),-1)
 
 def eye(n: int) -> CUDAcpl_Tensor:

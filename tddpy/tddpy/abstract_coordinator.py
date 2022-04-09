@@ -74,7 +74,11 @@ class AbstractCoordinator:
 			return WrappedTDD(TDD.as_tensor(wrapped_data.tensor), wrapped_data.crd_info)
 
 		# extract the order information
-		data, coordinator_info = wrapped_data
+		if isinstance(wrapped_data, tuple):
+			data, coordinator_info = wrapped_data
+		else:
+			data, coordinator_info = wrapped_data, None
+
 		coordinator_info = self.create_order_info(coordinator_info)
 
 		if isinstance(data, tuple):
@@ -116,3 +120,6 @@ class AbstractCoordinator:
 	def permute(self, wrapped_tdd: WrappedTDD, perm: Sequence[int]) -> WrappedTDD:
 		return WrappedTDD(TDD.permute(wrapped_tdd.tensor, perm), 
 							 self.permute_order_info(wrapped_tdd.crd_info, perm))
+
+	def conj(self, wrapped_tdd: WrappedTDD) -> WrappedTDD:
+		return WrappedTDD(TDD.conj(wrapped_tdd.tensor), wrapped_tdd.crd_info)

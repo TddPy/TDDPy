@@ -182,7 +182,7 @@ class TDD:
                 raise Exception("The device of provided tensor does not match the current configurations.")
 
             # check shape and order
-            data_shape = list(tensor.shape[parallel_i_num:-1])
+            data_shape = list(tensor.shape[:-1])
             if len(data_shape) < parallel_i_num:
                 raise Exception("Parallel index number must not exceed the dimension of input tensor.")
             if len(data_shape)!=len(storage_order) + parallel_i_num and len(storage_order)!=0:
