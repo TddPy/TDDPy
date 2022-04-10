@@ -95,7 +95,8 @@ def tensordot_para(a: CUDAcplTensor,b: CUDAcplTensor, dim: Any =2, parallel_tens
 
     if not parallel_tensor:
         res = einsum_sublist(a.tensor, [...]+sublist_a, b.tensor, [...]+sublist_b, [...]+sublist_res)
-        return CUDAcplTensor(res, a.para_index_num)
+        # take the maximum of para_index_num, because one para_index_num can possibly be 0
+        return CUDAcplTensor(res, max(a.para_index_num, b.para_index_num))
     else:
         #prepare the sublists for the parallel index
         sublist_a_p = list(range(current_i, current_i+len(a.para_shape)))
