@@ -4,8 +4,8 @@ import torch
 from torch._C import dtype
 from tddpy import TDD, CUDAcpl, GlobalOrderCoordinator
 
-def compare(title, expected: CUDAcpl.CUDAcpl_Tensor,
-            actual: CUDAcpl.CUDAcpl_Tensor):
+def compare(title, expected: CUDAcpl.CplTensor,
+            actual: CUDAcpl.CplTensor):
     max_diff = torch.max(abs(expected - actual))
 
     if ( max_diff > 1e-7):

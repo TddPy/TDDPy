@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from . import CUDAcpl
-from .CUDAcpl import CUDAcpl_Tensor, CUDAcpl2np
+from .CUDAcpl import CplTensor, CUDAcpl2np
 
 # the C++ package
 from . import ctdd
@@ -77,7 +77,7 @@ class TDD:
         else:
             return ctdd.get_tdd_size(self._pointer)
 
-    def CUDAcpl(self) -> CUDAcpl_Tensor:
+    def CUDAcpl(self) -> CplTensor:
         if self._tensor_weight:
             return ctdd.to_CUDAcpl_T(self._pointer)
         else:
@@ -138,7 +138,7 @@ class TDD:
 
     @staticmethod
     def as_tensor(data : TDD|
-                      CUDAcpl_Tensor|np.ndarray|Tuple[CUDAcpl_Tensor|np.ndarray, int, Sequence[int]]) -> TDD:
+                      CplTensor|np.ndarray|Tuple[CplTensor|np.ndarray, int, Sequence[int]]) -> TDD:
 
         '''
         construct the tdd tensor
@@ -151,7 +151,7 @@ class TDD:
                 1b. in the form of a tuple (data, index_shape, index_order)
                     <if index_shape == 0, then return a scalar weight TDD, else return a tensor weight TDD>
                 Note that if the input matrix is a torch tensor, 
-                        then it must be already in CUDAcpl_Tensor(CUDA complex) form.
+                        then it must be already in CplTensor(CUDA complex) form.
 
         '''
 
@@ -159,9 +159,9 @@ class TDD:
         if isinstance(data, TDD):
             # note the order information is also copied
             if data._tensor_weight:
-                return TDD(ctdd.as_tensor_clone_T(data.pointer), True);
+                return TDD(ctdd.as_tensor_clone_T(data.pointer), True)
             else:
-                return TDD(ctdd.as_tensor_clone(data.pointer), False);
+                return TDD(ctdd.as_tensor_clone(data.pointer), False)
 
         if isinstance(data,Tuple):
             tensor,parallel_i_num,storage_order = data
@@ -220,7 +220,7 @@ class TDD:
         return TDD(pointer, self.tensor_weight)
 
     @staticmethod
-    def mul(tensor: TDD, scalar: CUDAcpl_Tensor|complex) -> TDD:
+    def mul(tensor: TDD, scalar: CplTensor|complex) -> TDD:
         '''
             Return the tdd multiplied by the scalar (tensor).
             Note that the coordinator information will not be changed.
@@ -228,7 +228,7 @@ class TDD:
         if tensor._tensor_weight:
             if isinstance(scalar, complex):
                 pointer = ctdd.mul_TW(tensor.pointer, scalar)
-            elif isinstance (scalar, CUDAcpl_Tensor):
+            elif isinstance (scalar, CplTensor):
                 pointer = ctdd.mul_TT(tensor.pointer, scalar)
             else:
                 raise "The scalar must be a python complex or a CUDAcpl tensor."

@@ -1,13 +1,13 @@
 from . import main 
+from . import CUDAcpl_Tensor
 from . import quantum_circ
 import torch
 
 from .config import Config
-
 #the data type provided
-CUDAcpl_Tensor = main.CUDAcpl_Tensor
+CplTensor = main.CplTensor
 
-#the methods
+#the methods - CplTensor
 _U_ = main ._U_
 np2CUDAcpl = main .np2CUDAcpl
 CUDAcpl2np = main .CUDAcpl2np
@@ -28,3 +28,11 @@ ones = main.ones
 zeros = main.zeros
 
 conj = main.conj
+
+#完善CUDAcplTensor，验证原功能完整性，嵌入TN，并代入QNN中进行实验
+CUDAcplTensor = CUDAcpl_Tensor.CUDAcplTensor
+
+# the methods - CUDAcplTensor
+tensordot_para = CUDAcpl_Tensor.tensordot_para
+permute_para = CUDAcpl_Tensor.permute_para
+conj_para = CUDAcpl_Tensor.conj_para

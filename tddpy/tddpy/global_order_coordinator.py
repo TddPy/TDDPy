@@ -14,7 +14,11 @@ def order_squeezed(order: Sequence[int]) -> List[int]:
 	return res
 
 class GlobalOrderCoordinator(AbstractCoordinator):
-
+	'''
+	Note: the crd_info (coordinator information) stores the position of this tensor in tensor network, corresponding to the quantum circuit.
+	the global order consists of that of input edges, then output edges.
+	for example, for a 2-qubit gate, its crd_info can be [0,3,1,4]
+	'''
 	def __init__(self):
 		self.name = "Global Order Coordinator"
 

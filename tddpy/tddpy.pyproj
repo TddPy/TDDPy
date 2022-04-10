@@ -41,6 +41,9 @@
     <Compile Include="readme_test.py" />
     <Compile Include="tddpy\abstract_coordinator.py" />
     <Compile Include="tddpy\CUDAcpl\config.py" />
+    <Compile Include="tddpy\CUDAcpl\CUDAcpl_Tensor.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="tddpy\CUDAcpl\main.py" />
     <Compile Include="tddpy\CUDAcpl\quantum_circ.py" />
     <Compile Include="tddpy\CUDAcpl\__init__.py" />

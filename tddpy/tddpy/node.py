@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, Tuple, List, Union, Sequence;
 import numpy as np
 from . import CUDAcpl;
-from .CUDAcpl import CUDAcpl_Tensor, CUDAcpl2np
+from .CUDAcpl import CplTensor, CUDAcpl2np
 
 # the C++ package
 from . import ctdd

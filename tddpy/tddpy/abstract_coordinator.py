@@ -26,6 +26,9 @@ class WrappedTDD:
 	def info(self):
 		return self.tensor.info
 
+	def __str__(self):
+		return str((self.numpy(),self.crd_info))
+
 
 class AbstractCoordinator:
 
@@ -65,7 +68,7 @@ class AbstractCoordinator:
 
 	def as_tensor(self, wrapped_data : WrappedTDD|
 				  Tuple[
-					  CUDAcpl_Tensor|np.ndarray|Tuple[CUDAcpl_Tensor|np.ndarray, int, Sequence[int]],
+					  CplTensor|np.ndarray|Tuple[CplTensor|np.ndarray, int, Sequence[int]],
 					  Any
 				  ]) -> WrappedTDD:
 

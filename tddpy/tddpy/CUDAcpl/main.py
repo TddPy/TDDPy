@@ -5,7 +5,8 @@ import torch
 
 from .config import Config
 
-CUDAcpl_Tensor = torch.Tensor
+# indicate the complex tensors in the torch.Tensor form
+CplTensor = torch.Tensor
 
 def _U_(p,*a):
     '''
@@ -15,7 +16,7 @@ def _U_(p,*a):
     '''
     return p(*a, device = Config.device, dtype = Config.dtype)
 
-def np2CUDAcpl(array: np.ndarray) -> CUDAcpl_Tensor:
+def np2CUDAcpl(array: np.ndarray) -> CplTensor:
     '''
     transform the input array (numpy array) into the CUDA complex tensor (the form tailored for CUDA calculation)
     note: Here the complex item is stored with the extra dimension in the end.
@@ -24,24 +25,24 @@ def np2CUDAcpl(array: np.ndarray) -> CUDAcpl_Tensor:
     i = _U_(torch.tensor,np.imag(array))
     return torch.stack((r,i),dim=-1)
 
-def CUDAcpl2np(tensor: CUDAcpl_Tensor) -> np.ndarray:
+def CUDAcpl2np(tensor: CplTensor) -> np.ndarray:
     '''
     transform the input array (CUDA complex tensor) into the numpy array form
     '''
     return tensor[...,0].cpu().numpy() + 1j*tensor[...,1].cpu().numpy()
 
-def norm(tensor: CUDAcpl_Tensor) -> torch.Tensor:
+def norm(tensor: CplTensor) -> torch.Tensor:
     '''
     calculate the norm, return the tensor (not in CUDA cpl form)
     '''
     return torch.sqrt(tensor[...,0]**2+tensor[...,1]**2)
 
-def einsum1(equation: str, a: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+def einsum1(equation: str, a: CplTensor) -> CplTensor:
     real = torch.einsum(equation,a[...,0])
     imag = torch.einsum(equation,a[...,1])
     return torch.stack((real,imag),dim=-1)
 
-def einsum(equation: str, a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+def einsum(equation: str, a: CplTensor, b: CplTensor) -> CplTensor:
     '''
     einsum for CUDA complex tensors
     '''
@@ -51,7 +52,7 @@ def einsum(equation: str, a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tenso
             + torch.einsum(equation, a[..., 1], b[..., 0])
     return torch.stack((real, imag), dim=-1)
 
-def einsum3(equation: str, a: CUDAcpl_Tensor, b: CUDAcpl_Tensor, c: CUDAcpl_Tensor) ->CUDAcpl_Tensor:
+def einsum3(equation: str, a: CplTensor, b: CplTensor, c: CplTensor) ->CplTensor:
     '''
     einsum for CUDA complex tensors
     '''
@@ -65,8 +66,8 @@ def einsum3(equation: str, a: CUDAcpl_Tensor, b: CUDAcpl_Tensor, c: CUDAcpl_Tens
             - torch.einsum(equation, a[..., 1], b[..., 1], c[...,1])
     return torch.stack((real, imag), dim=-1)
 
-def einsum_sublist(a: CUDAcpl_Tensor, sublist_a: Sequence[int],
-                    b : CUDAcpl_Tensor, sublist_b: Sequence[int], output_list: Sequence[int]) -> CUDAcpl_Tensor:
+def einsum_sublist(a: CplTensor, sublist_a: Sequence[int],
+                    b : CplTensor, sublist_b: Sequence[int], output_list: Sequence[int]) -> CplTensor:
     '''
     einsum for CUDA complex tensors, in the sublist form.
     '''
@@ -76,7 +77,7 @@ def einsum_sublist(a: CUDAcpl_Tensor, sublist_a: Sequence[int],
             + torch.einsum(a[..., 1], sublist_a, b[..., 0], sublist_b, output_list)
     return torch.stack((real, imag), dim=-1)
 
-def mul_element_wise(a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+def mul_element_wise(a: CplTensor, b: CplTensor) -> CplTensor:
     '''
         return a * b (element wise)
     '''
@@ -84,7 +85,7 @@ def mul_element_wise(a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
     imag = a[...,0]*b[...,1] + a[...,1]*b[...,0]
     return torch.stack((real, imag), dim=-1)
 
-def div_element_wise(a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+def div_element_wise(a: CplTensor, b: CplTensor) -> CplTensor:
     '''
         reutrn a / b (element wise)
     '''
@@ -93,36 +94,36 @@ def div_element_wise(a: CUDAcpl_Tensor, b: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
     imag = (a[...,1]*b[...,0] - a[...,0]*b[...,1])/denominator
     return torch.stack((real,imag),dim=-1)
 
-def tensordot(a: CUDAcpl_Tensor,b: CUDAcpl_Tensor, dim: Any =2) -> CUDAcpl_Tensor:
+def tensordot(a: CplTensor,b: CplTensor, dim: Any =2) -> CplTensor:
     real = torch.tensordot(a[...,0],b[...,0],dim)-torch.tensordot(a[...,1],b[...,1],dim)
     imag = torch.tensordot(a[...,0],b[...,1],dim)+torch.tensordot(a[...,1],b[...,0],dim)
     return torch.stack((real, imag), dim=-1)    
 
-def scale(s: int|float, tensor: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+def scale(s: int|float, tensor: CplTensor) -> CplTensor:
     real = tensor[...,0]*s.real-tensor[...,1]*s.imag
     imag = tensor[...,0]*s.imag+tensor[...,1]*s.real
     return torch.stack((real, imag), dim=-1)    
 
-def e_i_theta(theta: torch.Tensor|np.ndarray) -> CUDAcpl_Tensor:
+def e_i_theta(theta: torch.Tensor|np.ndarray) -> CplTensor:
     '''
     theta: common tensor
     output: CUDA complex tensor
     '''
-    if isinstance(theta, np.ndarray):
+    if not isinstance(theta, torch.Tensor):
         theta = _U_(torch.tensor, theta)
     return torch.stack((torch.cos(theta),torch.sin(theta)),-1)
 
-def eye(n: int) -> CUDAcpl_Tensor:
+def eye(n: int) -> CplTensor:
     result = _U_(torch.eye,n)
     return torch.stack((result,torch.zeros_like(result)),dim=-1)
     
-def ones(shape: Sequence[int]) -> CUDAcpl_Tensor:
+def ones(shape: Sequence[int]) -> CplTensor:
     return torch.stack((_U_(torch.ones,shape),_U_(torch.zeros,shape)),-1)
 
-def zeros(shape: Sequence[int]) -> CUDAcpl_Tensor:
+def zeros(shape: Sequence[int]) -> CplTensor:
     return _U_(torch.zeros, tuple(shape)+(2,))
 
-def conj(tensor: CUDAcpl_Tensor) -> CUDAcpl_Tensor:
+def conj(tensor: CplTensor) -> CplTensor:
     return torch.stack((tensor[...,0],-tensor[...,1]),dim=-1)
 
 
