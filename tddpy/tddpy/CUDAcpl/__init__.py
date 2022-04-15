@@ -29,7 +29,6 @@ zeros = main.zeros
 
 conj = main.conj
 
-#完善CUDAcplTensor，验证原功能完整性，嵌入TN，并代入QNN中进行实验
 CUDAcplTensor = CUDAcpl_Tensor.CUDAcplTensor
 
 # the methods - CUDAcplTensor

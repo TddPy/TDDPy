@@ -75,8 +75,16 @@ class GlobalOrderCoordinator(AbstractCoordinator):
 		'''
 			The order after tensordot is determined by the standard order rearrangement of tensordot
 		'''
+
+		# define the None order information
 		if info_a == None or info_b == None:
 			return None
+
+		# define the [] order information
+		if info_a == []:
+			return info_b
+		if info_b == []:
+			return info_a
 
 		if isinstance(axes, int):
 			num = axes

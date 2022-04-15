@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TypeVar, List, Any, Sequence, Union
+import numpy as np
 from .tdd import TDD
 
 OrderInfo = TypeVar('OrderInfo')
@@ -18,6 +19,9 @@ class WrappedTDD:
 
 	def numpy(self):
 		return self.tensor.numpy()
+
+	def item(self) -> np.ndarray:
+		return self.numpy().reshape(())
 	
 	def size(self):
 		return self.tensor.size()

@@ -69,6 +69,9 @@ class CUDAcplTensor:
         transform the input array (CUDA complex tensor) into the numpy array form
         '''
         return self.tensor[...,0].cpu().numpy() + 1j*self.tensor[...,1].cpu().numpy()
+    
+    def item(self) -> np.ndarray:
+        return self.numpy().reshape(())
 
 def tensordot_para(a: CUDAcplTensor,b: CUDAcplTensor, dim: Any =2, parallel_tensor: bool = False) -> CUDAcplTensor:
 
