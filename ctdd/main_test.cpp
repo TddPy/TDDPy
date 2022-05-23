@@ -46,7 +46,7 @@ int main() {
 	auto start = clock();
 	for (int i = 0; i < 1; i++) {
 		cout << "=================== " << i << " ===================" << endl;
-		mng::clear_cache<CUDAcpl::Tensor>();
+		mng::clear_cache();
 		auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, { 1,2 }, { 0,2 }, {}, true);
 		//auto actual = tdd_res.CUDAcpl();
 

@@ -9,6 +9,20 @@ import tddpy
 
 import tddpy_test
 
+
+a = torch.rand((2,2), dtype = torch.double)
+
+tdd_a = tddpy.TDD.as_tensor(a)
+
+tdd_b = tddpy.TDD.tensordot(tdd_a, tdd_a, [[],[]])
+tdd_b = tddpy.TDD.tensordot(tdd_b, tdd_b, [[],[]])
+
+
+tdd_b.show(full_output = False)
+
+exit(0)
+
+
 for i in range(10000):
     print(tddpy.get_config())
     print()

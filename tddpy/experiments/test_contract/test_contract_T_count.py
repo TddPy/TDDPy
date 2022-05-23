@@ -41,16 +41,18 @@ def timing(method, count=1):
 
 def PyTorch():
     global result, gates_1, gates_2
-    indices1 =[]
-    indices2 =[]
+    sublist_1 = [0]
+    sublist_2 = [0]
+    sublist_res = [0]
     for i in range(width):
-        indices1.append(1+i*2+1)
-        indices2.append(1+i*2)
+        sublist_1.append(i*3+1)
+        sublist_1.append(i*3+2)
+        sublist_2.append(i*3+2)
+        sublist_2.append(i*3+3)
+        sublist_res.append(i*3+1)
+        sublist_res.append(i*3+3)
 
-    result = CUDAcpl.tensordot(gates_1, gates_2, [indices1, indices2])
-    axes = [0,width+1]+list(range(1,width+1))+list(range(width+2,2*width+2))+[len(result.shape)-1]
-    result = result.permute(tuple(axes))
-    result = CUDAcpl.CUDAcpl2np(CUDAcpl.einsum1("ii...->i...",result))
+    result = CUDAcpl.einsum_sublist(gates_1, sublist_1, gates_2, sublist_2, sublist_res)
 
 
 def tddpy_construct():
@@ -106,13 +108,13 @@ def tddpy_contract_CUDA():
 
 if __name__ == "__main__":
 
-    count = 4
-    depth = 2
+    count = 1
+    depth = 3
 
     do_pytorch = True
     tddpy.reset(4, False, vmem_limit_MB=90000)
 
-    width = 2
+    width = 4
     
     gates_1_np_core = random_quantum_u(width, depth)
     gates_2_np_core = random_quantum_u(width, depth)
@@ -124,16 +126,27 @@ if __name__ == "__main__":
 
 
     with open("D:/r_d{}_count.csv".format(depth), "a") as pfile:
-        pfile.write("count, width, torch_time, size_tdd1, size_tdd2, time_tddpy_construct, time_tddpy_contract, time_tddpy_construct_T, time_tddpy_contract_T, size_res_tddpy\n")
+        pfile.write("count, width, torch_time, size_tdd1, size_tdd2, time_tddpy_construct, time_tddpy_contract, time_tddpy_construct_T, time_tddpy_contract_T, time_torch_CUDA, time_tddpy_construct_CUDA, time_tddpy_contract_CUDA, size_res_tddpy\n")
         while (True):
 
             tddpy.reset(4, False, vmem_limit_MB=90000)
 
             #system("pause")
             #===================================
+            
             gates_1_np = np.expand_dims(gates_1_np_core,0).repeat(count,0)
             gates_2_np = np.expand_dims(gates_2_np_core,0).repeat(count,0)
+            '''
+            print("preparing gates...")
+            gates_1_np = np.expand_dims(gates_1_np_core.copy(), 0)
+            gates_2_np = np.expand_dims(gates_2_np_core.copy(), 0)
+            for i in range(1, count):
+                gates_1_np = np.concatenate((gates_1_np, np.expand_dims(gates_1_np_core.copy(), 0)), 0)
+                gates_2_np = np.concatenate((gates_2_np, np.expand_dims(gates_2_np_core.copy(), 0)), 0)
+            print("done.")
+            '''
             gates_1 = CUDAcpl.np2CUDAcpl(gates_1_np)
+            print(gates_1.shape)
             gates_2 = CUDAcpl.np2CUDAcpl(gates_2_np)
 
             print("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n")
@@ -180,13 +193,25 @@ if __name__ == "__main__":
 
             
             tddpy.reset(4, True, vmem_limit_MB=90000)
-            tddpy.test()
+            gates_1 = gates_1.cuda()
+            gates_2 = gates_2.cuda()
+            if do_pytorch:
+                print('===================================================')
+                print('PyTorch GPU:')
+                time_pytorch_GPU = timing(PyTorch,1)
+                result_pytorch = result
+
+                tddpy.clear_cache()
+            else:
+                time_pytorch_GPU = 0
+            gates_1 = gates_1.cpu()
+            gates_2 = gates_2.cpu()
+
             print('===================================================')
             print('tddpy tensor weight CUDA, construction:')
             time_tddpy_construct_CUDA = timing(tddpy_construct_CUDA, 1)
             #tdd1.show()
 
-            tddpy.test()
             print('tddpy tensor weight CUDA, contraction:')
             time_tddpy_contract_CUDA = timing(tddpy_contract_CUDA, 1)
             print("result tdd size: {}".format(result.size()))
@@ -195,10 +220,11 @@ if __name__ == "__main__":
             #print("<<diff tddpy>> ")
             #print(np.max(result_pytorch - result.numpy()))
 
-            pfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n"
+            pfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n"
                         .format(count, width, time_pytorch, size_tdd_1, size_tdd_2,
                                 time_tddpy_construct, time_tddpy_contract,
                                 time_tddpy_construct_T, time_tddpy_contract_T,
+                                time_pytorch_GPU, time_tddpy_construct_CUDA, time_tddpy_contract_CUDA,
                                 size_result_tddpy))
                 
             pfile.flush()

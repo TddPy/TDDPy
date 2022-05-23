@@ -35,7 +35,6 @@
     <Compile Include="experiments\1D Heisenberg chain\ground_state.py" />
     <Compile Include="experiments\test_contract\test_contract _thread.py" />
     <Compile Include="experiments\test_contract\test_contract_T_count.py" />
-    <Compile Include="experiments\test_contract\test_contract_T_count_CUDA.py" />
     <Compile Include="experiments\test_contract\test_contract_width.py" />
     <Compile Include="experiments\test_order\test_order.py" />
     <Compile Include="readme_test.py" />

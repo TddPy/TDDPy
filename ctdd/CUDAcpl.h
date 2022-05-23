@@ -5,7 +5,6 @@
 #pragma once
 #include <torch/script.h>
 #include <torch/torch.h>
-#include <torch/python.h>
 
 typedef std::complex<double> Complex;
 

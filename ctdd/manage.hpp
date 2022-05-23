@@ -114,7 +114,7 @@ namespace mng {
 
 	inline void get_current_process() {
 #ifdef __WIN__
-		current_process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, getpid());
+		current_process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, _getpid());
 #endif
 	}
 

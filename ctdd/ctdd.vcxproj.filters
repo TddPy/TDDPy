@@ -39,6 +39,9 @@
     <ClCompile Include="manage.cpp">
       <Filter>sources</Filter>
     </ClCompile>
+    <ClCompile Include="ctdd.cpp">
+      <Filter>interface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h">
@@ -73,6 +76,9 @@
     </ClInclude>
     <ClInclude Include="manage.hpp">
       <Filter>templates &amp; headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ctdd.h">
+      <Filter>interface</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
