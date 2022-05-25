@@ -15,6 +15,11 @@ namespace Ctdd {
 		mng::get_current_process();
 		mng::reset();
 	}
+
+	c10::TensorOptions get_TensorOption() {
+		return CUDAcpl::tensor_opt;
+	}
+
 	void test() {
 		mng::print_resource_state();
 	}
