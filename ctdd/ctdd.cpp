@@ -137,12 +137,13 @@ namespace Ctdd {
 		res.ref_count = p_node_->get_ref_count();
 
 		auto&& successors = p_node_->get_successors();
-		res.succ_weights = std::vector<wcomplex>{ (size_t)res.range };
-		res.succ_nodes = std::vector<void*>{ (size_t)res.range };
+		res.succ_weights.resize(res.range);
+		res.succ_nodes.resize(res.range);
 		for (int i = 0; i < res.range; i++) {
 			res.succ_weights[i] = successors[i].weight;
 			res.succ_nodes[i] = successors[i].get_node();
 		}
+		return res;
 	}
 
 
