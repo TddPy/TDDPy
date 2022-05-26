@@ -156,6 +156,14 @@ namespace Ctdd {
 	/// <returns></returns>
 	void* conj(void* p_tdd);
 
+
+	/// <summary>
+	/// Return the norm^2 tdd of the given tdd.
+	/// </summary>
+	/// <param name="p_tdd"></param>
+	/// <returns></returns>
+	void* norm(void* p_tdd);
+
 	/// <summary>
 	/// Return the tdd multiplied by the scalar.
 	/// </summary>
@@ -188,4 +196,19 @@ namespace Ctdd {
 	/// <param name=""></param>
 	/// <returns></returns>
 	long get_tdd_size(void* p_tdd);
+
+	struct NodeInfo {
+		int order;
+		int range;
+		int ref_count;
+		std::vector<wcomplex> succ_weights;
+		std::vector<void*> succ_nodes;
+	};
+
+	/// <summary>
+	/// Get the information of a node.
+	/// </summary>
+	/// <param name="p_node"></param>
+	/// <returns></returns>
+	NodeInfo get_node_info(void* p_node);
 }

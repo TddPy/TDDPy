@@ -251,6 +251,38 @@ trace(PyObject* self, PyObject* args) {
 	return Py_BuildValue("L", code_res);
 }
 
+/// <summary>
+/// return the sliced tdd.
+/// </summary>
+/// <typeparam name="W"></typeparam>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+template <class W>
+static PyObject*
+slice_tdd(PyObject* self, PyObject* args) {
+	int64_t code;
+	PyObject* p_i_pyo, * p_v_pyo;
+	if (!PyArg_ParseTuple(args, "LOO", &code, &p_i_pyo, &p_v_pyo)) {
+		return NULL;
+	}
+	TDD<W>* p_tdd = (TDD<W>*)code;
+
+	auto size = PyList_GET_SIZE(p_i_pyo);
+	std::vector<int64_t> i_ls(size);
+	std::vector<int64_t> v_ls(size);
+	for (int i = 0; i < size; i++) {
+		i_ls[i] = PyLong_AsLongLong(PyList_GetItem(p_i_pyo, i));
+		v_ls[i] = PyLong_AsLongLong(PyList_GetItem(p_v_pyo, i));
+	}
+
+	auto&& p_res = new TDD<W>(p_tdd->slice(i_ls, v_ls));
+
+	// convert to long long
+	int64_t code_res = (int64_t)p_res;
+	return Py_BuildValue("L", code_res);
+}
+
 
 /// <summary>
 /// Return the tensordot of two tdds. The index indication should be a number.
@@ -378,6 +410,30 @@ conj(PyObject* self, PyObject* args) {
 	int64_t res_code = (int64_t)p_res;
 	return Py_BuildValue("L", res_code);
 }
+
+/// <summary>
+/// return the tdd of norm^2 tensor, resulting from the given tdd
+/// </summary>
+/// <typeparam name="W"></typeparam>
+/// <param name="self"></param>
+/// <param name="args"></param>
+/// <returns></returns>
+template <class W>
+static PyObject*
+norm(PyObject* self, PyObject* args) {
+	int64_t code;
+	if (!PyArg_ParseTuple(args, "L", &code)) {
+		return NULL;
+	}
+	TDD<W>* p_tdd = (TDD<W>*)code;
+
+	auto&& p_res = new TDD<W>(p_tdd->norm());
+
+	// convert to long long
+	int64_t res_code = (int64_t)p_res;
+	return Py_BuildValue("L", res_code);
+}
+
 
 /// <summary>
 /// Return the tdd multiplied by the scalar.
@@ -569,6 +625,8 @@ static PyMethodDef ctdd_methods[] = {
 	{ "sum_T", (PyCFunction)sum<CUDAcpl::Tensor>, METH_VARARGS, "Return the sum of the two tdds." },
 	{ "trace", (PyCFunction)trace<wcomplex>, METH_VARARGS, "Trace the designated indices of the given tdd." },
 	{ "trace_T", (PyCFunction)trace<CUDAcpl::Tensor>, METH_VARARGS, "Trace the designated indices of the given tdd." },
+	{ "slice", (PyCFunction)slice_tdd<wcomplex>, METH_VARARGS, "return the sliced tdd." },
+	{ "slice_T", (PyCFunction)slice_tdd<CUDAcpl::Tensor>, METH_VARARGS, "return the sliced tdd." },
 	{ "tensordot_num_WW", (PyCFunction)tensordot_num<wcomplex, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
 	{ "tensordot_num_WT", (PyCFunction)tensordot_num<wcomplex, CUDAcpl::Tensor>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
 	{ "tensordot_num_TW", (PyCFunction)tensordot_num<CUDAcpl::Tensor, wcomplex>, METH_VARARGS, "Return the tensordot of two tdds. The index indication should be a number." },
@@ -581,6 +639,8 @@ static PyMethodDef ctdd_methods[] = {
 	{ "permute_T", (PyCFunction)permute<CUDAcpl::Tensor>, METH_VARARGS, "Return the permuted tdd." },
 	{ "conj", (PyCFunction)conj<wcomplex>, METH_VARARGS, "Return the conjugate of the tdd." },
 	{ "conj_T", (PyCFunction)conj<CUDAcpl::Tensor>, METH_VARARGS, "Return the conjugate of the tdd." },
+	{ "norm", (PyCFunction)norm<wcomplex>, METH_VARARGS, "return the tdd of norm^2 tensor, resulting from the given tdd" },
+	{ "norm_T", (PyCFunction)norm<CUDAcpl::Tensor>, METH_VARARGS, "return the tdd of norm^2 tensor, resulting from the given tdd" },
 	{ "mul_WW", (PyCFunction)mul__w<wcomplex>, METH_VARARGS, "Return the tdd multiplied by the scalar." },
 	{ "mul_TW", (PyCFunction)mul__w<CUDAcpl::Tensor>, METH_VARARGS, "Return the tdd multiplied by the scalar." },
 	{ "mul_TT", (PyCFunction)mul_tt, METH_VARARGS, "Return the tdd multiplied by the tensor (element wise)." },

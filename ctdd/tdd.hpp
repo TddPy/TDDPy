@@ -375,6 +375,35 @@ namespace tdd {
 			}
 		}
 
+		/// <summary>
+		/// return the sliced tdd. Slicing is specified with indices (vector) and corresponding index values.
+		/// </summary>
+		/// <param name="indices"></param>
+		/// <param name="values"></param>
+		/// <returns></returns>
+		TDD<W> slice(const std::vector<int64_t>& indices, const std::vector<int64_t>& values) const {
+			if (indices.empty()) {
+				return clone();
+			}
+			else {
+				std::vector<int64_t> inner_i_reduced(indices.size());
+				// transform to inner indices
+				cache::pair_cmd inner_indices_values(indices.size());
+				for (int i = 0; i < indices.size(); i++) {
+					inner_indices_values[i].first = m_inversed_order[indices[i]];
+					inner_i_reduced[i] = inner_indices_values[i].first;
+					inner_indices_values[i].second = values[i];
+				}
+
+				auto&& res_wnode = wnode::slice(m_wnode, m_para_shape, m_inner_data_shape, inner_indices_values, inner_i_reduced);
+
+				auto&& reduced_info = index_reduced_info(inner_i_reduced);
+
+				return TDD(std::move(res_wnode), std::vector<int64_t>(m_para_shape),
+					std::move(reduced_info.first), std::move(reduced_info.second));
+			}
+		}
+
 
 		/// <summary>
 		/// permute the order of indices, and return the view.
@@ -400,6 +429,17 @@ namespace tdd {
 		/// <returns></returns>
 		inline TDD<W> conj() const {
 			return TDD(wnode::conj(m_wnode),
+				std::vector<int64_t>(m_para_shape),
+				std::vector<int64_t>(m_data_shape),
+				std::vector<int64_t>(m_storage_order));
+		}
+
+		/// <summary>
+		/// return the norm^2 tensor of this tensor
+		/// </summary>
+		/// <returns></returns>
+		inline TDD<W> norm() const {
+			return TDD(wnode::norm(m_wnode),
 				std::vector<int64_t>(m_para_shape),
 				std::vector<int64_t>(m_data_shape),
 				std::vector<int64_t>(m_storage_order));

@@ -277,7 +277,7 @@ class TDD:
                 if repeat[axes[0][i]] or repeat[axes[1][i]]:
                     raise Exception('Elements in axes must not repeat.')
                 repeat[axes[0][i]] = True
-                repeat[axes[0][i]] = True
+                repeat[axes[1][i]] = True
         # examination done
 
         if self.tensor_weight:
@@ -287,6 +287,33 @@ class TDD:
 
         return TDD(pointer, self.tensor_weight)
 
+    def slice(self: TDD, indices: Sequence[int], values: Sequence[int]) -> TDD:
+        '''
+            slice the TDD at given indices.
+        '''
+
+        # examination
+        if TDD.para_check:
+            if len(indices) != len(values):
+                raise Exception("The indices given by parameter axes does not match.")
+            dim = len(self.shape)
+            repeat = [False]*dim
+            for i in range(len(indices)):
+                if indices[i] < 0 or indices[i] >= dim:
+                    raise Exception('Elements in axes must be integers from 0 to '+str(dim-1)+'.')
+                if repeat[indices[i]]:
+                    raise Exception('Elements in axes must not repeat.')
+                repeat[indices[i]] = True
+                if values[i] < 0 or values[i] >= self.shape[i]:
+                    raise Exception('Error: Index value.')
+        # examination done
+
+        if self.tensor_weight:
+            pointer = ctdd.slice_T(self.pointer, list(indices), list(values))
+        else:
+            pointer = ctdd.slice(self.pointer, list(indices), list(values))
+
+        return TDD(pointer, self.tensor_weight)
 
     @staticmethod
     def tensordot(a: TDD, b: TDD, 

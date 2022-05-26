@@ -103,6 +103,10 @@ namespace Ctdd {
 		return new TDD<wcomplex>(((TDD<wcomplex>*)p_tdd)->conj());
 	}
 
+	void* norm(void* p_tdd) {
+		return new TDD<wcomplex>(((TDD<wcomplex>*)p_tdd)->norm());
+	}
+
 	void* mul__w(void* p_tdd, wcomplex scalar) {
 		return new TDD<wcomplex>(tdd::operator*(*(TDD<wcomplex>*)p_tdd, scalar));
 	}
@@ -124,5 +128,22 @@ namespace Ctdd {
 	long get_tdd_size(void* p_tdd) {
 		return ((TDD<wcomplex>*)p_tdd)->size();
 	}
+
+	NodeInfo get_node_info(void* p_node) {
+		NodeInfo res;
+		auto p_node_ = (node::Node<wcomplex>*)p_node;
+		res.order = p_node_->get_order();
+		res.range = p_node_->get_range();
+		res.ref_count = p_node_->get_ref_count();
+
+		auto&& successors = p_node_->get_successors();
+		res.succ_weights = std::vector<wcomplex>{ (size_t)res.range };
+		res.succ_nodes = std::vector<void*>{ (size_t)res.range };
+		for (int i = 0; i < res.range; i++) {
+			res.succ_weights[i] = successors[i].weight;
+			res.succ_nodes[i] = successors[i].get_node();
+		}
+	}
+
 
 }

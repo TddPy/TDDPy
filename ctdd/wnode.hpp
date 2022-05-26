@@ -371,6 +371,38 @@ namespace wnode {
 
 	}
 
+
+	template <typename W>
+	node::weightednode<W> norm(const node::weightednode<W>& w_node) {
+		node::Node<W>* new_node;
+
+		if (w_node.get_node() == nullptr) {
+
+			if constexpr (std::is_same_v<W, wcomplex>) {
+				return node::weightednode<W>(std::norm(w_node.weight), nullptr);
+			}
+			else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+				return node::weightednode<W>(CUDAcpl::norm(w_node.weight), nullptr);
+			}
+		}
+		else {
+			auto&& successors = w_node.get_node()->get_successors();
+			std::vector<node::weightednode<W>> new_successors(successors.size());
+			for (int i = 0; i < successors.size(); i++) {
+				new_successors[i] = wnode::norm(successors[i]);
+			}
+
+			if constexpr (std::is_same_v<W, wcomplex>) {
+				return node::weightednode<W>::get_wnode(std::norm(w_node.weight),
+					w_node.get_node()->get_order(), std::move(new_successors));
+			}
+			else if constexpr (std::is_same_v<W, CUDAcpl::Tensor>) {
+				return node::weightednode<W>::get_wnode(CUDAcpl::norm(w_node.weight),
+					w_node.get_node()->get_order(), std::move(new_successors));
+			}
+		}
+	}
+
 	/// <summary>
 	/// Process the weights, and normalize them as a whole. Return (new_weights1, new_weights2, renorm_coef).
 	///	The strategy to produce the weights(for every individual element) :
@@ -736,6 +768,8 @@ namespace wnode {
 	}
 
 
+
+
 	/// <summary>
 	/// Trace the weighted node according to the specified data_indices. Return the reduced result.
 	///	e.g. ([a, b, c], [d, e, f]) means tracing indices a - d, b - e, c - f(of course two lists should be in the same size)
@@ -760,7 +794,6 @@ namespace wnode {
 				return (a.first < b.first);
 			});
 
-		auto&& num_pair = remained_ls.size();
 
 		////////////////////////////////
 		// prepare the new index order
@@ -772,6 +805,123 @@ namespace wnode {
 		return res;
 	}
 
+	/// <summary>
+	/// Note: here we adopt a local cache, because the same node will be operated in the same way during one slicing.
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
+	/// <param name="w_node"></param>
+	/// <param name="para_shape"></param>
+	/// <param name="data_shape"></param>
+	/// <param name="remained_ls"></param>
+	/// <param name="slice_cache"></param>
+	/// <returns></returns>
+	template <class W>
+	node::weightednode<W> slice_iterate(const node::weightednode<W>& w_node,
+		const std::vector<int64_t>& para_shape,
+		const std::vector<int64_t>& data_shape,
+		const cache::pair_cmd& remained_ls, boost::unordered_map<node::Node<W>*, node::weightednode<W>>& slice_cache,
+		const std::vector<int64_t>& new_order) {
+
+
+		if (w_node.get_node() == nullptr) {
+			return w_node;
+		}
+
+		// w_node.get_node() is not nullptr
+		auto order = w_node.get_node()->get_order();
+
+		// get the number of skipped depths, and cut the index value specifications
+		cache::pair_cmd remained_ls_pd;
+		if (!remained_ls.empty()) {
+			int cut_num = 0;
+			while (remained_ls[cut_num].first < order) {
+				cut_num++;
+				if (cut_num == remained_ls.size()) {
+					break;
+				}
+			}
+			remained_ls_pd = cache::pair_cmd{ remained_ls.begin() + cut_num, remained_ls.end() };
+		}
+
+		node::weightednode<W> res;
+
+		// look up in the cache
+		auto&& p_find_res = slice_cache.find(w_node.get_node());
+		if (p_find_res != slice_cache.end()) {
+			res = p_find_res->second;
+			res.weight = weight::mul(res.weight, w_node.weight);
+			return res;
+		}
+
+
+		// order <= remained_ls_pd[0].first
+		auto&& successors = w_node.get_node()->get_successors();
+
+		if (remained_ls_pd.empty()) {
+			std::vector<node::weightednode<W>> new_successors(successors.size());
+			for (int i = 0; i < successors.size(); i++) {
+				new_successors[i] = wnode::slice_iterate(successors[i], para_shape, data_shape, remained_ls_pd, slice_cache, new_order);
+			}
+			res = normalize<W>(weight::ones<W>(para_shape), new_order[order], std::move(new_successors));
+		}
+		else{
+			std::vector<node::weightednode<W>> new_successors(successors.size());
+			if (order < remained_ls_pd[0].first) {
+				for (int i = 0; i < successors.size(); i++) {
+					new_successors[i] = wnode::slice_iterate(successors[i], para_shape, data_shape, remained_ls_pd, slice_cache, new_order);
+				}
+				res = normalize<W>(weight::ones<W>(para_shape), new_order[order], std::move(new_successors));
+			}
+			else {
+				// prepare the new remained_ls
+				cache::pair_cmd new_remained_ls{ remained_ls_pd.begin() + 1, remained_ls_pd.end() };
+				res = wnode::slice_iterate(successors[remained_ls[0].second], para_shape, data_shape, new_remained_ls, slice_cache, new_order);
+			}
+		}
+
+
+
+		slice_cache[w_node.get_node()] = res;
+
+		res.weight = weight::mul(res.weight, w_node.weight);
+		return res;
+	}
+
+
+	/// <summary>
+	/// slice the weightednode according to the given indices and values
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
+	/// <param name="w_node"></param>
+	/// <param name="para_shape"></param>
+	/// <param name="data_shape"></param>
+	/// <param name="remained_ls"></param>
+	/// <returns></returns>
+	template <class W>
+	node::weightednode<W> slice(const node::weightednode<W>& w_node,
+		const std::vector<int64_t>& para_shape,
+		const std::vector<int64_t>& data_shape,
+		const cache::pair_cmd& remained_ls, const std::vector<int64_t> reduced_indices) {
+
+		// sort the remained_ls by first element
+		cache::pair_cmd sorted_remained_ls(remained_ls);
+
+		std::sort(sorted_remained_ls.begin(), sorted_remained_ls.end(),
+			[](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+				return (a.first < b.first);
+			});
+
+		////////////////////////////////
+		// prepare the new index order
+		auto&& new_order = get_new_order(data_shape.size() - 1, reduced_indices);
+		////////////////////////////////
+
+		boost::unordered_map<node::Node<W>*, node::weightednode<W>> slice_cache{};
+
+		auto&& res = slice_iterate(w_node, para_shape, data_shape, sorted_remained_ls, slice_cache, new_order);
+
+		return res;
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Iteration Parallelism for cont

@@ -38,21 +38,17 @@ int main() {
 
 	int range = 2;
 	int count = 10;
-	auto t1 = torch::rand({ count, range,range,range,range,range,2 }, CUDAcpl::tensor_opt);
+	auto t1 = torch::rand({ count, range, range, 2 }, CUDAcpl::tensor_opt);
 	auto t2 = torch::rand({ count*2, range,range,range,range,range,2 }, CUDAcpl::tensor_opt);
-	auto t1_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t1, 1, {});
-	auto t2_tdd = TDD<CUDAcpl::Tensor>::as_tensor(t2, 1, {});
+	auto t1_tdd = TDD<wcomplex>::as_tensor(t1, 0, {});
+	auto t2_tdd = TDD<wcomplex>::as_tensor(t2, 0, {});
 
-	auto start = clock();
-	for (int i = 0; i < 1; i++) {
-		cout << "=================== " << i << " ===================" << endl;
-		mng::clear_cache();
-		auto tdd_res = tdd::tensordot(t1_tdd, t2_tdd, { 1,2 }, { 0,2 }, {}, true);
-		//auto actual = tdd_res.CUDAcpl();
+	auto t1_indexed = t1.select(0, 0);
+	auto t1_indexed_direct = TDD<wcomplex>::as_tensor(t1_indexed, 0, {});
+	auto t1_indexed_tdd = t1_tdd.slice({ 0,1 }, { 0,1 });
 
-	}
-	auto end = clock();
-	cout << "total time: " << (double)(end - start) / CLOCKS_PER_SEC << " s" << endl;
+	std::cout << t1_indexed << endl;
+	std::cout << t1_indexed_tdd.CUDAcpl() << endl;
 
 	delete wnode::iter_para::p_thread_pool;
 	return 0;

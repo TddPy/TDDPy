@@ -14,6 +14,7 @@ Release/
 Inner/
 build/
 build_debug/
+build_lib/
 build_libtorch/
 
 # the C++ ctdd package
