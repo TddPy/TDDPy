@@ -301,7 +301,67 @@ namespace tdd {
 			return TDD(std::move(w_node), std::move(temp_para), std::move(temp_data), std::move(storage_order_pd));
 		}
 
+		/// <summary>
+		/// return a tensor of all elements zero, of given shape, stored in given storage order.
+		/// </summary>
+		/// <param name="parallel_shape"></param>
+		/// <param name="data_shape"></param>
+		/// <param name="storage_order"></param>
+		/// <returns></returns>
+		static TDD<W> zeros(const std::vector<int64_t>& parallel_shape,
+			const std::vector<int64_t>& data_shape, const std::vector<int64_t>& storage_order = {}) {
 
+			std::vector<int64_t> storage_order_pd;
+			if (storage_order.empty()) {
+				storage_order_pd.resize(data_shape.size());
+				for (int i = 0; i < data_shape.size(); i++) {
+					storage_order_pd[i] = i;
+				}
+			}
+			else {
+				storage_order_pd = storage_order;
+			}
+
+			return TDD(
+				node::weightednode<W>{
+				weight::zeros<W>(parallel_shape),
+					nullptr
+			},
+				std::vector<int64_t>(parallel_shape),
+					std::vector<int64_t>(data_shape),
+					std::move(storage_order_pd));
+		}
+
+		/// <summary>
+		/// return a tensor of all elements one, of given shape, stored in given storage order.
+		/// </summary>
+		/// <param name="parallel_shape"></param>
+		/// <param name="data_shape"></param>
+		/// <param name="storage_order"></param>
+		/// <returns></returns>
+		static TDD<W> ones(const std::vector<int64_t>& parallel_shape,
+			const std::vector<int64_t>& data_shape, const std::vector<int64_t>& storage_order = {}) {
+
+			std::vector<int64_t> storage_order_pd;
+			if (storage_order.empty()) {
+				storage_order_pd.resize(data_shape.size());
+				for (int i = 0; i < data_shape.size(); i++) {
+					storage_order_pd[i] = i;
+				}
+			}
+			else {
+				storage_order_pd = storage_order;
+			}
+
+			return TDD(
+				node::weightednode<W>{
+				weight::ones<W>(parallel_shape),
+					nullptr
+			},
+				std::vector<int64_t>(parallel_shape),
+					std::vector<int64_t>(data_shape),
+					std::move(storage_order_pd));
+		}
 
 		/// <summary>
 		/// Transform this tensor to a CUDA complex and return.
