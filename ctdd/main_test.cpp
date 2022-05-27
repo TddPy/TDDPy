@@ -21,11 +21,11 @@ int main() {
 
 	reset(1);
 
-	auto ones_tdd = TDD<wcomplex>::ones({}, { 2,3 }, {});
-	auto zeros_tdd = TDD<wcomplex>::zeros({}, { 2,3 }, {});
-	auto stacked_tdd = TDD<wcomplex>::stack({ ones_tdd, ones_tdd, zeros_tdd });
+	auto ones_tdd = TDD<wcomplex>::ones({}, { 2,2 }, {1,0});
+	auto zeros_tdd = TDD<wcomplex>::zeros({}, { 2,2 }, {});
+	auto adjusted_tdd = zeros_tdd.storage_calibration_clone(ones_tdd.storage_order());
 
-	std::cout << stacked_tdd.CUDAcpl() << std::endl;
+	std::cout << adjusted_tdd.CUDAcpl() << std::endl;
 
 	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });

@@ -263,6 +263,22 @@ namespace tdd {
 		}
 
 		/// <summary>
+		/// return a new tdd with the same inner data and the given storage order
+		/// </summary>
+		/// <returns></returns>
+		inline TDD<W> storage_calibration_clone(const std::vector<int64_t>& new_storage_order) const noexcept {
+			// decide the equivalent permutation operation
+			std::vector<int64_t> perm;
+			perm.resize(m_storage_order.size());
+
+			for (int i = 0; i < m_storage_order.size(); i++) {
+				perm[i] = m_inversed_order[new_storage_order[i]];
+			}
+
+			return permute(perm);
+		}
+
+		/// <summary>
 		/// Construct a tdd tensor with the given direct representation.
 		/// </summary>
 		/// <param name="t">The given direct representation of a tensor.</param>

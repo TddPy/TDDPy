@@ -56,13 +56,27 @@ namespace Ctdd {
 		mng::reset(thread_num, device_cuda, double_type, new_eps, gc_check_period, vmem_limit_MB);
 	}
 
-	void* as_tensor(Tensor tensor, int dim_parallel, std::vector<int64_t> storage_order) {
+	void* as_tensor(Tensor tensor, int dim_parallel, const std::vector<int64_t>& storage_order) {
 		return new TDD<wcomplex>(TDD<wcomplex>::as_tensor(tensor, dim_parallel, storage_order));
 	}
 
 	void* as_tensor_clone(void* p_tdd) {
 		return new TDD<wcomplex>(*(TDD<wcomplex>*)p_tdd);
 	}
+
+	void* storage_calibration_clone(void* p_tdd, const std::vector<int64_t>& new_storage_order) {
+		return new TDD<wcomplex>(((TDD<wcomplex>*)p_tdd)->storage_calibration_clone(new_storage_order));
+	}
+
+
+	void* zeros(const std::vector<int64_t>& data_shape, const std::vector<int64_t>& storage_order = {}) {
+		return new TDD<wcomplex>(TDD<wcomplex>::zeros({}, data_shape, storage_order));
+	}
+
+	void* ones(const std::vector<int64_t>& data_shape, const std::vector<int64_t>& storage_order = {}) {
+		return new TDD<wcomplex>(TDD<wcomplex>::ones({}, data_shape, storage_order));
+	}
+
 
 	Tensor to_CUDAcpl(void* p_tdd) {
 		return ((TDD<wcomplex>*)p_tdd)->CUDAcpl();
@@ -72,7 +86,7 @@ namespace Ctdd {
 		return new TDD<wcomplex>(tdd::TDD<wcomplex>::sum(*(TDD<wcomplex>*)p_tdda, *(TDD<wcomplex>*)p_tddb));
 	}
 
-	void* trace(void* p_tdd, std::vector<int64_t> indices1, std::vector<int64_t> indices2) {
+	void* trace(void* p_tdd, const std::vector<int64_t>& indices1, const std::vector<int64_t>& indices2) {
 		auto&& size = indices1.size();
 		std::vector<std::pair<int, int>> cmd(size);
 		for (int i = 0; i < size; i++) {
@@ -82,20 +96,29 @@ namespace Ctdd {
 		return new TDD<wcomplex>(((TDD<wcomplex>*)p_tdd)->trace(cmd));
 	}
 
+	void* stack(const std::vector<void*>& tdd_ls) {
+		std::vector<TDD<wcomplex>> inst_ls;;
+		for (int i = 0; i < tdd_ls.size(); i++) {
+			inst_ls.push_back(*((TDD<wcomplex>*)tdd_ls[i]));
+		}
+		return new TDD<wcomplex>(TDD<wcomplex>::stack(inst_ls));
+	}
+
+
 	void* tensordot_num(
 		void* p_tdda, void* p_tddb,
-		int dim, std::vector<int> rearrangement = {}, bool parallel_tensor = false) {
+		int dim, const std::vector<int>& rearrangement = {}, bool parallel_tensor = false) {
 		return new TDD<wcomplex>(tdd::tensordot_num<wcomplex, wcomplex>(*(TDD<wcomplex>*)p_tdda, *(TDD<wcomplex>*)p_tddb, dim, rearrangement, parallel_tensor));
 	}
 
 	void* tensordot_ls(
 		void* p_tdda, void* p_tddb,
-		std::vector<int64_t> ils_a, std::vector<int64_t> ils_b,
-		std::vector<int> rearrangement = {}, bool parallel_tensor = false) {
+		const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
+		const std::vector<int>& rearrangement = {}, bool parallel_tensor = false) {
 		return new TDD<wcomplex>(tdd::tensordot<wcomplex, wcomplex>(*(TDD<wcomplex>*)p_tdda, *(TDD<wcomplex>*)p_tddb, ils_a, ils_b, rearrangement, parallel_tensor));
 	}
 
-	void* permute(void* p_tdd, std::vector<int64_t> permutation) {
+	void* permute(void* p_tdd, const std::vector<int64_t>& permutation) {
 		return new TDD<wcomplex>(((TDD<wcomplex>*)p_tdd)->permute(permutation));
 	}
 

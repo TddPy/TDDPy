@@ -83,7 +83,7 @@ namespace Ctdd {
 	/// <param name="dim_parallel"></param>
 	/// <param name="storage_order"></param>
 	/// <returns></returns>
-	void* as_tensor(Tensor tensor, int dim_parallel, std::vector<int64_t> storage_order);
+	void* as_tensor(Tensor tensor, int dim_parallel, const std::vector<int64_t>& storage_order);
 
 	/// <summary>
 	/// Return the cloned tdd.
@@ -91,6 +91,30 @@ namespace Ctdd {
 	/// <param name="p_tdd"></param>
 	/// <returns></returns>
 	void* as_tensor_clone(void* p_tdd);
+
+	/// <summary>
+	/// return a new tdd with the same inner data and the given storage order
+	/// </summary>
+	/// <param name="p_tdd"></param>
+	/// <param name="new_storage_order"></param>
+	/// <returns></returns>
+	void* storage_calibration_clone(void* p_tdd, const std::vector<int64_t>& new_storage_order);
+
+	/// <summary>
+	/// return the zero tdd of given shape and storage order
+	/// </summary>
+	/// <param name="data_shape"></param>
+	/// <param name="storage_order"></param>
+	/// <returns></returns>
+	void* zeros(const std::vector<int64_t>& data_shape, const std::vector<int64_t>& storage_order);
+
+	/// <summary>
+	/// return the ones tdd of given shape and storage order
+	/// </summary>
+	/// <param name="data_shape"></param>
+	/// <param name="storage_order"></param>
+	/// <returns></returns>
+	void* ones(const std::vector<int64_t>& data_shape, const std::vector<int64_t>& storage_order);
 
 	/// <summary>
 	/// Return the python torch tensor of the given tdd.
@@ -111,7 +135,15 @@ namespace Ctdd {
 	/// <param name="indices1"></param>
 	/// <param name="indices2"></param>
 	/// <returns></returns>
-	void* trace(void* p_tdd, std::vector<int64_t> indices1, std::vector<int64_t> indices2);
+	void* trace(void* p_tdd, const std::vector<int64_t>& indices1, const std::vector<int64_t>& indices2);
+
+
+	/// <summary>
+	/// stack all the TDDs in the list, and create an extra index at the front.
+	/// </summary>
+	/// <param name="tdd_ls"></param>
+	/// <returns></returns>
+	void* stack(const std::vector<void*>& tdd_ls);
 
 	/// <summary>
 	/// Return the tensordot of two tdds. The index indication should be a number.
@@ -124,7 +156,7 @@ namespace Ctdd {
 	/// <returns></returns>
 	void* tensordot_num(
 		void* p_tdda, void* p_tddb,
-		int dim, std::vector<int> rearrangement, bool parallel_tensor);
+		int dim, const std::vector<int>& rearrangement, bool parallel_tensor);
 
 	/// <summary>
 	/// Return the tensordot of two tdds. The index indication should be two index lists.
@@ -138,8 +170,8 @@ namespace Ctdd {
 	/// <returns></returns>
 	void* tensordot_ls(
 		void* p_tdda, void* p_tddb,
-		std::vector<int64_t> ils_a, std::vector<int64_t> ils_b,
-		std::vector<int> rearrangement, bool parallel_tensor);
+		const std::vector<int64_t>& ils_a, const std::vector<int64_t>& ils_b,
+		const std::vector<int>& rearrangement, bool parallel_tensor);
 
 	/// <summary>
 	/// return the permuted tdd.
@@ -147,7 +179,7 @@ namespace Ctdd {
 	/// <param name="p_tdd"></param>
 	/// <param name="permutation"></param>
 	/// <returns></returns>
-	void* permute(void* p_tdd, std::vector<int64_t> permutation);
+	void* permute(void* p_tdd, const std::vector<int64_t>& permutation);
 
 	/// <summary>
 	/// Return the conjugate of the tdd.
