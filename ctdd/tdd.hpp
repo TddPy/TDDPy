@@ -463,7 +463,35 @@ namespace tdd {
 					std::move(reduced_info.first), std::move(reduced_info.second));
 			}
 		}
+		
+		/// <summary>
+		/// stack all the TDDs in the list, and create an extra index at the front.
+		/// </summary>
+		/// <param name="tdd_ls">All TDDs in the list must be in the same shape, of the same storage order.</param>
+		/// <returns></returns>
+		static TDD<W> stack(const std::vector<TDD<W>>& tdd_ls) {
+			std::vector<node::weightednode<W>> nodes_ls{ tdd_ls.size() };
+			for (int i = 0; i < tdd_ls.size(); i++) {
+				nodes_ls[i] = tdd_ls[i].m_wnode;
+			}
 
+			// get stacked node
+			auto new_wnode = wnode::stack<W>(nodes_ls, tdd_ls[0].m_para_shape);
+
+			// get stacked tdd shape, with one extra index in the front.
+			auto new_data_shape = tdd_ls[0].m_data_shape;
+			new_data_shape.insert(new_data_shape.begin(), tdd_ls.size());
+
+			// get storage order of the stacked tdd.
+			auto new_storage_order = tdd_ls[0].m_storage_order;
+			for (auto& order : new_storage_order) {
+				order += 1;
+			}
+			new_storage_order.insert(new_storage_order.begin(), 0);
+
+			return TDD<W>(std::move(new_wnode), std::vector<int64_t>(tdd_ls[0].m_para_shape),
+				std::move(new_data_shape), std::move(new_storage_order));
+		}
 
 		/// <summary>
 		/// permute the order of indices, and return the view.

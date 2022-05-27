@@ -21,7 +21,11 @@ int main() {
 
 	reset(1);
 
-	std::cout << TDD<wcomplex>::ones({}, { 2,3 }, {}).CUDAcpl() << std::endl;
+	auto ones_tdd = TDD<wcomplex>::ones({}, { 2,3 }, {});
+	auto zeros_tdd = TDD<wcomplex>::zeros({}, { 2,3 }, {});
+	auto stacked_tdd = TDD<wcomplex>::stack({ ones_tdd, ones_tdd, zeros_tdd });
+
+	std::cout << stacked_tdd.CUDAcpl() << std::endl;
 
 	auto&& sigmax = torch::tensor({ 0.,0.,1.,0.,1.,0.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });
 	auto&& sigmay = torch::tensor({ 0.,0.,0.,-1.,0.,1.,0.,0. }, CUDAcpl::tensor_opt).reshape({ 2,2,2 });

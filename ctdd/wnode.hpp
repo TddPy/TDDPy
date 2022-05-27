@@ -923,6 +923,63 @@ namespace wnode {
 		return res;
 	}
 
+	/// <summary>
+	/// shift the order of given weightednode
+	/// </summary>
+	/// <typeparam name="W"></typeparam>
+	/// <param name="w_node"></param>
+	/// <param name="order_benchmark"></param>
+	/// <returns></returns>
+	template <class W>
+	node::weightednode<W> shift(const node::weightednode<W>& w_node, int order_benchmark,
+		boost::unordered_map<node::Node<W>*, node::Node<W>*>& shift_cache) {
+
+		if (w_node.get_node() == nullptr) {
+			return w_node;
+		}
+
+		// w_node.get_node() is not nullptr
+		auto order = w_node.get_node()->get_order();
+		
+		node::weightednode<W> res;
+
+		// look up in the cache
+		auto&& p_find_res = shift_cache.find(w_node.get_node());
+		if (p_find_res != shift_cache.end()) {
+			res.set_node(p_find_res->second);
+			res.weight = w_node.weight;
+			return res;
+		}
+
+		auto successors = w_node.get_node()->get_successors();
+		std::vector<node::weightednode<W>> new_successors{ successors.size() };
+
+		for (int i = 0; i < successors.size(); i++) {
+			new_successors[i] = shift(successors[i], order_benchmark, shift_cache);
+		}
+
+		res = normalize(w_node.weight, order + order_benchmark, std::move(new_successors));
+
+		shift_cache[w_node.get_node()] = res.get_node();
+		return res;
+	}
+
+	template <class W>
+	node::weightednode<W> stack(const std::vector<node::weightednode<W>>& nodes_ls, 
+		const std::vector<int64_t>& parallel_shape) {
+
+		std::vector<node::weightednode<W>> new_successors{ nodes_ls };
+
+		for (int i = 0; i < nodes_ls.size(); i++) {
+			boost::unordered_map<node::Node<W>*, node::Node<W>*> shift_cache{};
+			new_successors[i] = shift(nodes_ls[i], 1, shift_cache);
+		}
+
+		return normalize(weight::ones<W>(parallel_shape), 0, std::move(new_successors));
+	}
+
+
+
 	///////////////////////////////////////////////////////////////////////////////
 	// Iteration Parallelism for cont
 	namespace iter_para {
