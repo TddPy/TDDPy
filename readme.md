@@ -33,7 +33,7 @@ Note that after installation, sometimes the manual setting of library path is ne
 
 ## Documentation
 
-To be written ...
+See doc.md
 
 ## Tutorials
 
