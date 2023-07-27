@@ -1,0 +1,58 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "windows-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${workspaceFolder}/build/${presetName}",
+            "installDir": "${workspaceFolder}/install/${presetName}",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe"
+            },
+            "environment": {
+                "TDDPY_CONDA_PREFIX": ""
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "x64-debug",
+            "displayName": "x64 Debug",
+            "inherits": "windows-base",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "x64-release",
+            "displayName": "x64 Release",
+            "inherits": "x64-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "ctdd backend test",
+            "description": "Compile the ctdd project as an executable in the debug model. Intended for testing within C++ codes.",
+            "displayName": "ctdd Backend Test",
+            "configurePreset": "x64-debug"
+        },
+        {
+            "name": "tddpy build",
+            "description": "Build the TDDPy project.",
+            "displayName": "TDDPy build",
+            "configurePreset": "x64-release"
+        }
+    ]
+}
