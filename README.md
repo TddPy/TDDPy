@@ -32,7 +32,18 @@ Follow these steps to set up the probject. We will demonstrate using __VS Code__
 .../Anaconda3/envs/tddpy
 ```
 
-- Try buiding the project.
+- Try building the project. Make sure that Ninja and MS compiler are available on your Windows system. If not, you can manually specify your generator and compilers in *src/CMakePresets.json* like
+
+```
+"generator": "MinGW Makefiles",
+...
+"cacheVariables": {
+    "CMAKE_C_COMPILER": "gcc",
+    "CMAKE_CXX_COMPILER": "g++"
+},
+```
+
+
 
 ### CMake Presets
 
