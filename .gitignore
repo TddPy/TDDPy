@@ -1,1 +1,4 @@
 build
+*.ilk
+*.pdb
+*.pyd

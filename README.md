@@ -49,8 +49,15 @@ See __CMakePresets.json__ for cmake presets of configure and build. Here is the 
 
 ## Other Information
 
+关于配置预设和构建预设
+
 关于cmake
 https://zhuanlan.zhihu.com/p/500002865
 
+在 Visual Studio 中尝试Python/C++联合调试
+
 关于vscode+cmake配置文件
 https://zhuanlan.zhihu.com/p/370211322
+
+关于在pip上直接从源代码构建 C++/Python 项目的范例。这难度很高，但允许我们实现从在用户端从源代码构建。
+https://github.com/pybind/cmake_example/tree/master

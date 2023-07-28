@@ -12,6 +12,7 @@
                 "CMAKE_CXX_COMPILER": "cl.exe"
             },
             "environment": {
+                "PYTHON_SHARED_LIBRARY_SUFFIX" : ".pyd",
                 "TDDPY_CONDA_PREFIX": ""
             },
             "condition": {
@@ -46,13 +47,24 @@
             "name": "ctdd backend test",
             "description": "Compile the ctdd project as an executable in the debug model. Intended for testing within C++ codes.",
             "displayName": "ctdd Backend Test",
-            "configurePreset": "x64-debug"
+            "configurePreset": "x64-debug",
+            "targets": "ctdd_ctest"
+        },
+        {
+            "name": "tddpy test",
+            "description": "Compile the ctdd project as a library in debug model. Intended for combined debuging with Python.",
+            "displayName": "TDDPy Test",
+            "configurePreset": "x64-debug",
+            "targets": "ctdd_dll"
+
         },
         {
             "name": "tddpy build",
             "description": "Build the TDDPy project.",
-            "displayName": "TDDPy build",
-            "configurePreset": "x64-release"
+            "displayName": "TDDPy Build",
+            "configurePreset": "x64-release",
+            "targets": "ctdd_dll"
         }
+
     ]
 }

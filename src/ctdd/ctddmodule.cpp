@@ -12,7 +12,7 @@ double sum_of_sines(xt::pyarray<double>& m)
     return std::accumulate(sines.begin(), sines.end(), 0.0);
 }
 
-PYBIND11_MODULE(xtensor_python_test, m)
+PYBIND11_MODULE(ctdd_dll, m)
 {
     xt::import_numpy();
     m.doc() = "Test module for xtensor python bindings";
