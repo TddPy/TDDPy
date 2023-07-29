@@ -29,11 +29,11 @@ endif()
 
 
 # the executable version
-add_executable (ctdd_ctest "main.cpp" "ctdd.h")
-
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET ctdd_ctest PROPERTY CXX_STANDARD 20)
-endif()
+add_executable (ctdd_ctest "main.cpp" 
+  "ThreadPool.h"
+  "typing.hpp"
+  "weight.hpp" "cache.hpp"
+  "node.hpp" "wnode.hpp" "tdd.hpp")
 
 
 
@@ -47,7 +47,3 @@ set_target_properties(ctdd_dll
 
 target_link_libraries(ctdd_dll PUBLIC pybind11::module xtensor-python Python::NumPy)
 target_compile_definitions(ctdd_dll PRIVATE VERSION_INFO=0.1.0)
-
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET ctdd_dll PROPERTY CXX_STANDARD 20)
-endif()

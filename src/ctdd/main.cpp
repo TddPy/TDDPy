@@ -6,24 +6,16 @@
 
 using namespace std;
 
+#include "tdd.hpp"
+
 #include "xtensor/xarray.hpp"
 #include "xtensor/xio.hpp"
 #include "xtensor/xview.hpp"
-
-// bool operator == (const int& a, const int& b) noexcept{
-// 	return a == b;
-// }
-
-std::size_t hash_value(const int& key) noexcept{
-	return 0;
-}
 
 
 int main(){
 	cout<<"hello"<<endl;
 	
-	#include <iostream>
-
 
 	xt::xarray<double> arr1
 	{{1.0, 2.0, 3.0},
@@ -36,5 +28,11 @@ int main(){
 	xt::xarray<double> res = xt::view(arr1, 1) + arr2;
 
 	std::cout << res;
+
+	xt::xarray<std::complex<double>> arr3
+	{5.0, 6.0, 7.0};
+
+	auto test = tdd::TDD<std::complex<double>>::as_tensor(arr3, {});
+
 	return 0;
 }

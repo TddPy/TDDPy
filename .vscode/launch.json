@@ -1,0 +1,24 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        // this configuration is obtained from https://zhuanlan.zhihu.com/p/370211322
+        {
+            "name": "ctdd dbg",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "environment": [],
+            "console": "externalTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true
+            }
+        },
+    ]
+}

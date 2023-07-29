@@ -2,34 +2,27 @@
 
 
 #include <boost/unordered_map.hpp>
+#include <xtensor/xarray.hpp>
+
+#include "typing.hpp"
+
 #include "weight.hpp"
-
-namespace node {
-	template <typename T_WEIGHT>
-	class Node;
-	template <typename T_WEIGHT>
-	struct WNode;
-
-	template <typename T_WEIGHT>
-	using succ_ls = std::vector<WNode<T_WEIGHT>>;
-}
 
 
 namespace cache {
 
 
-
 	// The key that uniquely determine a node in the diagram.
 	// The key is composed by the order of the node and the successors.
-	template <typename T_WCODE, class T_WEIGHT>
+	template <class T_WEIGHT>
 	struct unique_table_key {
 		int order;
 		succ_ls<T_WEIGHT> succ;	// We need to use [vector<WNode>], not [vector<WNode*>], because the key should work independently.
-	}
+	};
 	// TODO : due to normalization, the first element in codes may be sometimes unnecessary?
 
-	template <class W>
-	inline std::size_t hash_value(const succ_ls<W>& key) noexcept {
+	template <class T_WEIGHT>
+	inline std::size_t hash_value(const succ_ls<T_WEIGHT>& key) noexcept {
 		std::size_t seed = 0;
 		for (const auto& item : key) {
 			boost::hash_combine(seed, key);
@@ -41,8 +34,8 @@ namespace cache {
 	*/
 
 
-	template <typename W>
-	using unique_table = boost::unordered_map<succ_ls<W>, node::Node<W>*>;
+	template <class T_WEIGHT>
+	using unique_table = boost::unordered_map<unique_table_key<T_WEIGHT>, node::Node<T_WEIGHT>*>;
 
 
 
@@ -52,13 +45,13 @@ namespace cache {
 	// the type for element_table cache
 
 	// match nodes to elements
-	template <typename W>
-	inline std::size_t hash_value(node::Node<W>*& key) noexcept {
+	template <class T_WEIGHT>
+	inline std::size_t hash_value(node::Node<T_WEIGHT>*& key) noexcept {
 		return key;	// the memory address should serve as a good hash value
 	}
 	
-	template <class W>
-	using element_table = boost::unordered_map<node::Node<W>*, CUDAcpl::Tensor>;
+	template <class T_WEIGHT>
+	using element_table = boost::unordered_map<node::Node<T_WEIGHT>*, Tensor>;
 
 
 	// /// <summary>

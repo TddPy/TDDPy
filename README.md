@@ -49,10 +49,15 @@ Follow these steps to set up the probject. We will demonstrate using __VS Code__
 
 See __CMakePresets.json__ for cmake presets of configure and build. Here is the introduction to their purposes.
 
-- __ctdd Backend Test__ : Compile the ctdd project as an executable in the debug model. Intended for testing within C++ codes.
-- __TDDPy build__ : Build the TDDPy project.
+- __x64 Debug__: Configuration for debug on Windows platform. Its build configures includes:
+  - __ctdd Backend Test__: Compile the ctdd project as an executable in the debug model. Intended for testing within C++ codes.
+  - __TDDPy Test__: Compile the ctdd project as a library in debug model. Intended for combined debuging with Python.
+- __x64 Release__: Configuration for relese build on Windows platform. Its build configures includes:
+  - __TDDPy build__: Build the TDDPy project.
 
+### About Debugging
 
+In __VS Code__, debug with the configuration _ctdd dbg_ (written in .vscode/launch.json) to test ctdd module in C++ alone.
 
 
 
